@@ -4,19 +4,21 @@ Quantum Hardware MCP Server
 Exposes live IBM Quantum device data to AI assistants via the MCP protocol.
 
 Tools:
-  - list_devices       : all machines + status
-  - get_device_details : deep info on one machine
-  - compare_devices    : rank machines by error rate / queue / combined score
-  - queue_status       : current queue depth for every machine
-  - device_history     : historical snapshots for one machine over N days
-  - best_qubits        : best n qubits on a machine right now (calibration-based)
-  - device_on_date     : historical stats for a machine on a specific past date
-  - submit_job         : compile + submit a QASM circuit to IBM hardware
-  - job_status         : check the status of a submitted job
-  - job_results        : retrieve measurement counts from a completed job
-  - cancel_job         : cancel a queued or running job
-  - list_jobs          : list recent jobs with status and backend
-  - run_grover         : built-in Grover's search demo on real hardware
+  - list_devices          : all machines + status
+  - get_device_details    : deep info on one machine
+  - compare_devices       : rank machines by error rate / queue / combined score
+  - queue_status          : current queue depth for every machine
+  - device_history        : historical snapshots for one machine over N days
+  - best_qubits           : best n qubits on a machine right now (calibration-based)
+  - device_on_date        : historical stats for a machine on a specific past date
+  - submit_job            : compile + submit an OpenQASM 2 or 3 circuit to IBM hardware
+  - job_status            : check the status of a submitted job
+  - job_results           : retrieve measurement counts from a completed job
+  - cancel_job            : cancel a queued or running job
+  - list_jobs             : list recent jobs with status and backend
+  - run_grover            : built-in Grover's search demo on real hardware
+  - estimate_expectation  : run Estimator primitive to compute observable expectation values
+  - circuit_report        : dry-run analysis — fidelity estimate, gate counts, qubit map
 """
 
 import os
@@ -29,8 +31,11 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from qiskit import QuantumCircuit
+from qiskit import qasm3 as qiskit_qasm3
+from qiskit.quantum_info import SparsePauliOp
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit_ibm_runtime import SamplerV2 as Sampler
+from qiskit_ibm_runtime import EstimatorV2 as Estimator
 
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
@@ -658,19 +663,21 @@ def device_on_date(device_name: str, date: str) -> str:
 # --------------------------------------------------------------------------
 
 @mcp.tool()
-def submit_job(device_name: str, qasm_string: str, shots: int = 1024) -> str:
+def submit_job(device_name: str, qasm_string: str, shots: int = 1024,
+               qasm_version: int = 2) -> str:
     """
     Compile and submit a quantum circuit to an IBM quantum computer.
 
     Args:
-        device_name: Machine name, e.g. "ibm_fez". Use compare_devices or
-                     queue_status first to pick the best available machine.
-        qasm_string: OpenQASM 2.0 circuit. Must start with:
-                       OPENQASM 2.0;
-                       include "qelib1.inc";
-                     The circuit must include measurement gates (measure q -> c).
-        shots:       How many times to run the circuit (default 1024, max 20000).
-                     More shots = more accurate probability estimates.
+        device_name:  Machine name, e.g. "ibm_fez". Use compare_devices or
+                      queue_status first to pick the best available machine.
+        qasm_string:  OpenQASM circuit source code.
+                      For QASM 2: must start with OPENQASM 2.0; include "qelib1.inc";
+                      For QASM 3: must start with OPENQASM 3.0;
+                      The circuit must include measurement gates.
+        shots:        How many times to run the circuit (default 1024, max 20000).
+                      More shots = more accurate probability estimates.
+        qasm_version: 2 (default) for OpenQASM 2.0, 3 for OpenQASM 3.0.
 
     Returns JSON with:
       - job_id   Save this — needed for job_status and job_results.
@@ -679,13 +686,21 @@ def submit_job(device_name: str, qasm_string: str, shots: int = 1024) -> str:
       - shots    Number of shots requested.
     """
     # Parse the QASM string into a Qiskit QuantumCircuit object.
-    # QuantumCircuit.from_qasm_str handles OpenQASM 2.0 (the standard format).
+    # QASM 2 uses QuantumCircuit.from_qasm_str (legacy standard).
+    # QASM 3 uses qiskit.qasm3.loads (modern standard with richer features).
     try:
-        circuit = QuantumCircuit.from_qasm_str(qasm_string)
+        if qasm_version == 3:
+            circuit = qiskit_qasm3.loads(qasm_string)
+        else:
+            circuit = QuantumCircuit.from_qasm_str(qasm_string)
     except Exception as e:
         return json.dumps({
-            "error": f"Failed to parse QASM: {e}",
-            "hint": 'Circuit must start with: OPENQASM 2.0;\ninclude "qelib1.inc";',
+            "error": f"Failed to parse QASM {qasm_version}: {e}",
+            "hint": (
+                'QASM 2 must start with: OPENQASM 2.0;\ninclude "qelib1.inc";'
+                if qasm_version != 3 else
+                "QASM 3 must start with: OPENQASM 3.0;"
+            ),
         })
 
     # Clamp shots to IBM's allowed range
@@ -1083,6 +1098,232 @@ def run_grover(n_qubits: int, target_state: str) -> str:
             f"Real hardware noise will reduce this — expect 60–85% on current IBM devices. "
             f"Use job_status then job_results to see the counts."
         ),
+    }, indent=2)
+
+
+# --------------------------------------------------------------------------
+# Tool 14: estimate_expectation
+# --------------------------------------------------------------------------
+
+@mcp.tool()
+def estimate_expectation(device_name: str, qasm_string: str,
+                         observables: str, shots: int = 1024,
+                         qasm_version: int = 2) -> str:
+    """
+    Run the Estimator primitive to compute the expectation value of one or
+    more observables for a parameterised quantum state.
+
+    Unlike submit_job (which counts measurement outcomes), the Estimator
+    computes <ψ|O|ψ> — the average value of an observable O. This is what
+    quantum chemistry and optimisation algorithms (VQE, QAOA) need.
+
+    Args:
+        device_name:  IBM backend to run on, e.g. "ibm_fez".
+        qasm_string:  Circuit that prepares the quantum state (no measurements
+                      needed — Estimator handles that internally).
+        observables:  Comma-separated Pauli strings, e.g. "ZZ,XI,IZ".
+                      Each string is a tensor product of single-qubit Paulis
+                      (I, X, Y, Z) — length must equal the number of qubits.
+        shots:        Shots per observable (default 1024, max 20000).
+        qasm_version: 2 (default) or 3.
+
+    Returns JSON with:
+      - job_id       Use job_status to track, job_results won't work — check
+                     status via job_status and retrieve via this tool's job_id.
+      - observables  List of Pauli strings submitted.
+      - device       Backend used.
+      - note         Explanation of expectation values.
+    """
+    # Parse circuit (same logic as submit_job)
+    try:
+        if qasm_version == 3:
+            circuit = qiskit_qasm3.loads(qasm_string)
+        else:
+            circuit = QuantumCircuit.from_qasm_str(qasm_string)
+    except Exception as e:
+        return json.dumps({"error": f"Failed to parse QASM {qasm_version}: {e}"})
+
+    # Parse comma-separated Pauli strings, e.g. "ZZ,XI" → ["ZZ", "XI"]
+    pauli_list = [p.strip().upper() for p in observables.split(",") if p.strip()]
+    if not pauli_list:
+        return json.dumps({"error": "observables must be a comma-separated list of Pauli strings, e.g. 'ZZ,XI'"})
+
+    service = _get_service()
+    try:
+        backend = service.backend(device_name)
+    except Exception as e:
+        return json.dumps({"error": f"Device '{device_name}' not found: {e}"})
+
+    shots = max(1, min(shots, 20000))
+
+    # Transpile the circuit to the backend's native gate set.
+    # Estimator requires an ISA circuit (Instruction Set Architecture).
+    pm = generate_preset_pass_manager(backend=backend, optimization_level=1)
+    isa_circuit = pm.run(circuit)
+
+    # Build SparsePauliOp objects for each observable.
+    # SparsePauliOp("ZZ") represents the Z⊗Z operator on 2 qubits.
+    try:
+        ops = [SparsePauliOp(p) for p in pauli_list]
+    except Exception as e:
+        return json.dumps({"error": f"Invalid Pauli string: {e}. Use I, X, Y, Z only."})
+
+    # EstimatorV2 takes (circuit, observable) pairs called "PUBs"
+    # (Primitive Unified Blocs). One PUB per observable.
+    estimator = Estimator(mode=backend)
+    estimator.options.default_shots = shots
+    pubs = [(isa_circuit, op) for op in ops]
+
+    try:
+        job = estimator.run(pubs)
+    except Exception as e:
+        return json.dumps({"error": f"Estimator submission failed: {e}"})
+
+    return json.dumps({
+        "job_id": job.job_id(),
+        "status": str(job.status()),
+        "device": device_name,
+        "observables": pauli_list,
+        "shots": shots,
+        "note": (
+            "Use job_status to check progress. When DONE, retrieve results with "
+            "job_results — expectation values will be in the 'values' field. "
+            "Each value is a float in [-1, +1]: +1 means all qubits measured the "
+            "operator's +1 eigenstate, -1 means the -1 eigenstate."
+        ),
+    }, indent=2)
+
+
+# --------------------------------------------------------------------------
+# Tool 15: circuit_report
+# --------------------------------------------------------------------------
+
+@mcp.tool()
+def circuit_report(device_name: str, qasm_string: str,
+                   qasm_version: int = 2) -> str:
+    """
+    Dry-run analysis of a circuit on a specific backend — no job submitted,
+    no queue time, instant results.
+
+    This is the "look before you leap" tool. Before waiting hours in a queue,
+    use circuit_report to see:
+      - How the compiler transforms your circuit (gate count, depth)
+      - Which physical qubits get assigned to your logical qubits
+      - The error rate on each assigned qubit pair
+      - An estimated fidelity — the probability your result is correct
+
+    Researchers use this to:
+      - Compare backends before committing to one
+      - Detect if the compiler is bloating their circuit
+      - Know in advance if today's calibration is good enough
+
+    Args:
+        device_name:  Backend to analyse against, e.g. "ibm_fez".
+        qasm_string:  Circuit in OpenQASM format (measurements optional).
+        qasm_version: 2 (default) or 3.
+
+    Returns JSON with:
+      - original_gates     Gate counts before transpilation
+      - transpiled_gates   Gate counts after IBM compiler (usually more gates)
+      - original_depth     Circuit depth before compilation
+      - transpiled_depth   Circuit depth after compilation
+      - qubit_mapping      Logical qubit → physical qubit assignment
+      - cx_error_per_pair  2-qubit gate error on each used qubit pair
+      - estimated_fidelity Probability the circuit produces the correct result
+      - verdict            Human-readable recommendation
+    """
+    # Parse the circuit
+    try:
+        if qasm_version == 3:
+            circuit = qiskit_qasm3.loads(qasm_string)
+        else:
+            circuit = QuantumCircuit.from_qasm_str(qasm_string)
+    except Exception as e:
+        return json.dumps({"error": f"Failed to parse QASM {qasm_version}: {e}"})
+
+    service = _get_service()
+    try:
+        backend = service.backend(device_name)
+    except Exception as e:
+        return json.dumps({"error": f"Device '{device_name}' not found: {e}"})
+
+    # Transpile — this is the same step submit_job does, but we stop before
+    # actually running anything.
+    pm = generate_preset_pass_manager(backend=backend, optimization_level=1)
+    try:
+        isa_circuit = pm.run(circuit)
+    except Exception as e:
+        return json.dumps({"error": f"Transpilation failed: {e}"})
+
+    # Gate counts before and after compilation
+    original_gates = dict(circuit.count_ops())
+    transpiled_gates = dict(isa_circuit.count_ops())
+    original_depth = circuit.depth()
+    transpiled_depth = isa_circuit.depth()
+
+    # Extract qubit layout: logical index → physical qubit index
+    layout = isa_circuit.layout
+    qubit_mapping = {}
+    if layout and layout.final_layout:
+        for logical, physical in enumerate(layout.final_layout):
+            qubit_mapping[f"q{logical}"] = int(str(physical).split("_")[-1]) if "_" in str(physical) else logical
+    elif layout and layout.initial_layout:
+        for logical_bit, physical_bit in layout.initial_layout.get_physical_bits().items():
+            if hasattr(physical_bit, "index"):
+                qubit_mapping[f"q{physical_bit.index}"] = logical_bit
+
+    # Pull 2-qubit gate errors from backend calibration for the used qubits.
+    # This tells you whether the assigned qubit pairs are in good shape today.
+    cx_errors = {}
+    try:
+        props = backend.properties()
+        if props:
+            used_indices = list(qubit_mapping.values()) if qubit_mapping else list(range(circuit.num_qubits))
+            for gate in props.gates:
+                if gate.gate in ("cx", "ecr", "cz") and len(gate.qubits) == 2:
+                    q0, q1 = gate.qubits
+                    if q0 in used_indices or q1 in used_indices:
+                        for param in gate.parameters:
+                            if param.name == "gate_error":
+                                cx_errors[f"q{q0}-q{q1}"] = round(param.value, 6)
+    except Exception:
+        pass  # calibration data unavailable — report without it
+
+    # Estimate circuit fidelity using the product-of-gate-errors model:
+    # fidelity ≈ ∏(1 - error_i) for each 2-qubit gate in the transpiled circuit.
+    # This is a lower bound — real fidelity is often better due to error correlation.
+    n_cx = transpiled_gates.get("cx", 0) + transpiled_gates.get("ecr", 0) + transpiled_gates.get("cz", 0)
+    avg_cx_error = sum(cx_errors.values()) / len(cx_errors) if cx_errors else 0.005
+    estimated_fidelity = round((1 - avg_cx_error) ** n_cx, 4) if n_cx > 0 else 1.0
+
+    # Plain-English verdict based on fidelity
+    if estimated_fidelity >= 0.90:
+        verdict = "Excellent — this circuit should produce clean results on this backend today."
+    elif estimated_fidelity >= 0.70:
+        verdict = "Good — expect some noise but results should be meaningful."
+    elif estimated_fidelity >= 0.50:
+        verdict = "Fair — significant noise expected. Consider a lower-error backend or fewer gates."
+    else:
+        verdict = "Poor — high noise likely to obscure results. Try compare_devices to find a better backend."
+
+    # Overhead: how much did the compiler bloat the circuit?
+    overhead = round(
+        (sum(transpiled_gates.values()) - sum(original_gates.values()))
+        / max(sum(original_gates.values()), 1) * 100, 1
+    )
+
+    return json.dumps({
+        "device": device_name,
+        "original_gates": original_gates,
+        "transpiled_gates": transpiled_gates,
+        "original_depth": original_depth,
+        "transpiled_depth": transpiled_depth,
+        "compiler_overhead_pct": overhead,
+        "qubit_mapping": qubit_mapping,
+        "cx_error_per_pair": cx_errors,
+        "estimated_fidelity": estimated_fidelity,
+        "n_two_qubit_gates": n_cx,
+        "verdict": verdict,
     }, indent=2)
 
 

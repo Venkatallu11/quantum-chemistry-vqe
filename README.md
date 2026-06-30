@@ -28,12 +28,14 @@ Running quantum experiments is expensive in two ways: **time** (queue wait) and 
 | `device_history` | Snapshots for one machine over the last N days |
 | `best_qubits` | Best n qubits on a machine right now, scored by calibration data |
 | `device_on_date` | Historical stats for a machine on any past date (reproducibility) |
-| `submit_job` | Compile and submit an OpenQASM 2.0 circuit to IBM hardware — returns a `job_id` |
+| `submit_job` | Compile and submit an OpenQASM 2.0 or 3.0 circuit to IBM hardware — returns a `job_id` |
 | `job_status` | Check status of a submitted job (QUEUED / RUNNING / DONE / ERROR) |
 | `job_results` | Retrieve bit-string measurement counts from a completed job |
 | `cancel_job` | Cancel a queued or running job by `job_id` |
 | `list_jobs` | List your most recent jobs with status and backend (newest first) |
 | `run_grover` | Built-in Grover's search demo — builds the circuit, picks the least-busy backend, submits, returns `job_id` |
+| `estimate_expectation` | Run the Estimator primitive — computes expectation values ⟨ψ\|O\|ψ⟩ for Pauli observables (needed for VQE, QAOA, quantum chemistry) |
+| `circuit_report` | Dry-run analysis — transpiles your circuit and returns gate counts, qubit mapping, per-pair CX errors, and an estimated fidelity. No queue time. |
 
 ### `compare_devices` sort modes
 
