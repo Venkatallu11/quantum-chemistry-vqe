@@ -32,3 +32,6 @@ htmlcov/
 
 # --- macOS ---
 .DS_Store
+
+# --- Project data (generated, not source) ---
+devices.db
