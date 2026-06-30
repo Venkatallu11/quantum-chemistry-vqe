@@ -1161,10 +1161,19 @@ def estimate_expectation(device_name: str, qasm_string: str,
     pm = generate_preset_pass_manager(backend=backend, optimization_level=1)
     isa_circuit = pm.run(circuit)
 
-    # Build SparsePauliOp objects for each observable.
-    # SparsePauliOp("ZZ") represents the Z⊗Z operator on 2 qubits.
+    # The observable must match the transpiled circuit's qubit count, not the
+    # original circuit. After transpilation, a 2-qubit circuit on a 127-qubit
+    # backend becomes a 127-qubit ISA circuit. We pad the Pauli string with I's
+    # on the left to match (Qiskit uses little-endian ordering — leftmost = MSB).
+    n_qubits = isa_circuit.num_qubits
     try:
-        ops = [SparsePauliOp(p) for p in pauli_list]
+        ops = []
+        for p in pauli_list:
+            if len(p) > n_qubits:
+                return json.dumps({"error": f"Pauli string '{p}' is longer than circuit qubit count ({n_qubits})"})
+            # Pad with identity qubits on the left to fill the ISA circuit width
+            padded = "I" * (n_qubits - len(p)) + p
+            ops.append(SparsePauliOp(padded))
     except Exception as e:
         return json.dumps({"error": f"Invalid Pauli string: {e}. Use I, X, Y, Z only."})
 
