@@ -1,0 +1,47 @@
+name: Quantum Snapshot
+
+on:
+  schedule:
+    # Every 6 hours: midnight, 6am, noon, 6pm UTC
+    - cron: '0 0,6,12,18 * * *'
+  # Allow a manual run from the GitHub Actions tab to test without waiting
+  workflow_dispatch:
+
+# Needs write access to commit data/snapshots.csv back to the repo
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        # Only the two packages snapshot.py actually needs in CI.
+        # mcp and matplotlib are local-only; no point installing them here.
+        run: pip install qiskit-ibm-runtime python-dotenv
+
+      - name: Fetch device stats
+        env:
+          # Set IBM_QUANTUM_TOKEN in:
+          # GitHub repo → Settings → Secrets and variables → Actions → New secret
+          IBM_QUANTUM_TOKEN: ${{ secrets.IBM_QUANTUM_TOKEN }}
+        run: python snapshot.py
+
+      - name: Commit snapshot to repo
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/snapshots.csv
+          # Only commit if the file actually changed (skips if API returned nothing)
+          git diff --staged --quiet || \
+            git commit -m "data: device snapshot $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push

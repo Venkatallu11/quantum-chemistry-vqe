@@ -2,18 +2,21 @@
 snapshot.py
 -----------
 Standalone script that fetches live stats for every accessible IBM Quantum
-device and writes a timestamped row to devices.db.
+device and persists them.
+
+Where it writes depends on the environment:
+  - Locally (LaunchAgent):  SQLite devices.db  → feeds device_history + report.py
+  - GitHub Actions (CI):    CSV data/snapshots.csv → committed to the repo as history
 
 Run manually:
     .venv/bin/python snapshot.py
 
-Or let the LaunchAgent call it automatically every 6 hours.
-It does NOT start the MCP server — it only touches the database.
+Or let the LaunchAgent / GitHub Actions call it automatically every 6 hours.
 """
 
 import os
 import sys
-import json
+import csv
 import sqlite3
 from datetime import datetime, timezone
 
@@ -23,7 +26,12 @@ from qiskit_ibm_runtime import QiskitRuntimeService
 # Load .env from the same directory as this file.
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "devices.db")
+BASE_DIR  = os.path.dirname(__file__)
+DB_PATH   = os.path.join(BASE_DIR, "devices.db")
+CSV_PATH  = os.path.join(BASE_DIR, "data", "snapshots.csv")
+
+CSV_FIELDS = ["ts", "name", "num_qubits", "operational",
+              "pending_jobs", "avg_cx_error", "avg_readout_error"]
 
 
 def _init_db() -> None:
@@ -69,6 +77,32 @@ def _save_snapshots(rows: list[dict]) -> None:
                 for r in rows
             ],
         )
+
+
+def _write_csv(rows: list[dict]) -> None:
+    """
+    Append snapshot rows to data/snapshots.csv.
+    Creates the file with a header row on the first call.
+    Used by GitHub Actions so the history is committed as plain text.
+    """
+    os.makedirs(os.path.dirname(CSV_PATH), exist_ok=True)
+    ts = datetime.now(timezone.utc).isoformat()
+    new_file = not os.path.exists(CSV_PATH)
+
+    with open(CSV_PATH, "a", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=CSV_FIELDS, extrasaction="ignore")
+        if new_file:
+            writer.writeheader()
+        for r in rows:
+            writer.writerow({
+                "ts":               ts,
+                "name":             r["name"],
+                "num_qubits":       r.get("num_qubits"),
+                "operational":      r.get("operational"),
+                "pending_jobs":     r.get("pending_jobs"),
+                "avg_cx_error":     r.get("avg_cx_error"),
+                "avg_readout_error": r.get("avg_readout_error"),
+            })
 
 
 def _cx_errors(props) -> list[float]:
@@ -118,13 +152,19 @@ def collect() -> None:
 
         rows.append(row)
 
-    _save_snapshots(rows)
-    print(
-        f"[{datetime.now(timezone.utc).isoformat()}] "
-        f"Saved {len(rows)} device snapshots to {DB_PATH}"
-    )
+    if os.getenv("GITHUB_ACTIONS"):
+        # CI: write CSV — SQLite isn't persisted between Actions runs anyway
+        _write_csv(rows)
+        print(f"[{datetime.now(timezone.utc).isoformat()}] "
+              f"Wrote {len(rows)} rows to {CSV_PATH}")
+    else:
+        # Local: write SQLite — feeds device_history MCP tool and report.py
+        _save_snapshots(rows)
+        print(f"[{datetime.now(timezone.utc).isoformat()}] "
+              f"Saved {len(rows)} snapshots to {DB_PATH}")
 
 
 if __name__ == "__main__":
-    _init_db()
+    if not os.getenv("GITHUB_ACTIONS"):
+        _init_db()
     collect()
