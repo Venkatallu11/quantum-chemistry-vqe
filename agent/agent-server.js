@@ -331,13 +331,13 @@ Here is a list of available tools:
 ${formattedTools}
 
 ${loadedSkills ? `You have the following skills available to guide your actions:\n${loadedSkills}\n` : ''}
-${QISKIT_CODE_MODEL_ENABLED ? `You also have access to a Qiskit specialist model (${QISKIT_CODE_MODEL}) for quantum code questions.` : ''}
+${QISKIT_CODE_MODEL_ENABLED ? `You have a Qiskit specialist model available (${QISKIT_CODE_MODEL}). This model is specifically trained on Qiskit and OpenQASM code and will produce better quantum code than you can. You MUST use it for any code-related request.` : ''}
 
 User's request: "${question}"
 
 Decide what to do next based on the request.
 - If you need to use a tool to gather hardware data or run a circuit, return a JSON object with "action": "tool", "toolName": "<name>", and "toolArguments": {<args>}.
-- If the user is asking about writing, debugging, or explaining quantum code (OpenQASM, Qiskit Python), and the Qiskit specialist model is enabled, return a JSON object with "action": "model_call", and "prompt": "<the exact question or code to send to the specialist>".
+- If the user is asking about writing, debugging, or explaining ANY quantum code (OpenQASM, Qiskit Python, circuit design), you MUST use the Qiskit specialist model — return a JSON object with "action": "model_call", and "prompt": "<the exact question or code to send to the specialist>". Do NOT answer code questions yourself.
 - If you need to ask the user a question or request clarification, return a JSON object with "action": "query", "query": "<your question to the user>", and optionally "suggestions": ["option1", "option2", ...].
 - If you have gathered enough information and can answer the user's request (or if no tools are needed), return a JSON object with "action": "answer", and "finalAnswer": "<your natural language answer>".
 
