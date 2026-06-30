@@ -38,3 +38,6 @@ ts,name,num_qubits,operational,pending_jobs,avg_cx_error,avg_readout_error
 2026-06-13T16:46:49.532149+00:00,ibm_fez,156,True,0,,0.02177
 2026-06-13T16:46:49.532149+00:00,ibm_marrakesh,156,True,0,,0.02885
 2026-06-13T16:46:49.532149+00:00,ibm_kingston,156,True,1,,0.01802
+2026-06-13T19:12:59.972020+00:00,ibm_fez,156,True,0,,0.02327
+2026-06-13T19:12:59.972020+00:00,ibm_marrakesh,156,True,1,,0.02483
+2026-06-13T19:12:59.972020+00:00,ibm_kingston,156,True,0,,0.01722
