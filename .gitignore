@@ -35,3 +35,4 @@ htmlcov/
 
 # --- Project data (generated, not source) ---
 devices.db
+reports/
