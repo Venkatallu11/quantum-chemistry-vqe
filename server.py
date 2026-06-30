@@ -272,12 +272,14 @@ def get_device_details(device_name: str) -> str:
         #                         the phase randomises and quantum info is lost.
         # Both are in seconds from the API; we convert to microseconds (µs)
         # because that's the conventional unit in quantum computing papers.
-        t1_times = [
-            props.t1(q) for q in range(backend.num_qubits) if props.t1(q) is not None
-        ]
-        t2_times = [
-            props.t2(q) for q in range(backend.num_qubits) if props.t2(q) is not None
-        ]
+        def _safe_t(fn, q):
+            try:
+                return fn(q)
+            except Exception:
+                return None
+
+        t1_times = [v for q in range(backend.num_qubits) if (v := _safe_t(props.t1, q)) is not None]
+        t2_times = [v for q in range(backend.num_qubits) if (v := _safe_t(props.t2, q)) is not None]
         if t1_times:
             result["avg_t1_us"] = round(
                 sum(t1_times) / len(t1_times) * 1e6, 1  # s → µs
