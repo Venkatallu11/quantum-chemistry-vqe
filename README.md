@@ -28,6 +28,9 @@ Running quantum experiments is expensive in two ways: **time** (queue wait) and 
 | `device_history` | Snapshots for one machine over the last N days |
 | `best_qubits` | Best n qubits on a machine right now, scored by calibration data |
 | `device_on_date` | Historical stats for a machine on any past date (reproducibility) |
+| `submit_job` | Compile and submit an OpenQASM 2.0 circuit to IBM hardware — returns a `job_id` |
+| `job_status` | Check status of a submitted job (QUEUED / RUNNING / DONE / ERROR) |
+| `job_results` | Retrieve bit-string measurement counts from a completed job |
 
 ### `compare_devices` sort modes
 
@@ -263,7 +266,7 @@ A background agent (`snapshot.py`) records device stats every 6 hours:
 
 ```text
 quantum-hardware-mcp/
-├── server.py          # MCP server — all 7 tools live here
+├── server.py          # MCP server — all 10 tools live here
 ├── snapshot.py        # Background agent — records device stats every 6h
 ├── report.py          # Daily Quantum Weatherman report (runs at 8am)
 ├── requirements.txt
@@ -274,9 +277,44 @@ quantum-hardware-mcp/
 ├── data/
 │   └── snapshots.csv      # Growing historical record (committed by CI)
 ├── reports/               # Daily reports + charts (git-ignored)
+├── reports/fleet-report/  # Polished fleet analysis report + charts
+├── test_bell_state.py     # End-to-end Bell state test on real hardware
 ├── REPORTS.md             # Running summary log
 └── devices.db             # Local SQLite snapshot store (git-ignored)
 ```
+
+---
+
+## Running quantum circuits
+
+Use the three job tools together to submit a circuit and get results:
+
+```python
+# 1. Pick the least-busy machine
+queue_status()                            # → ibm_kingston (0 jobs)
+
+# 2. Submit an OpenQASM 2.0 circuit
+submit_job("ibm_kingston", """
+OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+creg c[2];
+h q[0];
+cx q[0],q[1];
+measure q[0] -> c[0];
+measure q[1] -> c[1];
+""", shots=1024)
+# → { "job_id": "d8tvs9lbh0os73eq93ag", "status": "QUEUED", ... }
+
+# 3. Check progress
+job_status("d8tvs9lbh0os73eq93ag")        # → RUNNING → DONE
+
+# 4. Get results
+job_results("d8tvs9lbh0os73eq93ag")
+# → { "counts": {"00": 509, "11": 487, "01": 26, "10": 2}, "total_shots": 1024 }
+```
+
+The circuit above is a Bell state — the ~97% correlation between `00` and `11` outcomes is quantum entanglement measured on real hardware. Run `test_bell_state.py` for an automated end-to-end test.
 
 ---
 
