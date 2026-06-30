@@ -1,8 +1,19 @@
 # Quantum Hardware MCP Server
 
-An MCP server that gives AI assistants (Claude, etc.) live data about IBM Quantum computers — queue depths, error rates, coherence times, and more.
+An MCP server that gives AI assistants (Claude, etc.) live data about IBM Quantum computers — queue depths, error rates, coherence times, best qubit picks, and historical snapshots.
 
 Built with the [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) and [qiskit-ibm-runtime](https://github.com/Qiskit/qiskit-ibm-runtime).
+
+---
+
+## Why researchers should care
+
+Running quantum experiments is expensive in two ways: **time** (queue wait) and **quality** (gate errors corrupt results). This server exposes both dimensions as AI-queryable tools, so you can ask natural questions and get grounded answers:
+
+- **Live qubit picks** — `best_qubits` ranks every qubit on a device right now by calibration data, so you can hand the compiler a pre-filtered register instead of hoping the transpiler gets lucky.
+- **Historical lookup** — `device_on_date` retrieves the hardware snapshot for any past date from the local database, so your methods section can cite what the machine actually looked like when you ran the experiment.
+- **Reproducibility** — snapshots are recorded every 6 hours automatically. If a reviewer asks "what was the CX error on the day you ran Figure 3?", you can answer exactly.
+- **Instant comparison** — `compare_devices(sort_by="combined")` blends gate quality and queue depth into a single score, surfacing the best machine to use *right now*.
 
 ---
 
@@ -12,8 +23,20 @@ Built with the [MCP Python SDK](https://github.com/modelcontextprotocol/python-s
 |---|---|
 | `list_devices` | All IBM quantum computers you can access + status |
 | `get_device_details` | Deep info on one machine: error rates, T1/T2, queue |
-| `compare_devices` | Rank machines by CX error, queue depth, or qubit count |
+| `compare_devices` | Rank machines by CX error, queue depth, qubit count, or combined score |
 | `queue_status` | Current queue snapshot — useful for picking the shortest wait |
+| `device_history` | Snapshots for one machine over the last N days |
+| `best_qubits` | Best n qubits on a machine right now, scored by calibration data |
+| `device_on_date` | Historical stats for a machine on any past date (reproducibility) |
+
+### `compare_devices` sort modes
+
+| `sort_by` | What it optimises |
+|---|---|
+| `cx_error` | Lowest 2-qubit gate error — highest fidelity results |
+| `queue` | Fewest pending jobs — fastest turnaround |
+| `qubits` | Most qubits — largest circuits |
+| `combined` | 70% quality + 30% availability, min-max normalised across current devices |
 
 ---
 
@@ -30,115 +53,53 @@ Built with the [MCP Python SDK](https://github.com/modelcontextprotocol/python-s
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/quantum-hardware-mcp.git
+git clone https://github.com/Lokesh-2025/quantum-hardware-mcp.git
 cd quantum-hardware-mcp
 ```
 
-### 2. Create a virtual environment
+### 2. Create a virtual environment and install
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate       # macOS / Linux
-# venv\Scripts\activate        # Windows
-```
-
-### 3. Install dependencies
-
-```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Get your IBM Quantum API token
-
-1. Go to [quantum.ibm.com/account](https://quantum.ibm.com/account)
-2. Log in (or create a free account)
-3. Copy your API token from the "API token" section
-
-### 5. Create your `.env` file
+### 3. Add your IBM Quantum token
 
 ```bash
 cp .env.example .env
 ```
 
-Open `.env` and replace `your_token_here` with your real token:
+Open `.env` and replace `your_token_here` with your token from [quantum.ibm.com/account](https://quantum.ibm.com/account).
 
-```
-IBM_QUANTUM_TOKEN=abc123...your_actual_token...xyz
-```
+> `.env` is in `.gitignore` — it will never be committed.
 
-> **Important:** `.env` is in `.gitignore`. It will never be committed. Never paste your token directly into `server.py`.
+### 4. Connect to Claude Desktop
 
-### 6. Test the server runs
-
-```bash
-python server.py
-```
-
-You should see no errors. Press `Ctrl+C` to stop it.
-The server speaks over stdin/stdout (MCP stdio transport), so it won't print anything — a clean exit means it's working.
-
----
-
-## Connect to Claude Desktop
-
-### 1. Find your Claude Desktop config file
-
-| OS | Path |
-|---|---|
-| macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
-
-### 2. Add the server entry
-
-Open the file (create it if it doesn't exist) and add:
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "quantum-hardware": {
-      "command": "/absolute/path/to/venv/bin/python",
+      "command": "/absolute/path/to/.venv/bin/python",
       "args": ["/absolute/path/to/quantum-hardware-mcp/server.py"]
     }
   }
 }
 ```
 
-Replace the paths with your actual paths. To find them:
-
-```bash
-# From inside the project folder with venv activated:
-which python          # → path to use for "command"
-pwd                   # → prefix for "args" path
-```
-
-**Example on macOS:**
-
-```json
-{
-  "mcpServers": {
-    "quantum-hardware": {
-      "command": "/Users/yourname/quantum-hardware-mcp/venv/bin/python",
-      "args": ["/Users/yourname/quantum-hardware-mcp/server.py"]
-    }
-  }
-}
-```
-
-### 3. Restart Claude Desktop
-
-Quit and reopen Claude Desktop. You should see "quantum-hardware" in the MCP tools list (hammer icon).
+Quit and reopen Claude Desktop. The hammer icon will show the quantum-hardware tools.
 
 ---
 
-## Usage examples
+## Automatic snapshots
 
-Once connected, ask Claude:
+A background agent (`snapshot.py`) records device stats every 6 hours:
 
-- *"List all IBM quantum computers I can access"*
-- *"Get details for ibm_brisbane"*
-- *"Which quantum computer has the lowest error rate right now?"*
-- *"Which machine has the shortest queue right now?"*
-- *"Compare all devices by queue depth"*
+- **Locally** — a macOS LaunchAgent writes to `devices.db`, which feeds `device_history` and `device_on_date`.
+- **GitHub Actions** — a scheduled workflow appends rows to `data/snapshots.csv` every 6 hours, building a public historical record.
 
 ---
 
@@ -146,45 +107,30 @@ Once connected, ask Claude:
 
 ```
 quantum-hardware-mcp/
-├── server.py          # MCP server — all tool logic lives here
-├── requirements.txt   # Python dependencies
-├── .env.example       # Token template (safe to commit)
-├── .env               # Your real token (git-ignored, never commit)
-├── .gitignore
-├── LICENSE            # MIT
-└── README.md
+├── server.py          # MCP server — all 7 tools live here
+├── snapshot.py        # Background agent — records device stats every 6h
+├── report.py          # Daily Quantum Weatherman report (runs at 8am)
+├── requirements.txt
+├── .env.example
+├── .github/
+│   └── workflows/
+│       └── snapshot.yml   # GitHub Actions: snapshot → CSV every 6h
+├── data/
+│   └── snapshots.csv      # Growing historical record (committed by CI)
+├── reports/               # Daily reports + charts (git-ignored)
+├── REPORTS.md             # Running summary log
+└── devices.db             # Local SQLite snapshot store (git-ignored)
 ```
 
 ---
 
-## How it works (quick mental model)
+## Planned roadmap
 
-```
-Claude Desktop
-     │  asks a question
-     ▼
-MCP Protocol (stdin/stdout)
-     │  calls a tool
-     ▼
-server.py  ──── QiskitRuntimeService ────► IBM Quantum API
-     │                                          │
-     │  ◄─── live device data ─────────────────┘
-     ▼
-Claude Desktop (formats and answers)
-```
-
-The MCP protocol is like a plugin system: Claude Desktop spawns `server.py` as a child process and sends JSON messages over stdin/stdout. The server responds with tool results. No HTTP server needed.
-
----
-
-## Troubleshooting
-
-| Problem | Fix |
-|---|---|
-| `IBM_QUANTUM_TOKEN is not set` | Check your `.env` file exists and has the right key |
-| `IBMNotAuthorizedError` | Token is wrong or expired — get a fresh one from quantum.ibm.com |
-| Server not showing in Claude Desktop | Check the paths in `claude_desktop_config.json` are absolute |
-| `compare_devices` is slow | Normal — it makes one API call per device to get calibration data |
+- **Trend alerts** — notify when a device's error rate spikes above its 7-day average
+- **Queue forecasting** — predict wait time from historical queue patterns
+- **Multi-vendor** — add IonQ and Quantinuum device data alongside IBM
+- **Circuit-aware ranking** — given a circuit's gate profile, recommend the best machine for that specific workload
+- **Automated report push** — opt-in posting of the daily Weatherman to Slack / Discord
 
 ---
 

@@ -6,9 +6,11 @@ Exposes live IBM Quantum device data to AI assistants via the MCP protocol.
 Tools:
   - list_devices       : all machines + status
   - get_device_details : deep info on one machine
-  - compare_devices    : rank machines by error rate / queue
+  - compare_devices    : rank machines by error rate / queue / combined score
   - queue_status       : current queue depth for every machine
   - device_history     : historical snapshots for one machine over N days
+  - best_qubits        : best n qubits on a machine right now (calibration-based)
+  - device_on_date     : historical stats for a machine on a specific past date
 """
 
 import os
@@ -120,19 +122,22 @@ def _get_service() -> QiskitRuntimeService:
 
 def _cx_errors_for_backend(props) -> list[float]:
     """
-    Pull all CX (CNOT) gate error values from calibration properties.
-    CX is the most important 2-qubit gate; its error rate is the best
-    single-number summary of device quality.
+    Pull 2-qubit gate error values from calibration properties.
+
+    Older IBM devices use CX (CNOT) as their native 2-qubit gate.
+    Newer devices (e.g. ibm_fez, ibm_marrakesh) use ECR (echoed
+    cross-resonance) instead — CX is synthesised from ECR and won't
+    appear in raw calibration data. We check for both, plus CZ, so
+    this function works across the whole IBM fleet.
 
     Returns an empty list if the backend has no calibration data.
     """
     if props is None:
         return []
+    TWO_QUBIT_GATES = {"cx", "ecr", "cz"}
     errors = []
     for gate in props.gates:
-        # Only look at CX gates
-        if gate.gate == "cx" and gate.parameters:
-            # parameters[0] is always gate_error for CX gates
+        if gate.gate in TWO_QUBIT_GATES and gate.parameters:
             errors.append(gate.parameters[0].value)
     return errors
 
@@ -270,6 +275,92 @@ def get_device_details(device_name: str) -> str:
 
 
 # --------------------------------------------------------------------------
+# Tool 6: best_qubits
+# --------------------------------------------------------------------------
+
+@mcp.tool()
+def best_qubits(device_name: str, n: int = 5) -> str:
+    """
+    Return the best n individual qubits on a device based on live calibration.
+
+    Useful for researchers who want to hand-pick qubits for a circuit rather
+    than letting the compiler choose automatically.
+
+    Args:
+        device_name: Machine name, e.g. "ibm_fez".
+        n:           How many qubits to return (default 5).
+
+    Scoring formula (lower = better):
+        score = readout_error + best_cx_error_for_this_qubit
+
+    Both metrics are in the same [0, 1] range so they contribute equally.
+    T1 / T2 coherence times are included as supplementary context.
+    Missing metrics are penalised with 1.0 (worst possible) so qubits with
+    incomplete calibration data sort to the bottom.
+    """
+    service = _get_service()
+    backend = service.backend(device_name)
+    props   = backend.properties()
+
+    if not props:
+        return json.dumps({
+            "error": f"{device_name} has no calibration data available."
+        })
+
+    n = min(n, backend.num_qubits)  # can't ask for more qubits than exist
+
+    # Build dict: qubit index → lowest 2-qubit gate error of any pair
+    # involving this qubit.  Covers cx / ecr / cz (see _cx_errors_for_backend).
+    TWO_QUBIT_GATES = {"cx", "ecr", "cz"}
+    qubit_best_cx: dict[int, float] = {}
+    for gate in props.gates:
+        if gate.gate in TWO_QUBIT_GATES and gate.parameters:
+            err = gate.parameters[0].value
+            for q in gate.qubits:
+                if q not in qubit_best_cx or err < qubit_best_cx[q]:
+                    qubit_best_cx[q] = err
+
+    # Score and collect every qubit
+    qubit_data = []
+    for q in range(backend.num_qubits):
+        ro  = props.readout_error(q)
+        cx  = qubit_best_cx.get(q)
+        # T1/T2 are missing for some qubits on some devices — catch gracefully
+        try:
+            t1 = props.t1(q)
+        except Exception:
+            t1 = None
+        try:
+            t2 = props.t2(q)
+        except Exception:
+            t2 = None
+
+        score = (ro if ro is not None else 1.0) + (cx if cx is not None else 1.0)
+
+        qubit_data.append({
+            "qubit":          q,
+            "score":          round(score, 6),
+            "readout_error":  round(ro, 5)       if ro  is not None else None,
+            "best_cx_error":  round(cx, 5)       if cx  is not None else None,
+            "t1_us":          round(t1 * 1e6, 1) if t1  is not None else None,
+            "t2_us":          round(t2 * 1e6, 1) if t2  is not None else None,
+        })
+
+    qubit_data.sort(key=lambda q: q["score"])
+
+    return json.dumps(
+        {
+            "device":   device_name,
+            "n":        n,
+            "scoring":  "readout_error + best_cx_error (lower = better). "
+                        "T1/T2 shown for context but not in score.",
+            "best_qubits": qubit_data[:n],
+        },
+        indent=2,
+    )
+
+
+# --------------------------------------------------------------------------
 # Tool 3: compare_devices
 # --------------------------------------------------------------------------
 
@@ -283,6 +374,7 @@ def compare_devices(sort_by: str = "cx_error") -> str:
                  "cx_error"  – lowest 2-qubit gate error (best quality) [default]
                  "queue"     – shortest queue (fastest turnaround)
                  "qubits"    – most qubits (largest machine)
+                 "combined"  – blended score: 70% quality + 30% availability
 
     Returns a JSON object with the ranking and a note about what it means.
 
@@ -303,8 +395,8 @@ def compare_devices(sort_by: str = "cx_error") -> str:
             "operational": status.operational,
         }
 
-        # Only fetch calibration data when we actually need error rates
-        if sort_by == "cx_error":
+        # Fetch calibration data for any mode that needs error rates
+        if sort_by in ("cx_error", "combined"):
             props = backend.properties()
             cx_errors = _cx_errors_for_backend(props)
             if cx_errors:
@@ -328,10 +420,47 @@ def compare_devices(sort_by: str = "cx_error") -> str:
         # Descending: more qubits = higher rank
         devices.sort(key=lambda d: d["num_qubits"], reverse=True)
 
+    elif sort_by == "combined":
+        # Blended score: 70% gate quality + 30% queue availability.
+        #
+        # Why min-max normalisation?
+        # cx_error lives in ~[0.001, 0.05]; pending_jobs in ~[0, 500].
+        # A raw sum would let queue dominate just because its numbers are
+        # larger. Min-max rescales each metric to [0, 1] relative to the
+        # current set of devices, so the 70/30 weights actually mean what
+        # they say: quality matters more than speed, but both count.
+        #
+        # Why 70/30?
+        # For research you care most about getting a correct result (low
+        # error), but a 200-job queue means hours of waiting — so
+        # availability gets a meaningful but smaller weight.
+
+        cx_vals = [d["avg_cx_error"] for d in devices if d.get("avg_cx_error") is not None]
+        q_vals  = [d["pending_jobs"]  for d in devices if d.get("pending_jobs")  is not None]
+
+        min_cx, max_cx = (min(cx_vals), max(cx_vals)) if cx_vals else (0, 1)
+        min_q,  max_q  = (min(q_vals),  max(q_vals))  if q_vals  else (0, 1)
+
+        # Avoid division by zero when all devices have identical values
+        cx_range = max_cx - min_cx or 1
+        q_range  = max_q  - min_q  or 1
+
+        for d in devices:
+            cx = d.get("avg_cx_error")
+            q  = d.get("pending_jobs")
+            # Missing metrics get worst-case penalty (1.0) so uncalibrated
+            # devices sort below any device with real data
+            norm_cx = (cx - min_cx) / cx_range if cx is not None else 1.0
+            norm_q  = (q  - min_q)  / q_range  if q  is not None else 1.0
+            d["combined_score"] = round(0.7 * norm_cx + 0.3 * norm_q, 4)
+
+        # Ascending: 0.0 = perfectly best on both metrics, 1.0 = worst
+        devices.sort(key=lambda d: d.get("combined_score", float("inf")))
+
     else:
         return json.dumps({
             "error": f"Unknown sort_by value '{sort_by}'. "
-                     "Use 'cx_error', 'queue', or 'qubits'."
+                     "Use 'cx_error', 'queue', 'qubits', or 'combined'."
         })
 
     # Stamp each entry with its rank number (1 = best)
@@ -346,6 +475,8 @@ def compare_devices(sort_by: str = "cx_error") -> str:
                 "cx_error": "Rank 1 = lowest 2-qubit gate error (highest quality)",
                 "queue":    "Rank 1 = fewest pending jobs (shortest wait)",
                 "qubits":   "Rank 1 = most qubits (largest machine)",
+                "combined": "Rank 1 = best blend of quality (70%) and availability (30%). "
+                            "Score is min-max normalised across current devices.",
             }.get(sort_by, ""),
             "devices": devices,
         },
@@ -435,6 +566,72 @@ def device_history(device_name: str, days: int = 7) -> str:
 
     return json.dumps(
         {"device": device_name, "days": days, "snapshots": snapshots},
+        indent=2,
+    )
+
+
+# --------------------------------------------------------------------------
+# Tool 7: device_on_date
+# --------------------------------------------------------------------------
+
+@mcp.tool()
+def device_on_date(device_name: str, date: str) -> str:
+    """
+    Historical stats for a device on a specific past date, from our snapshot DB.
+
+    Useful for reproducibility: if you ran an experiment on 2026-07-01, call
+    this tool with that date to see exactly what the hardware looked like —
+    queue depth, error rates — and include it in your methods section.
+
+    Args:
+        device_name: Machine name, e.g. "ibm_fez".
+        date:        Date in YYYY-MM-DD format, e.g. "2026-06-10".
+
+    Returns aggregated stats averaged across all snapshots taken that day
+    (snapshots are recorded every 6 hours by the background agent).
+    """
+    with sqlite3.connect(DB_PATH) as con:
+        con.row_factory = sqlite3.Row
+        rows = con.execute(
+            """
+            SELECT ts, operational, pending_jobs, avg_cx_error, avg_readout_error
+            FROM   device_snapshots
+            WHERE  name   = ?
+              AND  date(ts) = ?
+            ORDER  BY ts ASC
+            """,
+            (device_name, date),
+        ).fetchall()
+
+    if not rows:
+        return json.dumps({
+            "device": device_name,
+            "date":   date,
+            "found":  False,
+            "note":   "No snapshots found for this device on this date. "
+                      "Snapshots are recorded every 6 hours by the local LaunchAgent.",
+        })
+
+    snapshots = [dict(r) for r in rows]
+
+    def _avg(field: str):
+        vals = [s[field] for s in snapshots if s[field] is not None]
+        return round(sum(vals) / len(vals), 5) if vals else None
+
+    return json.dumps(
+        {
+            "device":             device_name,
+            "date":               date,
+            "found":              True,
+            "snapshots_that_day": len(snapshots),
+            "first_snapshot":     snapshots[0]["ts"],
+            "last_snapshot":      snapshots[-1]["ts"],
+            "avg_pending_jobs":   _avg("pending_jobs"),
+            "avg_cx_error":       _avg("avg_cx_error"),
+            "avg_readout_error":  _avg("avg_readout_error"),
+            "note": "Averaged across all snapshots taken that day. "
+                    "Cite this date in your paper's methods section for reproducibility.",
+        },
         indent=2,
     )
 
