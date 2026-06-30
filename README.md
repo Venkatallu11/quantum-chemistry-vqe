@@ -36,6 +36,7 @@ Running quantum experiments is expensive in two ways: **time** (queue wait) and 
 | `run_grover` | Built-in Grover's search demo — builds the circuit, picks the least-busy backend, submits, returns `job_id` |
 | `estimate_expectation` | Run the Estimator primitive — computes expectation values ⟨ψ\|O\|ψ⟩ for Pauli observables (needed for VQE, QAOA, quantum chemistry) |
 | `circuit_report` | Dry-run analysis — transpiles your circuit and returns gate counts, qubit mapping, per-pair CX errors, and an estimated fidelity. No queue time. |
+| `debug_circuit` | Bug detector — checks for missing measurements, decoherence violations, qubit mismatches, and unentangled qubits before you waste hours in a queue. Returns severity-ranked issues with plain-English fixes. |
 
 ### `compare_devices` sort modes
 

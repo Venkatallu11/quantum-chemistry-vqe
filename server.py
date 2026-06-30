@@ -19,6 +19,7 @@ Tools:
   - run_grover            : built-in Grover's search demo on real hardware
   - estimate_expectation  : run Estimator primitive to compute observable expectation values
   - circuit_report        : dry-run analysis — fidelity estimate, gate counts, qubit map
+  - debug_circuit         : bug detector — finds errors before you waste queue time
 """
 
 import os
@@ -1333,6 +1334,306 @@ def circuit_report(device_name: str, qasm_string: str,
         "estimated_fidelity": estimated_fidelity,
         "n_two_qubit_gates": n_cx,
         "verdict": verdict,
+    }, indent=2)
+
+
+# --------------------------------------------------------------------------
+# Tool 16: debug_circuit
+# --------------------------------------------------------------------------
+
+@mcp.tool()
+def debug_circuit(qasm_string: str, device_name: str = "",
+                  qasm_version: int = 2) -> str:
+    """
+    Analyse a quantum circuit for bugs and problems BEFORE submitting it.
+    No job is created. No queue time. Instant results.
+
+    Catches two classes of problems:
+
+    STATIC bugs (caught without connecting to IBM — always run):
+      - Circuit has zero gates (empty circuit)
+      - Gate applied to a qubit index that doesn't exist
+      - Measurements missing (you'll get no results)
+      - Classical register too small for the number of qubits measured
+      - Unentangled qubits (qubit prepared but never interacted with anything)
+      - Barrier-only circuit (circuit does nothing useful)
+
+    HARDWARE bugs (caught by checking the target backend — needs device_name):
+      - Circuit needs more qubits than the backend has
+      - Circuit depth exceeds the backend's T2 coherence time
+        (if circuit runs longer than T2, qubits decohere — results = garbage)
+      - Backend is offline or in maintenance
+
+    Each issue comes with:
+      - severity: ERROR (will definitely fail) | WARNING (may give bad results) | INFO
+      - plain-English explanation of what's wrong
+      - suggested fix
+
+    Args:
+        qasm_string:  Circuit in OpenQASM format.
+        device_name:  Optional — IBM backend to check hardware limits against.
+                      Leave blank for static analysis only.
+        qasm_version: 2 (default) or 3.
+
+    Returns JSON with:
+      - issues        List of {severity, check, message, fix}
+      - summary       One-line verdict
+      - safe_to_submit  True only if zero ERRORs found
+    """
+    issues = []
+
+    # ------------------------------------------------------------------ #
+    # Step 1: Parse the circuit
+    # ------------------------------------------------------------------ #
+    try:
+        if qasm_version == 3:
+            circuit = qiskit_qasm3.loads(qasm_string)
+        else:
+            circuit = QuantumCircuit.from_qasm_str(qasm_string)
+    except Exception as e:
+        # If we can't even parse it, everything else is moot
+        return json.dumps({
+            "issues": [{
+                "severity": "ERROR",
+                "check": "parse",
+                "message": f"Circuit failed to parse: {e}",
+                "fix": (
+                    'QASM 2 must start with: OPENQASM 2.0;\ninclude "qelib1.inc";'
+                    if qasm_version != 3 else
+                    "QASM 3 must start with: OPENQASM 3.0;"
+                ),
+            }],
+            "summary": "Circuit could not be parsed. Fix syntax errors first.",
+            "safe_to_submit": False,
+        }, indent=2)
+
+    n_qubits = circuit.num_qubits
+    n_clbits = circuit.num_clbits
+    ops = circuit.count_ops()
+    depth = circuit.depth()
+
+    # ------------------------------------------------------------------ #
+    # Step 2: Static checks — no IBM connection needed
+    # ------------------------------------------------------------------ #
+
+    # Empty circuit
+    if not ops or all(k in ("barrier", "measure") for k in ops):
+        issues.append({
+            "severity": "ERROR",
+            "check": "empty_circuit",
+            "message": "Circuit has no quantum gates — it does nothing.",
+            "fix": "Add at least one gate (e.g., h q[0]; to put qubit 0 in superposition).",
+        })
+
+    # No measurements
+    if ops.get("measure", 0) == 0:
+        issues.append({
+            "severity": "ERROR",
+            "check": "no_measurements",
+            "message": "Circuit has no measurement gates. You will get no results.",
+            "fix": "Add measurements: measure q[0] -> c[0]; for each qubit you care about.",
+        })
+
+    # Classical register too small
+    if n_clbits < ops.get("measure", 0):
+        issues.append({
+            "severity": "ERROR",
+            "check": "classical_register_too_small",
+            "message": (
+                f"You have {ops.get('measure', 0)} measurement gates but only "
+                f"{n_clbits} classical bits to store results."
+            ),
+            "fix": f"Increase classical register: creg c[{ops.get('measure', 0)}];",
+        })
+
+    # Check for unentangled qubits — qubits that only have single-qubit gates
+    # and never interact with another qubit via a 2-qubit gate.
+    # We detect this by inspecting each instruction's qubits.
+    entangled_qubits = set()
+    for instruction in circuit.data:
+        if len(instruction.qubits) >= 2:
+            for q in instruction.qubits:
+                entangled_qubits.add(circuit.find_bit(q).index)
+
+    single_only_qubits = []
+    for i in range(n_qubits):
+        # Check if this qubit has any gates at all (not just initialized)
+        qubit_has_gates = any(
+            circuit.find_bit(q).index == i
+            for inst in circuit.data
+            for q in inst.qubits
+            if inst.operation.name not in ("measure", "barrier")
+        )
+        if qubit_has_gates and i not in entangled_qubits:
+            single_only_qubits.append(i)
+
+    if single_only_qubits and n_qubits > 1:
+        issues.append({
+            "severity": "INFO",
+            "check": "unentangled_qubits",
+            "message": (
+                f"Qubit(s) {single_only_qubits} have gates but never interact "
+                f"with other qubits via a 2-qubit gate. They are not entangled."
+            ),
+            "fix": (
+                "If you intended entanglement, add a CNOT: cx q[0],q[1]; "
+                "If this is intentional (parallel single-qubit experiments), ignore this."
+            ),
+        })
+
+    # Very deep circuit warning (heuristic — before we even know T2)
+    if depth > 100:
+        issues.append({
+            "severity": "WARNING",
+            "check": "deep_circuit_heuristic",
+            "message": (
+                f"Circuit depth is {depth}, which is quite deep. "
+                "Deep circuits are more vulnerable to decoherence noise."
+            ),
+            "fix": (
+                "Consider using optimization_level=3 when transpiling, or "
+                "restructure to reduce gate count. Run circuit_report to see "
+                "transpiled depth on your target backend."
+            ),
+        })
+
+    # ------------------------------------------------------------------ #
+    # Step 3: Hardware checks — needs device_name
+    # ------------------------------------------------------------------ #
+    backend_info = {}
+    if device_name:
+        try:
+            service = _get_service()
+            backend = service.backend(device_name)
+
+            # Backend offline?
+            status = backend.status()
+            if not status.operational:
+                issues.append({
+                    "severity": "ERROR",
+                    "check": "backend_offline",
+                    "message": f"{device_name} is currently offline or in maintenance.",
+                    "fix": "Run queue_status or compare_devices to find an operational backend.",
+                })
+
+            # Too many qubits?
+            backend_qubits = backend.num_qubits
+            if n_qubits > backend_qubits:
+                issues.append({
+                    "severity": "ERROR",
+                    "check": "too_many_qubits",
+                    "message": (
+                        f"Your circuit needs {n_qubits} qubits but {device_name} "
+                        f"only has {backend_qubits}."
+                    ),
+                    "fix": f"Use a backend with at least {n_qubits} qubits, or reduce your circuit size.",
+                })
+
+            # Coherence time (T2) check — the "I love you" feature.
+            # T2 is how long a qubit stays quantum before noise destroys it (in microseconds).
+            # Circuit execution time ≈ depth × avg_gate_time.
+            # If execution_time > T2, results are garbage — pure noise.
+            try:
+                props = backend.properties()
+                if props:
+                    # Collect T2 values for all qubits (in seconds, convert to microseconds)
+                    t2_values = []
+                    for i in range(min(n_qubits, backend_qubits)):
+                        t2 = props.t2(i)
+                        if t2 is not None:
+                            t2_values.append(t2 * 1e6)  # convert s → µs
+
+                    # Estimate circuit execution time from gate times
+                    # Typical IBM gate times: single-qubit ~35ns, 2-qubit ~300ns
+                    n_2q = sum(v for k, v in ops.items() if k in ("cx", "ecr", "cz", "swap"))
+                    n_1q = sum(v for k, v in ops.items() if k not in ("cx", "ecr", "cz", "swap", "measure", "barrier", "reset"))
+                    estimated_exec_us = (n_1q * 0.035) + (n_2q * 0.3)  # µs
+
+                    if t2_values:
+                        min_t2 = min(t2_values)
+                        avg_t2 = sum(t2_values) / len(t2_values)
+                        backend_info["min_t2_us"] = round(min_t2, 1)
+                        backend_info["avg_t2_us"] = round(avg_t2, 1)
+                        backend_info["estimated_exec_us"] = round(estimated_exec_us, 3)
+
+                        if estimated_exec_us > min_t2:
+                            issues.append({
+                                "severity": "ERROR",
+                                "check": "exceeds_coherence_time",
+                                "message": (
+                                    f"Estimated circuit execution time ({estimated_exec_us:.2f} µs) "
+                                    f"exceeds the shortest T2 coherence time on {device_name} "
+                                    f"({min_t2:.1f} µs). Qubits will decohere before the circuit "
+                                    f"finishes — results will be pure noise."
+                                ),
+                                "fix": (
+                                    f"Reduce circuit depth or 2-qubit gate count. "
+                                    f"Target execution time under {min_t2 * 0.5:.1f} µs "
+                                    f"(50% of T2) for reliable results. "
+                                    f"Run compare_devices to find a backend with longer T2."
+                                ),
+                            })
+                        elif estimated_exec_us > min_t2 * 0.5:
+                            issues.append({
+                                "severity": "WARNING",
+                                "check": "approaching_coherence_limit",
+                                "message": (
+                                    f"Estimated circuit execution time ({estimated_exec_us:.2f} µs) "
+                                    f"is above 50% of the shortest T2 ({min_t2:.1f} µs). "
+                                    "You are in the noise-sensitive zone."
+                                ),
+                                "fix": (
+                                    "Consider reducing circuit depth. Ideal target is under "
+                                    f"{min_t2 * 0.5:.1f} µs. Results may still be usable but "
+                                    "expect elevated noise."
+                                ),
+                            })
+            except Exception:
+                pass  # T2 data unavailable — skip coherence check silently
+
+        except Exception as e:
+            issues.append({
+                "severity": "WARNING",
+                "check": "backend_unreachable",
+                "message": f"Could not connect to {device_name} to run hardware checks: {e}",
+                "fix": "Check the device name with list_devices or queue_status.",
+            })
+
+    # ------------------------------------------------------------------ #
+    # Step 4: Build summary
+    # ------------------------------------------------------------------ #
+    errors = [i for i in issues if i["severity"] == "ERROR"]
+    warnings = [i for i in issues if i["severity"] == "WARNING"]
+    infos = [i for i in issues if i["severity"] == "INFO"]
+    safe = len(errors) == 0
+
+    if not issues:
+        summary = "No issues found. Circuit looks clean and ready to submit."
+    elif errors:
+        summary = (
+            f"{len(errors)} error(s) found — do NOT submit until fixed. "
+            f"{len(warnings)} warning(s), {len(infos)} info note(s)."
+        )
+    else:
+        summary = (
+            f"No blocking errors. {len(warnings)} warning(s) to review. "
+            f"Circuit can be submitted but check warnings first."
+        )
+
+    return json.dumps({
+        "circuit_stats": {
+            "qubits": n_qubits,
+            "classical_bits": n_clbits,
+            "depth": depth,
+            "gate_counts": ops,
+        },
+        "backend_info": backend_info,
+        "issues": issues,
+        "error_count": len(errors),
+        "warning_count": len(warnings),
+        "info_count": len(infos),
+        "summary": summary,
+        "safe_to_submit": safe,
     }, indent=2)
 
 
