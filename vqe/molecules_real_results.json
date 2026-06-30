@@ -1,0 +1,37 @@
+{
+  "H2": {
+    "hf_energy_ha": -1.116759,
+    "exact_energy_ha": -1.137284,
+    "correlation_ha": -0.020525,
+    "qubits": 4,
+    "type": "exact (full space)"
+  },
+  "LiH": {
+    "hf_energy_ha": -7.861865,
+    "exact_energy_ha": -7.882324,
+    "correlation_ha": -0.02046,
+    "qubits": 12,
+    "type": "exact (full space)"
+  },
+  "H2O": {
+    "hf_energy_ha": -74.963063,
+    "exact_energy_ha": -75.012647,
+    "correlation_ha": -0.049584,
+    "qubits": 14,
+    "type": "exact (full space)"
+  },
+  "NH3": {
+    "hf_energy_ha": -55.45018,
+    "exact_energy_ha": -55.511677,
+    "correlation_ha": -0.061497,
+    "qubits": 16,
+    "type": "exact (full space)"
+  },
+  "N2": {
+    "hf_energy_ha": -107.496501,
+    "exact_energy_ha": -107.538421,
+    "correlation_ha": -0.041921,
+    "qubits": 12,
+    "type": "exact (active space (2, 6))"
+  }
+}
