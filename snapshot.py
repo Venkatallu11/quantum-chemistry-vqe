@@ -105,13 +105,16 @@ def _write_csv(rows: list[dict]) -> None:
             })
 
 
-def _cx_errors(props) -> list[float]:
+def _two_qubit_errors(props) -> list[float]:
+    """Return error values for all 2-qubit gates.
+    Eagle-class devices use ECR, not CX — filtering by gate name misses them.
+    """
     if props is None:
         return []
     return [
         g.parameters[0].value
         for g in props.gates
-        if g.gate == "cx" and g.parameters
+        if len(g.qubits) == 2 and g.parameters
     ]
 
 
@@ -138,7 +141,7 @@ def collect() -> None:
 
         # Collect error rates while we're here — richer data than list_devices.
         if props:
-            cx = _cx_errors(props)
+            cx = _two_qubit_errors(props)
             if cx:
                 row["avg_cx_error"] = round(sum(cx) / len(cx), 5)
 
