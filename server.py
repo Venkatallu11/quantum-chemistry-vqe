@@ -1241,6 +1241,10 @@ if __name__ == "__main__":
                 host=mcp.settings.host,
                 port=mcp.settings.port,
                 log_level=mcp.settings.log_level.lower(),
+                # httptools has no Host-header validation — required when the
+                # server is accessed via a Docker service name like "mcp-server"
+                # (h11 rejects hyphenated single-label hostnames with 421).
+                http="httptools",
             )
             server = uvicorn.Server(config)
             await server.serve()
