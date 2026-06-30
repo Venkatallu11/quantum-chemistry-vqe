@@ -99,7 +99,10 @@ class AnthropicProvider extends BaseLLMProvider {
      * @returns {Promise<string>} Extracted text
      */
     async extractTextResponse(result) {
-        return result.response.content[0].text;
+        // `result` is already the raw Anthropic response object (sendMessage returns
+        // { response, chat } and the caller unwraps it before calling here).
+        // Do NOT add an extra `.response` — that would be undefined.
+        return result.content[0].text;
     }
 
     /**

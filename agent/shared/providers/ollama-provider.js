@@ -137,7 +137,10 @@ class OllamaProvider extends BaseLLMProvider {
      * @returns {Promise<string>} Extracted text
      */
     async extractTextResponse(result) {
-        return result.response.message.content;
+        // `result` is already the raw Ollama response object (sendMessage returns
+        // { response, chat } and the caller unwraps it before calling here).
+        // Do NOT add an extra `.response` — that would be undefined.
+        return result.message.content;
     }
 
     /**
