@@ -8,10 +8,13 @@ Tools:
   - get_device_details : deep info on one machine
   - compare_devices    : rank machines by error rate / queue
   - queue_status       : current queue depth for every machine
+  - device_history     : historical snapshots for one machine over N days
 """
 
 import os
 import json
+import sqlite3
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
@@ -27,6 +30,70 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 # Create the MCP server instance.
 # The name "quantum-hardware" is what Claude Desktop shows in its UI.
 mcp = FastMCP("quantum-hardware")
+
+# --------------------------------------------------------------------------
+# SQLite history database
+# --------------------------------------------------------------------------
+
+# Store the database next to this file so it travels with the project.
+DB_PATH = os.path.join(os.path.dirname(__file__), "devices.db")
+
+
+def _init_db() -> None:
+    """Create the snapshots table if it doesn't exist yet."""
+    with sqlite3.connect(DB_PATH) as con:
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS device_snapshots (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts                TEXT    NOT NULL,  -- ISO 8601 UTC timestamp
+                name              TEXT    NOT NULL,  -- e.g. "ibm_fez"
+                num_qubits        INTEGER,
+                operational       INTEGER,           -- 1 = True, 0 = False
+                pending_jobs      INTEGER,
+                avg_cx_error      REAL,              -- NULL when not measured
+                avg_readout_error REAL               -- NULL when not measured
+            )
+        """)
+        # Index on (name, ts) makes device_history queries fast.
+        con.execute("""
+            CREATE INDEX IF NOT EXISTS idx_name_ts
+            ON device_snapshots (name, ts)
+        """)
+
+
+def _save_snapshots(rows: list[dict]) -> None:
+    """
+    Write one row per device into device_snapshots.
+
+    Each dict in `rows` must have at least 'name'; all other fields are
+    optional and default to None if absent.
+    """
+    ts = datetime.now(timezone.utc).isoformat()
+    with sqlite3.connect(DB_PATH) as con:
+        con.executemany(
+            """
+            INSERT INTO device_snapshots
+                (ts, name, num_qubits, operational, pending_jobs,
+                 avg_cx_error, avg_readout_error)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    ts,
+                    r["name"],
+                    r.get("num_qubits"),
+                    int(r["operational"]) if r.get("operational") is not None else None,
+                    r.get("pending_jobs"),
+                    r.get("avg_cx_error"),
+                    r.get("avg_readout_error"),
+                )
+                for r in rows
+            ],
+        )
+
+
+# Initialise the DB as soon as the server module loads.
+_init_db()
 
 
 # --------------------------------------------------------------------------
@@ -104,6 +171,7 @@ def list_devices() -> str:
     # Sort biggest machines first — handy for a quick overview
     devices.sort(key=lambda d: d["num_qubits"], reverse=True)
 
+    _save_snapshots(devices)
     return json.dumps(devices, indent=2)
 
 
@@ -197,6 +265,7 @@ def get_device_details(device_name: str) -> str:
     else:
         result["note"] = "No calibration data available (simulator or uncalibrated device)"
 
+    _save_snapshots([result])
     return json.dumps(result, indent=2)
 
 
@@ -269,6 +338,7 @@ def compare_devices(sort_by: str = "cx_error") -> str:
     for i, device in enumerate(devices):
         device["rank"] = i + 1
 
+    _save_snapshots(devices)
     return json.dumps(
         {
             "sorted_by": sort_by,
@@ -315,7 +385,58 @@ def queue_status() -> str:
     # Shortest queue first so the "best pick right now" is at the top
     queues.sort(key=lambda d: d["pending_jobs"])
 
+    _save_snapshots(queues)
     return json.dumps(queues, indent=2)
+
+
+# --------------------------------------------------------------------------
+# Tool 5: device_history
+# --------------------------------------------------------------------------
+
+@mcp.tool()
+def device_history(device_name: str, days: int = 7) -> str:
+    """
+    Return all saved snapshots for one IBM quantum computer over the last N days.
+
+    Args:
+        device_name: Machine name, e.g. "ibm_brisbane". Must match exactly.
+        days:        How many days back to look (default 7).
+
+    Returns a JSON object with the device name and a list of snapshots in
+    chronological order. Each snapshot has the fields that were available
+    when it was recorded (error rates are NULL when the recording tool
+    didn't fetch calibration data).
+    """
+    with sqlite3.connect(DB_PATH) as con:
+        con.row_factory = sqlite3.Row
+        rows = con.execute(
+            """
+            SELECT ts, num_qubits, operational, pending_jobs,
+                   avg_cx_error, avg_readout_error
+            FROM   device_snapshots
+            WHERE  name = ?
+              AND  ts >= datetime('now', ? || ' days')
+            ORDER  BY ts ASC
+            """,
+            (device_name, f"-{days}"),
+        ).fetchall()
+
+    snapshots = [
+        {
+            "ts": r["ts"],
+            "num_qubits": r["num_qubits"],
+            "operational": bool(r["operational"]) if r["operational"] is not None else None,
+            "pending_jobs": r["pending_jobs"],
+            "avg_cx_error": r["avg_cx_error"],
+            "avg_readout_error": r["avg_readout_error"],
+        }
+        for r in rows
+    ]
+
+    return json.dumps(
+        {"device": device_name, "days": days, "snapshots": snapshots},
+        indent=2,
+    )
 
 
 # --------------------------------------------------------------------------
