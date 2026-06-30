@@ -9,6 +9,12 @@ const { requestLoggerMiddleware, createLogger } = require('./lib/request-logger'
 const { getLLMLimiter, getMCPLimiter } = require('./shared/concurrency/limiters');
 require('dotenv').config();
 
+// Qiskit specialist model config — configurable via .env
+// Default: IBM's own Mistral model tuned for Qiskit (free on HuggingFace, runs via Ollama)
+const QISKIT_CODE_MODEL = process.env.QISKIT_CODE_MODEL || 'hf.co/Qiskit/mistral-small-3.2-24b-qiskit-GGUF:latest';
+const QISKIT_CODE_MODEL_URL = process.env.QISKIT_CODE_MODEL_URL || 'http://localhost:11434';
+const QISKIT_CODE_MODEL_ENABLED = !!process.env.QISKIT_CODE_MODEL || !!process.env.QISKIT_CODE_MODEL_URL;
+
 // --- Session Management for Query Support ---
 /**
  * ReAct Session class to maintain state between query interactions
@@ -272,6 +278,34 @@ const callMCPTool = async (toolName, toolArguments, logger) => {
     }
 };
 
+// --- Qiskit Specialist Model ---
+/**
+ * Call the Qiskit-tuned local model for quantum code questions.
+ * Runs via Ollama — no API key, no cost, fully local.
+ * Model is configurable via QISKIT_CODE_MODEL in .env.
+ */
+const callQiskitCodeModel = async (prompt, logger) => {
+    try {
+        const { Ollama } = require('ollama');
+        const client = new Ollama({ host: QISKIT_CODE_MODEL_URL });
+        logger.log(`[Qiskit Model] Calling ${QISKIT_CODE_MODEL} at ${QISKIT_CODE_MODEL_URL}`);
+        const response = await client.chat({
+            model: QISKIT_CODE_MODEL,
+            messages: [{ role: 'user', content: prompt }],
+            stream: false,
+        });
+        return response.message.content;
+    } catch (error) {
+        if (error.code === 'ECONNREFUSED') {
+            throw new Error(
+                `Cannot connect to Ollama at ${QISKIT_CODE_MODEL_URL}. ` +
+                `Please ensure Ollama is running: ollama serve`
+            );
+        }
+        throw error;
+    }
+};
+
 // --- ReAct Loop Implementation ---
 /**
  * Runs the Reason + Act (ReAct) loop to autonomously handle multi-step tool execution
@@ -297,10 +331,13 @@ Here is a list of available tools:
 ${formattedTools}
 
 ${loadedSkills ? `You have the following skills available to guide your actions:\n${loadedSkills}\n` : ''}
+${QISKIT_CODE_MODEL_ENABLED ? `You also have access to a Qiskit specialist model (${QISKIT_CODE_MODEL}) for quantum code questions.` : ''}
+
 User's request: "${question}"
 
 Decide what to do next based on the request.
-- If you need to use a tool to gather more information or execute a step, return a JSON object with "action": "tool", "toolName": "<name>", and "toolArguments": {<args>}.
+- If you need to use a tool to gather hardware data or run a circuit, return a JSON object with "action": "tool", "toolName": "<name>", and "toolArguments": {<args>}.
+- If the user is asking about writing, debugging, or explaining quantum code (OpenQASM, Qiskit Python), and the Qiskit specialist model is enabled, return a JSON object with "action": "model_call", and "prompt": "<the exact question or code to send to the specialist>".
 - If you need to ask the user a question or request clarification, return a JSON object with "action": "query", "query": "<your question to the user>", and optionally "suggestions": ["option1", "option2", ...].
 - If you have gathered enough information and can answer the user's request (or if no tools are needed), return a JSON object with "action": "answer", and "finalAnswer": "<your natural language answer>".
 
@@ -375,6 +412,26 @@ Your response MUST be exactly ONE valid JSON object and nothing else. Do not use
                 },
                 suggestions: action.suggestions || []
             });
+        } else if (action.action === 'model_call' || action.prompt && !action.toolName) {
+            // Call the Qiskit specialist model for quantum code questions
+            req.logger.log(`[ReAct] Qiskit model call: ${(action.prompt || '').substring(0, 80)}...`);
+            if (!QISKIT_CODE_MODEL_ENABLED) {
+                currentPrompt = `The Qiskit specialist model is not configured. Set QISKIT_CODE_MODEL in .env to enable it.\n\nFall back to answering from general knowledge or use a tool. Respond with ONLY valid JSON.`;
+            } else {
+                try {
+                    const modelResponse = await callQiskitCodeModel(action.prompt, req.logger);
+                    toolsUsed.push(`qiskit_model:${QISKIT_CODE_MODEL}`);
+                    currentPrompt = `The Qiskit specialist model responded:\n${modelResponse}\n\nDecide what to do next:
+- To use a tool, return JSON: { "action": "tool", "toolName": "<name>", "toolArguments": {<args>} }
+- To call the Qiskit model again, return JSON: { "action": "model_call", "prompt": "<question>" }
+- To ask the user a question, return JSON: { "action": "query", "query": "<question>", "suggestions": ["opt1", "opt2"] }
+- To provide the final answer, return JSON: { "action": "answer", "finalAnswer": "<answer text>" }
+Respond with ONLY valid JSON.`;
+                } catch (error) {
+                    req.logger.error(`[ReAct] Qiskit model call failed:`, error.message);
+                    currentPrompt = `The Qiskit specialist model failed: ${error.message}\n\nFall back to answering from general knowledge or use a tool. Respond with ONLY valid JSON.`;
+                }
+            }
         } else if (action.action === 'tool' || action.toolName) {
             req.logger.log(`[ReAct] Tool selected: ${action.toolName}`);
             const toolArgs = action.toolArguments || action.arguments || {};
@@ -384,6 +441,7 @@ Your response MUST be exactly ONE valid JSON object and nothing else. Do not use
                 toolsUsed.push(action.toolName);
                 currentPrompt = `Tool "${action.toolName}" returned:\n${JSON.stringify(resultData, null, 2)}\n\nDecide what to do next:
 - To use another tool, return JSON: { "action": "tool", "toolName": "<name>", "toolArguments": {<args>} }
+- To call the Qiskit specialist model for code questions, return JSON: { "action": "model_call", "prompt": "<question>" }
 - To ask the user a question, return JSON: { "action": "query", "query": "<question>", "suggestions": ["opt1", "opt2"] }
 - To provide the final answer, return JSON: { "action": "answer", "finalAnswer": "<answer text>" }
 Respond with ONLY valid JSON.`;
