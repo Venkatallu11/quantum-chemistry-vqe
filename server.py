@@ -1231,11 +1231,14 @@ if __name__ == "__main__":
             starlette_app = mcp.sse_app()
             starlette_app.add_middleware(APIKeyAuthMiddleware, api_key=api_key)
 
-            # The MCP SDK's SSE handler rejects any Host header other than
-            # "localhost" / "127.0.0.1" with 421. In Docker, the agent connects
-            # via the service name (e.g. "mcp-server:3020"), so we rewrite the
-            # Host header to "localhost" at the ASGI scope level before the SDK
-            # ever sees it.
+            # The MCP SDK (transport_security.py) validates the Host header against
+            # the pattern "localhost:*" — it accepts any "localhost:PORT" but NOT
+            # bare "localhost". In Docker the agent uses "mcp-server:3020" as the
+            # host name, which the SDK rejects with 421. We rewrite it to
+            # "localhost:{port}" before the SDK sees it.
+            _port = mcp.settings.port
+            _host_value = f"localhost:{_port}".encode()
+
             class DockerHostFix:
                 def __init__(self, app):
                     self.app = app
@@ -1243,7 +1246,7 @@ if __name__ == "__main__":
                 async def __call__(self, scope, receive, send):
                     if scope["type"] in ("http", "websocket"):
                         scope = {**scope, "headers": [
-                            (b"host", b"localhost") if k == b"host" else (k, v)
+                            (b"host", _host_value) if k == b"host" else (k, v)
                             for k, v in scope.get("headers", [])
                         ]}
                     await self.app(scope, receive, send)
