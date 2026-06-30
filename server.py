@@ -11,6 +11,9 @@ Tools:
   - device_history     : historical snapshots for one machine over N days
   - best_qubits        : best n qubits on a machine right now (calibration-based)
   - device_on_date     : historical stats for a machine on a specific past date
+  - submit_job         : compile + submit a QASM circuit to IBM hardware
+  - job_status         : check the status of a submitted job
+  - job_results        : retrieve measurement counts from a completed job
 """
 
 import os
@@ -20,6 +23,10 @@ import argparse
 import anyio
 from datetime import datetime, timezone
 from typing import Optional
+
+from qiskit import QuantumCircuit
+from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+from qiskit_ibm_runtime import SamplerV2 as Sampler
 
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
@@ -640,6 +647,209 @@ def device_on_date(device_name: str, date: str) -> str:
         },
         indent=2,
     )
+
+
+# --------------------------------------------------------------------------
+# Tool 8: submit_job
+# --------------------------------------------------------------------------
+
+@mcp.tool()
+def submit_job(device_name: str, qasm_string: str, shots: int = 1024) -> str:
+    """
+    Compile and submit a quantum circuit to an IBM quantum computer.
+
+    Args:
+        device_name: Machine name, e.g. "ibm_fez". Use compare_devices or
+                     queue_status first to pick the best available machine.
+        qasm_string: OpenQASM 2.0 circuit. Must start with:
+                       OPENQASM 2.0;
+                       include "qelib1.inc";
+                     The circuit must include measurement gates (measure q -> c).
+        shots:       How many times to run the circuit (default 1024, max 20000).
+                     More shots = more accurate probability estimates.
+
+    Returns JSON with:
+      - job_id   Save this — needed for job_status and job_results.
+      - status   Initial status (usually "INITIALIZING" or "QUEUED").
+      - device   Machine the job was sent to.
+      - shots    Number of shots requested.
+    """
+    # Parse the QASM string into a Qiskit QuantumCircuit object.
+    # QuantumCircuit.from_qasm_str handles OpenQASM 2.0 (the standard format).
+    try:
+        circuit = QuantumCircuit.from_qasm_str(qasm_string)
+    except Exception as e:
+        return json.dumps({
+            "error": f"Failed to parse QASM: {e}",
+            "hint": 'Circuit must start with: OPENQASM 2.0;\ninclude "qelib1.inc";',
+        })
+
+    # Clamp shots to IBM's allowed range
+    shots = max(1, min(shots, 20000))
+
+    service = _get_service()
+
+    try:
+        backend = service.backend(device_name)
+    except Exception as e:
+        return json.dumps({"error": f"Device '{device_name}' not found: {e}"})
+
+    # Transpile the circuit to the backend's native gate set and qubit topology.
+    # optimization_level=1 is a good default: fast compile, decent optimisation.
+    # Level 3 gives the best circuit but is much slower to compile.
+    pm = generate_preset_pass_manager(backend=backend, optimization_level=1)
+    isa_circuit = pm.run(circuit)
+
+    # SamplerV2 is the current IBM Runtime primitive for sampling circuits.
+    # It replaces the deprecated execute() function and Sampler v1.
+    # mode=backend tells it which machine to target.
+    sampler = Sampler(mode=backend)
+    job = sampler.run([isa_circuit], shots=shots)
+
+    return json.dumps({
+        "job_id": job.job_id(),
+        "status": str(job.status()),
+        "device": device_name,
+        "shots": shots,
+        "note": "Save the job_id. Use job_status to check progress, job_results to get counts.",
+    }, indent=2)
+
+
+# --------------------------------------------------------------------------
+# Tool 9: job_status
+# --------------------------------------------------------------------------
+
+@mcp.tool()
+def job_status(job_id: str) -> str:
+    """
+    Check the current status of a submitted quantum job.
+
+    Args:
+        job_id: The ID returned by submit_job.
+
+    Status values:
+      INITIALIZING  Just submitted, not yet in the queue.
+      QUEUED        Waiting in the machine's queue.
+      RUNNING       Actively executing on hardware right now.
+      DONE          Finished — call job_results to get counts.
+      ERROR         Failed — error_message field will explain why.
+      CANCELLED     Was cancelled before it ran.
+    """
+    service = _get_service()
+
+    try:
+        job = service.job(job_id)
+    except Exception as e:
+        return json.dumps({"error": f"Job '{job_id}' not found: {e}"})
+
+    status = str(job.status())
+    result = {
+        "job_id":  job_id,
+        "status":  status,
+        "backend": job.backend().name,
+    }
+
+    try:
+        result["creation_date"] = str(job.creation_date)
+    except Exception:
+        pass
+
+    if status == "QUEUED":
+        # queue_position() tells you how many jobs are ahead of yours
+        try:
+            pos = job.queue_position()
+            if pos is not None:
+                result["queue_position"] = pos
+        except Exception:
+            pass
+        result["note"] = "Still waiting in queue. Check again in a few minutes."
+
+    elif status == "DONE":
+        result["note"] = "Job complete — call job_results to retrieve counts."
+
+    elif status == "ERROR":
+        try:
+            result["error_message"] = job.error_message()
+        except Exception:
+            pass
+
+    return json.dumps(result, indent=2)
+
+
+# --------------------------------------------------------------------------
+# Tool 10: job_results
+# --------------------------------------------------------------------------
+
+@mcp.tool()
+def job_results(job_id: str) -> str:
+    """
+    Retrieve measurement counts from a completed quantum job.
+
+    Args:
+        job_id: The ID returned by submit_job.
+
+    Returns JSON with bit-string counts when the job is DONE.
+    If the job is still running or queued, returns current status instead.
+
+    Counts example:
+      {"00": 502, "11": 522}  ← a Bell state: roughly 50/50 between 00 and 11.
+
+    The bit-string length equals the number of measured qubits.
+    Each key is a measurement outcome; the value is how many shots produced it.
+    All values sum to the total number of shots.
+    """
+    service = _get_service()
+
+    try:
+        job = service.job(job_id)
+    except Exception as e:
+        return json.dumps({"error": f"Job '{job_id}' not found: {e}"})
+
+    status = str(job.status())
+
+    if status != "DONE":
+        return json.dumps({
+            "job_id": job_id,
+            "status": status,
+            "note":   "Job not complete yet. Use job_status to monitor progress.",
+        }, indent=2)
+
+    try:
+        result = job.result()
+    except Exception as e:
+        return json.dumps({"error": f"Failed to retrieve results: {e}"})
+
+    # SamplerV2 wraps results in a PrimitiveResult containing one PubResult per circuit.
+    # Each PubResult has a DataBin with one BitArray per classical register.
+    # We collect counts from every register (circuits with one register are the common case).
+    try:
+        pub_result = result[0]
+        counts_by_register = {}
+        for reg_name, bit_array in vars(pub_result.data).items():
+            counts_by_register[reg_name] = bit_array.get_counts()
+    except Exception as e:
+        return json.dumps({
+            "error": f"Failed to parse result data: {e}",
+            "raw_result": str(result),
+        })
+
+    # Flatten to a single counts dict when there is only one register (usual case)
+    counts = (
+        list(counts_by_register.values())[0]
+        if len(counts_by_register) == 1
+        else counts_by_register
+    )
+
+    total_shots = sum(counts.values()) if isinstance(counts, dict) else None
+
+    return json.dumps({
+        "job_id":      job_id,
+        "status":      "DONE",
+        "backend":     job.backend().name,
+        "total_shots": total_shots,
+        "counts":      counts,
+        "note": "Each key is a bit-string outcome; value is how many shots produced it.",
+    }, indent=2)
 
 
 # --------------------------------------------------------------------------
