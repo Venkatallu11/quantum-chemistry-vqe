@@ -1228,23 +1228,32 @@ if __name__ == "__main__":
         # This must be done before calling run() to ensure middleware is applied
         async def run_http_with_auth():
             """Run HTTP server with authentication middleware."""
-            # Get the Starlette app
             starlette_app = mcp.sse_app()
-            
-            # Add authentication middleware
             starlette_app.add_middleware(APIKeyAuthMiddleware, api_key=api_key)
-            
-            # Start the server
+
+            # The MCP SDK's SSE handler rejects any Host header other than
+            # "localhost" / "127.0.0.1" with 421. In Docker, the agent connects
+            # via the service name (e.g. "mcp-server:3020"), so we rewrite the
+            # Host header to "localhost" at the ASGI scope level before the SDK
+            # ever sees it.
+            class DockerHostFix:
+                def __init__(self, app):
+                    self.app = app
+
+                async def __call__(self, scope, receive, send):
+                    if scope["type"] in ("http", "websocket"):
+                        scope = {**scope, "headers": [
+                            (b"host", b"localhost") if k == b"host" else (k, v)
+                            for k, v in scope.get("headers", [])
+                        ]}
+                    await self.app(scope, receive, send)
+
             import uvicorn
             config = uvicorn.Config(
-                starlette_app,
+                DockerHostFix(starlette_app),
                 host=mcp.settings.host,
                 port=mcp.settings.port,
                 log_level=mcp.settings.log_level.lower(),
-                # httptools has no Host-header validation — required when the
-                # server is accessed via a Docker service name like "mcp-server"
-                # (h11 rejects hyphenated single-label hostnames with 421).
-                http="httptools",
             )
             server = uvicorn.Server(config)
             await server.serve()
