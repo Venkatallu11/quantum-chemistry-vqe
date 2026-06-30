@@ -16,11 +16,17 @@ Tools:
 import os
 import json
 import sqlite3
+import argparse
+import anyio
 from datetime import datetime, timezone
+from typing import Optional
 
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 from qiskit_ibm_runtime import QiskitRuntimeService
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
+from starlette.requests import Request
 
 # --------------------------------------------------------------------------
 # Load .env from the same folder as this file, regardless of working directory.
@@ -637,10 +643,163 @@ def device_on_date(device_name: str, date: str) -> str:
 
 
 # --------------------------------------------------------------------------
+# API Key Authentication Middleware
+# --------------------------------------------------------------------------
+
+class APIKeyAuthMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to validate API key for HTTP requests.
+    
+    If MCP_API_KEY environment variable is set, all requests must include
+    a matching X-API-Key header. If not set, all requests are allowed
+    (development mode).
+    """
+    
+    def __init__(self, app, api_key: Optional[str] = None):
+        super().__init__(app)
+        self.api_key = api_key or os.getenv("MCP_API_KEY")
+    
+    async def dispatch(self, request: Request, call_next):
+        # If no API key is configured, allow all requests (development mode)
+        if not self.api_key:
+            return await call_next(request)
+        
+        # Check for API key in request headers (case-insensitive)
+        request_key = request.headers.get("X-API-Key") or request.headers.get("x-api-key")
+        
+        if request_key != self.api_key:
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "error": "Unauthorized",
+                    "message": "Invalid or missing API key. Include X-API-Key header with your request.",
+                }
+            )
+        
+        return await call_next(request)
+
+
+# --------------------------------------------------------------------------
+# Command-Line Argument Parsing
+# --------------------------------------------------------------------------
+
+def parse_args():
+    """Parse command-line arguments for transport configuration."""
+    parser = argparse.ArgumentParser(
+        description="Quantum Hardware MCP Server - Exposes IBM Quantum device data via MCP protocol",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # stdio mode (default, for Claude Desktop)
+  python server.py
+  
+  # HTTP mode on localhost
+  python server.py --transport http
+  
+  # HTTP mode on all interfaces with custom port
+  python server.py --transport http --host 0.0.0.0 --port 8080
+  
+  # HTTP mode with specific CORS origins
+  python server.py --transport http --cors-origins "https://myapp.com,https://api.myapp.com"
+
+Environment Variables:
+  IBM_QUANTUM_TOKEN   IBM Quantum API token (required)
+  MCP_HTTP_HOST       HTTP server host (default: 127.0.0.1)
+  MCP_HTTP_PORT       HTTP server port (default: 8000)
+  MCP_CORS_ORIGINS    Comma-separated CORS origins (default: *)
+  MCP_API_KEY         API key for authentication (optional, recommended for production)
+        """
+    )
+    
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "http"],
+        default="stdio",
+        help="Transport mode: 'stdio' for Claude Desktop (default), 'http' for remote clients"
+    )
+    
+    parser.add_argument(
+        "--host",
+        default=os.getenv("MCP_HTTP_HOST", "127.0.0.1"),
+        help="HTTP server host (default: 127.0.0.1, use 0.0.0.0 for all interfaces)"
+    )
+    
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.getenv("MCP_HTTP_PORT", "8000")),
+        help="HTTP server port (default: 8000)"
+    )
+    
+    parser.add_argument(
+        "--cors-origins",
+        default=os.getenv("MCP_CORS_ORIGINS", "*"),
+        help="Comma-separated CORS origins (default: *, use specific domains in production)"
+    )
+    
+    return parser.parse_args()
+
+
+# --------------------------------------------------------------------------
 # Entry point
 # --------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    # stdio transport is required for Claude Desktop integration.
-    # Claude Desktop launches this process and communicates over stdin/stdout.
-    mcp.run(transport="stdio")
+    args = parse_args()
+    
+    if args.transport == "stdio":
+        # stdio transport for Claude Desktop integration
+        # Claude Desktop launches this process and communicates over stdin/stdout
+        # Note: Cannot use print() here as it would corrupt the JSON-RPC protocol stream
+        mcp.run(transport="stdio")
+    
+    elif args.transport == "http":
+        # HTTP/SSE transport for remote MCP clients
+        # Enables web-based AI assistants and remote integrations
+        
+        # Configure server settings
+        mcp.settings.host = args.host
+        mcp.settings.port = args.port
+        
+        # Check if API key is configured
+        api_key = os.getenv("MCP_API_KEY")
+        api_key_configured = bool(api_key)
+        
+        print("=" * 70, flush=True)
+        print("Quantum Hardware MCP Server - HTTP Mode", flush=True)
+        print("=" * 70, flush=True)
+        print(f"Server URL:    http://{args.host}:{args.port}", flush=True)
+        print(f"CORS Origins:  {args.cors_origins}", flush=True)
+        print(f"Authentication: {'Enabled (API key required)' if api_key_configured else 'Disabled (development mode)'}", flush=True)
+        
+        if not api_key_configured:
+            print("\n⚠️  WARNING: No API key configured!", flush=True)
+            print("   Set MCP_API_KEY environment variable for production use.", flush=True)
+            print("   Generate a key with: python -c \"import secrets; print(secrets.token_urlsafe(32))\"", flush=True)
+        
+        print("=" * 70, flush=True)
+        print("\nServer starting...\n", flush=True)
+        
+        # Add API key authentication middleware to the Starlette app
+        # This must be done before calling run() to ensure middleware is applied
+        async def run_http_with_auth():
+            """Run HTTP server with authentication middleware."""
+            # Get the Starlette app
+            starlette_app = mcp.sse_app()
+            
+            # Add authentication middleware
+            starlette_app.add_middleware(APIKeyAuthMiddleware, api_key=api_key)
+            
+            # Start the server
+            import uvicorn
+            config = uvicorn.Config(
+                starlette_app,
+                host=mcp.settings.host,
+                port=mcp.settings.port,
+                log_level=mcp.settings.log_level.lower(),
+            )
+            server = uvicorn.Server(config)
+            await server.serve()
+        
+        # Run the server with authentication
+        anyio.run(run_http_with_auth)

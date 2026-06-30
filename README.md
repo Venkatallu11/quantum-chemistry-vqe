@@ -20,7 +20,7 @@ Running quantum experiments is expensive in two ways: **time** (queue wait) and 
 ## Tools exposed
 
 | Tool | What it does |
-|---|---|
+| ---- | ------------ |
 | `list_devices` | All IBM quantum computers you can access + status |
 | `get_device_details` | Deep info on one machine: error rates, T1/T2, queue |
 | `compare_devices` | Rank machines by CX error, queue depth, qubit count, or combined score |
@@ -32,7 +32,7 @@ Running quantum experiments is expensive in two ways: **time** (queue wait) and 
 ### `compare_devices` sort modes
 
 | `sort_by` | What it optimises |
-|---|---|
+| --------- | ----------------- |
 | `cx_error` | Lowest 2-qubit gate error — highest fidelity results |
 | `queue` | Fewest pending jobs — fastest turnaround |
 | `qubits` | Most qubits — largest circuits |
@@ -94,6 +94,162 @@ Quit and reopen Claude Desktop. The hammer icon will show the quantum-hardware t
 
 ---
 
+## HTTP Server Mode (Optional)
+
+The MCP server can also run as an HTTP/SSE server for remote access or web-based AI assistants.
+
+### Quick Start
+
+```bash
+# Start HTTP server on localhost (development)
+python server.py --transport http
+
+# Start on all interfaces for remote access
+python server.py --transport http --host 0.0.0.0 --port 8080
+
+# With custom CORS origins
+python server.py --transport http --cors-origins "https://myapp.com,https://api.myapp.com"
+```
+
+### Configuration
+
+HTTP server settings can be configured via command-line arguments or environment variables:
+
+| Setting | CLI Argument | Environment Variable | Default |
+| ------- | ------------ | -------------------- | ------- |
+| Host | `--host` | `MCP_HTTP_HOST` | `127.0.0.1` |
+| Port | `--port` | `MCP_HTTP_PORT` | `8000` |
+| CORS Origins | `--cors-origins` | `MCP_CORS_ORIGINS` | `*` |
+
+### Security: API Key Authentication
+
+For production deployments, enable API key authentication:
+
+**1. Generate a secure API key:**
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+**2. Add to your `.env` file:**
+
+```bash
+MCP_API_KEY=your_generated_key_here
+```
+
+**3. Start the server:**
+
+```bash
+python server.py --transport http --host 0.0.0.0 --port 8080
+```
+
+**4. Include the key in client requests:**
+
+Python:
+
+```python
+import requests
+
+headers = {
+    "X-API-Key": "your_generated_key_here",
+    "Content-Type": "application/json"
+}
+
+response = requests.post(
+    "http://your-server:8080/sse",
+    headers=headers
+)
+```
+
+JavaScript:
+
+```javascript
+fetch('http://your-server:8080/sse', {
+  method: 'POST',
+  headers: {
+    'X-API-Key': 'your_generated_key_here',
+    'Content-Type': 'application/json'
+  }
+})
+```
+
+MCP Client Configuration:
+
+```json
+{
+  "mcpServers": {
+    "quantum-hardware": {
+      "url": "http://your-server:8080",
+      "headers": {
+        "X-API-Key": "your_generated_key_here"
+      }
+    }
+  }
+}
+```
+
+### Development vs Production
+
+**Development Mode (No Authentication):**
+
+- If `MCP_API_KEY` is not set, the server runs without authentication
+- Convenient for local testing
+- ⚠️ Only use on localhost, never expose to the internet
+
+**Production Mode (With Authentication):**
+
+- Set `MCP_API_KEY` environment variable
+- Prevents unauthorized access
+- Always use HTTPS in production (set up reverse proxy with nginx/caddy)
+- Rotate API keys periodically
+
+### Deployment Examples
+
+#### Docker Deployment
+
+```dockerfile
+FROM python:3.10-slim
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . .
+
+ENV MCP_HTTP_HOST=0.0.0.0
+ENV MCP_HTTP_PORT=8080
+
+CMD ["python", "server.py", "--transport", "http"]
+```
+
+```bash
+docker build -t quantum-mcp .
+docker run -p 8080:8080 -e IBM_QUANTUM_TOKEN=your_token -e MCP_API_KEY=your_key quantum-mcp
+```
+
+#### Reverse Proxy (nginx)
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name quantum-mcp.example.com;
+
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+---
+
 ## Automatic snapshots
 
 A background agent (`snapshot.py`) records device stats every 6 hours:
@@ -105,7 +261,7 @@ A background agent (`snapshot.py`) records device stats every 6 hours:
 
 ## Project structure
 
-```
+```text
 quantum-hardware-mcp/
 ├── server.py          # MCP server — all 7 tools live here
 ├── snapshot.py        # Background agent — records device stats every 6h
