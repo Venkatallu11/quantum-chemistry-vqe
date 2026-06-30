@@ -750,7 +750,7 @@ if __name__ == "__main__":
     if args.transport == "stdio":
         # stdio transport for Claude Desktop integration
         # Claude Desktop launches this process and communicates over stdin/stdout
-        print("Starting MCP server in stdio mode (Claude Desktop)", flush=True)
+        # Note: Cannot use print() here as it would corrupt the JSON-RPC protocol stream
         mcp.run(transport="stdio")
     
     elif args.transport == "http":
