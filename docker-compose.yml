@@ -1,0 +1,47 @@
+services:
+
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3020:3020"
+    environment:
+      - IBM_QUANTUM_TOKEN=${IBM_QUANTUM_TOKEN}
+      - MCP_API_KEY=${MCP_API_KEY:-}
+    volumes:
+      # Persist the SQLite snapshot database across container restarts
+      - mcp-data:/app/data
+    healthcheck:
+      # Check that the port is accepting connections before the agent starts
+      test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.connect(('localhost',3020)); s.close()\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  agent:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    ports:
+      - "3021:3021"
+    environment:
+      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-1.5-flash}
+      # Points at the mcp-server container — docker-compose networking resolves the hostname
+      - QUANTUM_MCP_SERVER_URI=http://mcp-server:3020/sse
+      - PORT=3021
+    depends_on:
+      mcp-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  mcp-data:

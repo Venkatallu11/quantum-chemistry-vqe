@@ -1,0 +1,25 @@
+# Secrets — never in the image
+.env
+
+# Runtime data — mounted as a volume instead
+devices.db
+
+# Python cruft
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Node
+agent/node_modules/
+
+# Git
+.git/
+.gitignore
+
+# Reports (large, not needed in container)
+reports/
+data/
+
+# Tests
+test_bell_state.py

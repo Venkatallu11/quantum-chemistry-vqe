@@ -100,6 +100,58 @@ Quit and reopen Claude Desktop. The hammer icon will show the quantum-hardware t
 
 ---
 
+## Docker
+
+### MCP server only
+
+Runs just `server.py` in HTTP mode on port 3020. Use this if you want to connect the server to an existing agent or to Claude Desktop over HTTP.
+
+**1. Build:**
+```bash
+docker build -t quantum-mcp .
+```
+
+**2. Run:**
+```bash
+docker run -p 3020:3020 -e IBM_QUANTUM_TOKEN=your_token quantum-mcp
+```
+
+The server will be available at `http://localhost:3020/sse`.
+
+---
+
+### Fullstack (MCP server + agent)
+
+Runs both `server.py` and Jack's Node.js agent together. The agent connects to the server automatically — no manual config needed.
+
+**1. Create a `.env` file in the project root:**
+```bash
+IBM_QUANTUM_TOKEN=your_ibm_token
+LLM_PROVIDER=anthropic
+ANTHROPIC_API_KEY=your_anthropic_key
+```
+
+**2. Build and start both containers:**
+```bash
+docker compose up --build
+```
+
+- MCP server: `http://localhost:3020`
+- Agent API: `http://localhost:3021`
+
+**3. Chat with the agent:**
+
+In a separate terminal, run `node agent/chat.js` (or `npm run chat` from the `agent/` directory) — it will connect to the agent running in Docker.
+
+**To stop:**
+```bash
+docker compose down
+```
+
+The SQLite snapshot database is persisted in a Docker volume (`mcp-data`) so historical data survives container restarts.
+
+---
+
 ## HTTP Server Mode (Optional)
 
 The MCP server can also run as an HTTP/SSE server for remote access or web-based AI assistants.
@@ -213,25 +265,7 @@ MCP Client Configuration:
 
 #### Docker Deployment
 
-```dockerfile
-FROM python:3.10-slim
-
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-COPY . .
-
-ENV MCP_HTTP_HOST=0.0.0.0
-ENV MCP_HTTP_PORT=8080
-
-CMD ["python", "server.py", "--transport", "http"]
-```
-
-```bash
-docker build -t quantum-mcp .
-docker run -p 8080:8080 -e IBM_QUANTUM_TOKEN=your_token -e MCP_API_KEY=your_key quantum-mcp
-```
+See the **Docker** section above for `Dockerfile`, `agent/Dockerfile`, and `docker-compose.yml`.
 
 #### Reverse Proxy (nginx)
 
