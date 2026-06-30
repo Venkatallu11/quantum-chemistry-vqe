@@ -1,0 +1,138 @@
+{
+  "method": "local_statevector_simulator",
+  "optimal_theta": -0.7042035533905934,
+  "vqe_energy_ha": -1.45230255,
+  "exact_energy_ha": -1.45230255,
+  "error_ha": 0.0,
+  "chemical_accuracy_threshold_ha": 0.0016,
+  "reached_chemical_accuracy": true,
+  "total_iterations": 25,
+  "optimizer_converged": true,
+  "history": [
+    {
+      "iteration": 1,
+      "theta": 0.1,
+      "energy": -1.29276736
+    },
+    {
+      "iteration": 2,
+      "theta": 0.6,
+      "energy": -1.06868074
+    },
+    {
+      "iteration": 3,
+      "theta": -0.4,
+      "energy": -1.42839177
+    },
+    {
+      "iteration": 4,
+      "theta": -0.9,
+      "energy": -1.44234839
+    },
+    {
+      "iteration": 5,
+      "theta": -1.4,
+      "energy": -1.33122014
+    },
+    {
+      "iteration": 6,
+      "theta": -0.65,
+      "energy": -1.45153825
+    },
+    {
+      "iteration": 7,
+      "theta": -0.4,
+      "energy": -1.42839177
+    },
+    {
+      "iteration": 8,
+      "theta": -0.775,
+      "energy": -1.45099697
+    },
+    {
+      "iteration": 9,
+      "theta": -0.6,
+      "energy": -1.44947856
+    },
+    {
+      "iteration": 10,
+      "theta": -0.7,
+      "energy": -1.452298
+    },
+    {
+      "iteration": 11,
+      "theta": -0.75,
+      "energy": -1.45175591
+    },
+    {
+      "iteration": 12,
+      "theta": -0.675,
+      "energy": -1.45208081
+    },
+    {
+      "iteration": 13,
+      "theta": -0.70625,
+      "energy": -1.45230144
+    },
+    {
+      "iteration": 14,
+      "theta": -0.71875,
+      "energy": -1.45224727
+    },
+    {
+      "iteration": 15,
+      "theta": -0.70125,
+      "energy": -1.45230031
+    },
+    {
+      "iteration": 16,
+      "theta": -0.71125,
+      "energy": -1.45228954
+    },
+    {
+      "iteration": 17,
+      "theta": -0.70375,
+      "energy": -1.4523025
+    },
+    {
+      "iteration": 18,
+      "theta": -0.70125,
+      "energy": -1.45230031
+    },
+    {
+      "iteration": 19,
+      "theta": -0.705,
+      "energy": -1.45230238
+    },
+    {
+      "iteration": 20,
+      "theta": -0.70304,
+      "energy": -1.45230221
+    },
+    {
+      "iteration": 21,
+      "theta": -0.7041,
+      "energy": -1.45230255
+    },
+    {
+      "iteration": 22,
+      "theta": -0.70446,
+      "energy": -1.45230253
+    },
+    {
+      "iteration": 23,
+      "theta": -0.70393,
+      "energy": -1.45230253
+    },
+    {
+      "iteration": 24,
+      "theta": -0.7042,
+      "energy": -1.45230255
+    },
+    {
+      "iteration": 25,
+      "theta": -0.7043,
+      "energy": -1.45230255
+    }
+  ]
+}
