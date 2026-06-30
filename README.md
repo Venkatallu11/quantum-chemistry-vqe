@@ -31,6 +31,9 @@ Running quantum experiments is expensive in two ways: **time** (queue wait) and 
 | `submit_job` | Compile and submit an OpenQASM 2.0 circuit to IBM hardware — returns a `job_id` |
 | `job_status` | Check status of a submitted job (QUEUED / RUNNING / DONE / ERROR) |
 | `job_results` | Retrieve bit-string measurement counts from a completed job |
+| `cancel_job` | Cancel a queued or running job by `job_id` |
+| `list_jobs` | List your most recent jobs with status and backend (newest first) |
+| `run_grover` | Built-in Grover's search demo — builds the circuit, picks the least-busy backend, submits, returns `job_id` |
 
 ### `compare_devices` sort modes
 
@@ -266,7 +269,7 @@ A background agent (`snapshot.py`) records device stats every 6 hours:
 
 ```text
 quantum-hardware-mcp/
-├── server.py          # MCP server — all 10 tools live here
+├── server.py          # MCP server — all 13 tools live here
 ├── snapshot.py        # Background agent — records device stats every 6h
 ├── report.py          # Daily Quantum Weatherman report (runs at 8am)
 ├── requirements.txt

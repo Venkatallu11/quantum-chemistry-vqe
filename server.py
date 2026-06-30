@@ -14,10 +14,14 @@ Tools:
   - submit_job         : compile + submit a QASM circuit to IBM hardware
   - job_status         : check the status of a submitted job
   - job_results        : retrieve measurement counts from a completed job
+  - cancel_job         : cancel a queued or running job
+  - list_jobs          : list recent jobs with status and backend
+  - run_grover         : built-in Grover's search demo on real hardware
 """
 
 import os
 import json
+import math
 import sqlite3
 import argparse
 import anyio
@@ -849,6 +853,236 @@ def job_results(job_id: str) -> str:
         "total_shots": total_shots,
         "counts":      counts,
         "note": "Each key is a bit-string outcome; value is how many shots produced it.",
+    }, indent=2)
+
+
+# --------------------------------------------------------------------------
+# Tool 11: cancel_job
+# --------------------------------------------------------------------------
+
+@mcp.tool()
+def cancel_job(job_id: str) -> str:
+    """
+    Cancel a queued or running IBM quantum job.
+
+    Only jobs in QUEUED or RUNNING state can be cancelled. Jobs that are
+    already DONE, ERROR, or CANCELLED will return an error.
+
+    Args:
+        job_id: The ID returned by submit_job or list_jobs.
+
+    Returns JSON confirming the cancellation or explaining why it failed.
+    """
+    service = _get_service()
+
+    try:
+        job = service.job(job_id)
+    except Exception as e:
+        return json.dumps({"error": f"Job '{job_id}' not found: {e}"})
+
+    status = str(job.status())
+
+    # IBM only allows cancellation before the job finishes
+    if status in ("DONE", "ERROR", "CANCELLED"):
+        return json.dumps({
+            "job_id": job_id,
+            "error": f"Cannot cancel a job with status '{status}'.",
+            "current_status": status,
+        })
+
+    try:
+        job.cancel()
+    except Exception as e:
+        return json.dumps({"error": f"Cancel request failed: {e}"})
+
+    return json.dumps({
+        "job_id": job_id,
+        "status": "CANCELLED",
+        "note": "Cancellation requested. The job may take a moment to fully stop.",
+    }, indent=2)
+
+
+# --------------------------------------------------------------------------
+# Tool 12: list_jobs
+# --------------------------------------------------------------------------
+
+@mcp.tool()
+def list_jobs(limit: int = 10) -> str:
+    """
+    List your most recently submitted IBM quantum jobs.
+
+    Useful for finding job IDs you didn't save, or getting an overview of
+    what's in the queue right now.
+
+    Args:
+        limit: How many jobs to return, newest first (default 10, max 50).
+
+    Returns a JSON array of jobs, each with: job_id, status, backend, creation date.
+    """
+    limit = max(1, min(limit, 50))  # clamp to [1, 50]
+
+    service = _get_service()
+
+    try:
+        jobs = service.jobs(limit=limit)
+    except Exception as e:
+        return json.dumps({"error": f"Failed to fetch jobs: {e}"})
+
+    results = []
+    for job in jobs:
+        entry = {
+            "job_id": job.job_id(),
+            "status": str(job.status()),
+        }
+        # backend() and creation_date can raise on malformed jobs — guard each
+        try:
+            entry["backend"] = job.backend().name
+        except Exception:
+            entry["backend"] = None
+        try:
+            entry["created"] = str(job.creation_date)
+        except Exception:
+            entry["created"] = None
+
+        results.append(entry)
+
+    return json.dumps({
+        "count": len(results),
+        "jobs": results,
+        "note": "Sorted newest first. Use job_status(job_id) for full details.",
+    }, indent=2)
+
+
+# --------------------------------------------------------------------------
+# Tool 13: run_grover
+# --------------------------------------------------------------------------
+
+@mcp.tool()
+def run_grover(n_qubits: int, target_state: str) -> str:
+    """
+    Build and run a Grover's search algorithm demo on real IBM hardware.
+
+    Grover's algorithm searches an unsorted list of 2^n states in O(sqrt(2^n))
+    steps — a quadratic speedup over classical search. This tool builds the
+    full circuit (oracle + diffusion operator), transpiles it, and submits it
+    to the least-busy backend.
+
+    Args:
+        n_qubits:     Number of qubits to use. Must be 2 or 3.
+                      Capped at 3 — deeper circuits lose coherence on current
+                      hardware and the result becomes dominated by noise.
+        target_state: Binary string marking the state to find, e.g. "11" or "101".
+                      Length must equal n_qubits. Grover's will amplify this state's
+                      probability so it appears far more often than the others.
+
+    Returns JSON with the job_id, backend chosen, circuit details, and what
+    fraction of shots to expect on the target state.
+    """
+    # Validate and clamp inputs
+    n_qubits = min(max(n_qubits, 2), 3)
+
+    if len(target_state) != n_qubits:
+        return json.dumps({
+            "error": (
+                f"target_state length ({len(target_state)}) must equal "
+                f"n_qubits ({n_qubits}). Example: n_qubits=2, target_state='11'"
+            )
+        })
+
+    if not all(c in "01" for c in target_state):
+        return json.dumps({"error": "target_state must contain only '0' and '1'."})
+
+    # Optimal number of Grover iterations for a single marked state:
+    # floor(π/4 * sqrt(N)) where N = 2^n_qubits
+    # n=2 → 1 iteration, n=3 → 2 iterations
+    n_iterations = max(1, round(math.pi / 4 * math.sqrt(2 ** n_qubits)))
+
+    qc = QuantumCircuit(n_qubits, n_qubits)
+
+    # Step 1: put all qubits in equal superposition (uniform over all 2^n states)
+    qc.h(range(n_qubits))
+
+    for _ in range(n_iterations):
+        # ── Oracle: phase-flip the target state ───────────────────────────
+        # Strategy: X-gate every qubit whose target bit is '0', so the
+        # target state maps to all-|1⟩, apply a multi-controlled-Z to flip
+        # its phase, then undo the X gates.
+        # reversed() because Qiskit is little-endian (qubit 0 = rightmost bit).
+        for i, bit in enumerate(reversed(target_state)):
+            if bit == "0":
+                qc.x(i)
+
+        if n_qubits == 2:
+            qc.cz(0, 1)
+        else:  # n_qubits == 3
+            qc.ccz(0, 1, 2)
+
+        for i, bit in enumerate(reversed(target_state)):
+            if bit == "0":
+                qc.x(i)
+
+        # ── Diffusion operator: inversion about the mean ───────────────────
+        # This amplifies the target state's amplitude at the cost of the others.
+        # Circuit: H⊗n → X⊗n → multi-CZ → X⊗n → H⊗n
+        qc.h(range(n_qubits))
+        qc.x(range(n_qubits))
+
+        if n_qubits == 2:
+            qc.cz(0, 1)
+        else:
+            qc.ccz(0, 1, 2)
+
+        qc.x(range(n_qubits))
+        qc.h(range(n_qubits))
+
+    # Measure all qubits
+    qc.measure(range(n_qubits), range(n_qubits))
+
+    # Find the least-busy operational backend
+    service = _get_service()
+    backends = service.backends()
+
+    operational = []
+    for b in backends:
+        try:
+            s = b.status()
+            if s.operational:
+                operational.append((b, s.pending_jobs))
+        except Exception:
+            pass
+
+    if not operational:
+        return json.dumps({"error": "No operational backends available."})
+
+    best_backend, _ = min(operational, key=lambda x: x[1])
+
+    # Transpile to the backend's native gate set and submit
+    pm = generate_preset_pass_manager(backend=best_backend, optimization_level=1)
+    isa_circuit = pm.run(qc)
+
+    sampler = Sampler(mode=best_backend)
+    job = sampler.run([isa_circuit], shots=1024)
+
+    # Theoretical success probability after optimal iterations
+    # P = sin²((2k+1) * arcsin(1/sqrt(N))) where k = n_iterations
+    theta = math.asin(1 / math.sqrt(2 ** n_qubits))
+    ideal_pct = round(100 * math.sin((2 * n_iterations + 1) * theta) ** 2, 1)
+
+    return json.dumps({
+        "job_id": job.job_id(),
+        "status": str(job.status()),
+        "device": best_backend.name,
+        "n_qubits": n_qubits,
+        "target_state": target_state,
+        "grover_iterations": n_iterations,
+        "shots": 1024,
+        "ideal_success_pct": ideal_pct,
+        "note": (
+            f"Searching for |{target_state}⟩ across {2**n_qubits} states. "
+            f"Ideal hardware would show '{target_state}' in {ideal_pct}% of shots. "
+            f"Real hardware noise will reduce this — expect 60–85% on current IBM devices. "
+            f"Use job_status then job_results to see the counts."
+        ),
     }, indent=2)
 
 
