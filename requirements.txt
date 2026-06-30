@@ -4,3 +4,4 @@ qiskit-ibm-runtime>=0.20.0
 qiskit_qasm3_import>=0.6.0
 python-dotenv>=1.0.0
 matplotlib>=3.7.0
+scipy>=1.11.0
