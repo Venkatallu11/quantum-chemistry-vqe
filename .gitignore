@@ -35,4 +35,5 @@ htmlcov/
 
 # --- Project data (generated, not source) ---
 devices.db
-reports/
+# Ignore dated daily report folders (e.g. reports/2026-06-22/) but not reports/fleet-report/
+reports/20*/
