@@ -47,8 +47,8 @@ def _get_service() -> QiskitRuntimeService:
             "  IBM_QUANTUM_TOKEN=your_token_here\n"
             "Get your token at https://quantum.ibm.com/account"
         )
-    # channel="ibm_quantum" → IBM Quantum Network (the free/academic tier)
-    return QiskitRuntimeService(channel="ibm_quantum", token=token)
+    # channel="ibm_quantum_platform" → renamed in qiskit-ibm-runtime ≥ 0.40
+    return QiskitRuntimeService(channel="ibm_quantum_platform", token=token)
 
 
 def _cx_errors_for_backend(props) -> list[float]:
