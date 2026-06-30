@@ -103,6 +103,36 @@ Quit and reopen Claude Desktop. The hammer icon will show the quantum-hardware t
 
 ---
 
+## LLM Provider Support
+
+The agent works with **any of these LLM providers** — you are not locked into Anthropic:
+
+| Provider | Cost | Setup |
+| -------- | ---- | ----- |
+| **Anthropic** (Claude) | Paid | `LLM_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` |
+| **Google Gemini** | Free tier available | `LLM_PROVIDER=gemini` + `GEMINI_API_KEY` |
+| **Ollama** | Free, runs locally | `LLM_PROVIDER=ollama` + `OLLAMA_MODEL` (no API key needed) |
+| **OpenAI** | Paid | `LLM_PROVIDER=openai` + `OPENAI_API_KEY` |
+| **vLLM** | Self-hosted | `LLM_PROVIDER=vllm` + `VLLM_BASE_URL` + `VLLM_MODEL` |
+
+Set `LLM_PROVIDER` in your `.env` file. See `.env.example` for all options with comments.
+
+**Using Gemini (recommended free option):**
+```bash
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=your_key_from_aistudio.google.com
+GEMINI_MODEL=gemini-2.0-flash
+```
+
+**Using Ollama (fully local, no API key, no cost):**
+```bash
+LLM_PROVIDER=ollama
+OLLAMA_MODEL=llama3.2
+# Install Ollama: https://ollama.com — then: ollama pull llama3.2
+```
+
+---
+
 ## Docker
 
 ### MCP server only
