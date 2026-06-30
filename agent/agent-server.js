@@ -14,6 +14,9 @@ require('dotenv').config();
 const QISKIT_CODE_MODEL = process.env.QISKIT_CODE_MODEL || 'hf.co/Qiskit/mistral-small-3.2-24b-qiskit-GGUF:latest';
 const QISKIT_CODE_MODEL_URL = process.env.QISKIT_CODE_MODEL_URL || 'http://localhost:11434';
 const QISKIT_CODE_MODEL_ENABLED = !!process.env.QISKIT_CODE_MODEL || !!process.env.QISKIT_CODE_MODEL_URL;
+// CPU-only machines (no GPU) can take 5+ minutes to generate a response.
+// Default timeout is 10 minutes — set QISKIT_MODEL_TIMEOUT_MS in .env to override.
+const QISKIT_MODEL_TIMEOUT_MS = parseInt(process.env.QISKIT_MODEL_TIMEOUT_MS || '600000');
 
 // --- Session Management for Query Support ---
 /**
@@ -288,11 +291,13 @@ const callQiskitCodeModel = async (prompt, logger) => {
     try {
         const { Ollama } = require('ollama');
         const client = new Ollama({ host: QISKIT_CODE_MODEL_URL });
-        logger.log(`[Qiskit Model] Calling ${QISKIT_CODE_MODEL} at ${QISKIT_CODE_MODEL_URL}`);
+        logger.log(`[Qiskit Model] Calling ${QISKIT_CODE_MODEL} at ${QISKIT_CODE_MODEL_URL} (timeout: ${QISKIT_MODEL_TIMEOUT_MS}ms)`);
+        const signal = AbortSignal.timeout(QISKIT_MODEL_TIMEOUT_MS);
         const response = await client.chat({
             model: QISKIT_CODE_MODEL,
             messages: [{ role: 'user', content: prompt }],
             stream: false,
+            signal,
         });
         return response.message.content;
     } catch (error) {
