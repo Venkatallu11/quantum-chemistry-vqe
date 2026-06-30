@@ -11,6 +11,10 @@ on:
 permissions:
   contents: write
 
+env:
+  # Opt into Node.js 24 now — Node 20 actions are deprecated as of June 2026
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   snapshot:
     runs-on: ubuntu-latest
