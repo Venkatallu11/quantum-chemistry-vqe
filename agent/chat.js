@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 const readline = require('readline');
+const fs = require('fs').promises;
+const path = require('path');
 require('dotenv').config();
 
 const AGENT_URL = process.env.QUANTUM_AGENT_URL || 'http://localhost:3021';
@@ -12,6 +14,52 @@ const rl = readline.createInterface({
     output: process.stdout,
     prompt: '\n⚛️  Quantum Query> '
 });
+
+/**
+ * Processes file references in the input text and replaces them with file contents
+ * @param {string} input - User input that may contain @/path/to/file references
+ * @returns {Promise<string>} Input with file contents inserted
+ */
+async function processFileReferences(input) {
+    // Match @/path/to/file or @./relative/path patterns
+    const fileRefPattern = /@(\.?\/[^\s]+)/g;
+    const matches = [...input.matchAll(fileRefPattern)];
+    
+    if (matches.length === 0) {
+        return input;
+    }
+    
+    let processedInput = input;
+    const fileContents = [];
+    
+    for (const match of matches) {
+        const filePath = match[1];
+        const fullMatch = match[0];
+        
+        try {
+            // Resolve relative paths from current working directory
+            const resolvedPath = path.resolve(process.cwd(), filePath);
+            const content = await fs.readFile(resolvedPath, 'utf-8');
+            
+            // Format the file content with clear delimiters
+            const formattedContent = `\n\n[File: ${filePath}]\n\`\`\`\n${content}\n\`\`\`\n`;
+            fileContents.push({ match: fullMatch, content: formattedContent, path: filePath });
+            
+            console.log(`📎 Attached file: ${filePath} (${content.length} bytes)`);
+        } catch (error) {
+            const errorMsg = `\n[Error reading file ${filePath}: ${error.message}]\n`;
+            fileContents.push({ match: fullMatch, content: errorMsg, path: filePath });
+            console.log(`⚠️  Warning: Could not read file ${filePath}: ${error.message}`);
+        }
+    }
+    
+    // Replace all file references with their contents
+    for (const { match, content } of fileContents) {
+        processedInput = processedInput.replace(match, content);
+    }
+    
+    return processedInput;
+}
 
 /**
  * Sends a chat message to the Quantum Hardware agent server
@@ -123,6 +171,7 @@ function displayWelcome() {
     console.log('\nConnected to:', AGENT_URL);
     console.log('\nCommands:');
     console.log('  - Type your quantum hardware-related questions');
+    console.log('  - Use @/path/to/file to insert file contents inline');
     console.log('  - Type "/exit" or "/quit" to end the session');
     console.log('  - Type "/clear" to clear chat history');
     console.log('  - Type "/help" to see this message again');
@@ -163,7 +212,9 @@ async function processInput(input) {
 
         default:
             console.log('\n⏳ Processing...\n');
-            const answer = await chat(input);
+            // Process file references before sending to chat
+            const processedInput = await processFileReferences(input);
+            const answer = await chat(processedInput);
             console.log('🤖 Answer:', answer);
             return true;
     }
