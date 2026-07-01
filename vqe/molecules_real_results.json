@@ -33,5 +33,26 @@
     "correlation_ha": -0.041921,
     "qubits": 12,
     "type": "exact (active space (2, 6))"
+  },
+  "He": {
+    "hf_energy_ha": -2.807784,
+    "exact_energy_ha": -2.807784,
+    "correlation_ha": 0.0,
+    "qubits": 2,
+    "type": "exact (full space)"
+  },
+  "HeH+": {
+    "hf_energy_ha": -2.841382,
+    "exact_energy_ha": -2.851024,
+    "correlation_ha": -0.009642,
+    "qubits": 4,
+    "type": "exact (full space)"
+  },
+  "H3+": {
+    "hf_energy_ha": -1.236802,
+    "exact_energy_ha": -1.2612,
+    "correlation_ha": -0.024398,
+    "qubits": 6,
+    "type": "exact (full space)"
   }
 }

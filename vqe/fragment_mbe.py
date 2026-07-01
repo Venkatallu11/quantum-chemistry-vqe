@@ -150,6 +150,87 @@ def mbe_2body(fragments):
     }
 
 
+def mbe_3body(fragments):
+    """
+    3-body Many-Body Expansion.
+
+    2-body MBE (mbe_2body above) only ever looks at fragments one at a
+    time and two at a time. It misses any effect that only shows up when
+    THREE fragments are all near each other simultaneously (a genuine
+    "three-way" interaction, distinct from the three pairwise ones already
+    counted). This function adds that missing piece.
+
+    Plain-English recipe, building on the 2-body result:
+      - Do everything mbe_2body does: monomer energies, and for every pair
+        (i, j) the pairwise interaction dE_ij = E_pair(i,j) - E_i - E_j.
+      - Then, for every TRIPLE of fragments (i, j, k) with i < j < k: glue
+        all three geometries together and solve that combined system
+        exactly to get E(i,j,k).
+      - Subtract off everything already accounted for by lower orders:
+          dE_ijk = E(i,j,k) - (E_i + E_j + E_k) - (dE_ij + dE_ik + dE_jk)
+        What's left, dE_ijk, is the genuinely NEW 3-body effect -- energy
+        that only appears because all three fragments are together, not
+        explained by any pair or monomer alone.
+      - Add up all of those triple corrections on top of the 2-body MBE
+        estimate to get the 3-body MBE estimate:
+          E_MBE3 = E_MBE2 + sum over all triples of dE_ijk
+
+    Returns a dict with every intermediate piece so callers can report on
+    both the 2-body and 3-body estimates from a single set of solves.
+    """
+    n_fragments = len(fragments)
+
+    # --- monomers (same as mbe_2body) ---
+    monomer_energies = [exact_energy(geom, nelec) for geom, nelec in fragments]
+    monomer_sum = sum(monomer_energies)
+
+    # --- pairs (same as mbe_2body, but we keep each dE_ij around by (i, j)
+    #     so the triples step below can reuse them) ---
+    pair_interaction = {}
+    pairwise_interaction = 0.0
+    for i in range(n_fragments):
+        for j in range(i + 1, n_fragments):
+            geom_i, nelec_i = fragments[i]
+            geom_j, nelec_j = fragments[j]
+            geom_pair = geom_i + geom_j
+            nelec_pair = nelec_i + nelec_j
+            e_pair = exact_energy(geom_pair, nelec_pair)
+            dE_ij = e_pair - monomer_energies[i] - monomer_energies[j]
+            pair_interaction[(i, j)] = dE_ij
+            pairwise_interaction += dE_ij
+
+    E_mbe2 = monomer_sum + pairwise_interaction
+
+    # --- triples: the genuinely new 3-body correction ---
+    triple_interaction = 0.0
+    for i in range(n_fragments):
+        for j in range(i + 1, n_fragments):
+            for k in range(j + 1, n_fragments):
+                geom_i, nelec_i = fragments[i]
+                geom_j, nelec_j = fragments[j]
+                geom_k, nelec_k = fragments[k]
+                geom_triple = geom_i + geom_j + geom_k
+                nelec_triple = nelec_i + nelec_j + nelec_k
+                e_triple = exact_energy(geom_triple, nelec_triple)
+                dE_ijk = (
+                    e_triple
+                    - (monomer_energies[i] + monomer_energies[j] + monomer_energies[k])
+                    - (pair_interaction[(i, j)] + pair_interaction[(i, k)] + pair_interaction[(j, k)])
+                )
+                triple_interaction += dE_ijk
+
+    E_mbe3 = E_mbe2 + triple_interaction
+
+    return {
+        "monomer_sum": monomer_sum,
+        "pairwise_interaction": pairwise_interaction,
+        "E_mbe2": E_mbe2,
+        "triple_interaction": triple_interaction,
+        "E_mbe3": E_mbe3,
+        "monomer_energies": monomer_energies,
+    }
+
+
 def make_h2_cluster(n, internal=0.74, sep=2.0):
     """
     Build a simple test cluster: n separate H2 molecules, lined up along
@@ -221,6 +302,57 @@ def run_verify(n=3):
     return monomer_sum, E_mbe, E_full, pct_recovered
 
 
+def run_verify3(n=4, sep=1.8):
+    """
+    Same idea as run_verify(), but also checks the 3-body correction:
+    for a cluster small enough to still solve exactly in full, compute
+      (a) the naive monomer sum
+      (b) the 2-body MBE estimate
+      (c) the 3-body MBE estimate (this should be even closer to the truth)
+      (d) the TRUE full exact energy
+
+    A smaller `sep` (fragments packed closer together than in run_verify)
+    makes the 3-way interactions between fragments bigger and easier to
+    see, so this is a good place to check that adding the 3-body term
+    actually helps.
+    """
+    fragments = make_h2_cluster(n, sep=sep)
+
+    result = mbe_3body(fragments)
+    monomer_sum = result["monomer_sum"]
+    E_mbe2 = result["E_mbe2"]
+    E_mbe3 = result["E_mbe3"]
+
+    # (d): solve the ENTIRE cluster as one single system, exactly.
+    full_geom = []
+    full_nelec = 0
+    for geom, nelec in fragments:
+        full_geom += geom
+        full_nelec += nelec
+    E_full = exact_energy(full_geom, full_nelec)
+
+    # How much interaction energy is there in total, if we started from
+    # the naive "fragments don't interact" monomer sum?
+    monomer_error = E_full - monomer_sum
+    # How wrong is the 2-body estimate, and the 3-body estimate?
+    err2 = E_full - E_mbe2
+    err3 = E_full - E_mbe3
+    # Of all the interaction energy that exists, what fraction did each
+    # truncation level actually capture?
+    pct2 = (1.0 - abs(err2) / abs(monomer_error)) * 100.0
+    pct3 = (1.0 - abs(err3) / abs(monomer_error)) * 100.0
+
+    print(f"\n=== run_verify3(n={n}, sep={sep}): checked against full exact ===")
+    print(f"  monomer sum (no interaction) = {monomer_sum:.6f} Ha")
+    print(f"  2-body MBE estimate          = {E_mbe2:.6f} Ha   (error vs full = {err2:+.6f} Ha)")
+    print(f"  3-body MBE estimate          = {E_mbe3:.6f} Ha   (error vs full = {err3:+.6f} Ha)")
+    print(f"  FULL exact (whole cluster)   = {E_full:.6f} Ha")
+    print(f"  -> 2-body MBE recovers {pct2:.2f}% of the total interaction energy")
+    print(f"  -> 3-body MBE recovers {pct3:.2f}% of the total interaction energy\n")
+
+    return monomer_sum, E_mbe2, E_mbe3, E_full, pct2, pct3
+
+
 def run_scale(n=6):
     """
     Show why MBE matters: for n=6 H2 molecules, the FULL cluster has
@@ -251,7 +383,9 @@ def run_scale(n=6):
 def main():
     # Step 1: small enough to double-check MBE against the real, full answer
     run_verify(3)
-    # Step 2: too big to solve exactly -- MBE is the only option, run it anyway
+    # Step 2: check that adding the 3-body term gets even closer to the truth
+    run_verify3(4, 1.8)
+    # Step 3: too big to solve exactly -- MBE is the only option, run it anyway
     run_scale(6)
 
 

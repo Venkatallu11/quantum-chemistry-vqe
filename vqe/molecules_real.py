@@ -32,6 +32,30 @@ sys.path.insert(0, os.path.dirname(__file__))
 import chem
 from qiskit_nature.second_q.hamiltonians import ElectronicEnergy
 from qiskit_nature.second_q.mappers import JordanWignerMapper
+from qiskit.quantum_info import SparsePauliOp
+
+
+def _number_op(nq):
+    """Qubit operator whose expectation value is the electron count (Jordan-Wigner)."""
+    terms = [('I' * nq, nq / 2)]
+    for i in range(nq):
+        z = ['I'] * nq
+        z[i] = 'Z'
+        terms.append((''.join(z), -0.5))
+    return SparsePauliOp.from_list(terms)
+
+
+def _constrain_particle_number(qop, n_target):
+    """Add a penalty term so the ground state of `qop` has exactly n_target electrons.
+
+    Needed for charged species (HeH+, H3+): without this, eigsh can find a
+    lower-energy state with the wrong electron count. The penalty is zero
+    on the correct-electron-count subspace and positive everywhere else.
+    """
+    nq = qop.num_qubits
+    N = _number_op(nq)
+    diff = N - SparsePauliOp.from_list([('I' * nq, n_target)])
+    return SparsePauliOp((qop + 5.0 * (diff @ diff)).simplify())
 
 # Molecule definitions: name -> (geometry in Angstrom, total electrons, active space)
 # active space = None means full space; (n_core, n_active) means frozen-core active space.
@@ -42,6 +66,9 @@ MOLECULES = {
     "NH3": ([("N", (0, 0, 0)), ("H", (0, 0.94, -0.33)),
              ("H", (0.81, -0.47, -0.33)), ("H", (-0.81, -0.47, -0.33))], 10, None),
     "N2":  ([("N", (0, 0, 0)), ("N", (0, 0, 1.1))], 14, (2, 6)),  # active: (10e, 6o)
+    "He":   ([("He", (0, 0, 0))], 2, None),
+    "HeH+": ([("He", (0, 0, 0)), ("H", (0, 0, 0.772))], 2, None),
+    "H3+":  ([("H", (0, 0, 0)), ("H", (0.87, 0, 0)), ("H", (0.435, 0.753, 0))], 2, None),
 }
 
 
@@ -59,6 +86,7 @@ def ground_state(geom, nelec, active):
         # FULL space: build the qubit Hamiltonian over all orbitals
         ee = ElectronicEnergy.from_raw_integrals(h1, h2)
         qop = JordanWignerMapper().map(ee.second_q_op())
+        qop = _constrain_particle_number(qop, nelec)
         M = qop.to_matrix(sparse=True)
         e_active = float(eigsh(M, k=1, which="SA", return_eigenvectors=False)[0])
         exact = e_active + enuc
@@ -84,6 +112,7 @@ def ground_state(geom, nelec, active):
         h2e = h2[np.ix_(act, act, act, act)]
         ee = ElectronicEnergy.from_raw_integrals(h1e, h2e)
         qop = JordanWignerMapper().map(ee.second_q_op())
+        qop = _constrain_particle_number(qop, nelec - 2 * n_core)  # only active electrons live in these qubits
         M = qop.to_matrix(sparse=True)
         e_act = float(eigsh(M, k=1, which="SA", return_eigenvectors=False)[0])
         exact = e_act + e_core + enuc
