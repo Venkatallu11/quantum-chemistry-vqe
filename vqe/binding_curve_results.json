@@ -1,0 +1,55 @@
+{
+  "isolated_h2_ha": -1.137284,
+  "three_times_isolated_ha": -3.411852,
+  "points": [
+    {
+      "sep_angstrom": 1.2,
+      "E_cluster_ha": -2.601269,
+      "binding_ha": 0.810583,
+      "binding_kcal_mol": 508.648,
+      "qubits": 12
+    },
+    {
+      "sep_angstrom": 1.5,
+      "E_cluster_ha": -3.161055,
+      "binding_ha": 0.250797,
+      "binding_kcal_mol": 157.377,
+      "qubits": 12
+    },
+    {
+      "sep_angstrom": 2.0,
+      "E_cluster_ha": -3.36604,
+      "binding_ha": 0.045811,
+      "binding_kcal_mol": 28.747,
+      "qubits": 12
+    },
+    {
+      "sep_angstrom": 2.5,
+      "E_cluster_ha": -3.403655,
+      "binding_ha": 0.008196,
+      "binding_kcal_mol": 5.143,
+      "qubits": 12
+    },
+    {
+      "sep_angstrom": 3.0,
+      "E_cluster_ha": -3.410588,
+      "binding_ha": 0.001263,
+      "binding_kcal_mol": 0.793,
+      "qubits": 12
+    },
+    {
+      "sep_angstrom": 4.0,
+      "E_cluster_ha": -3.411835,
+      "binding_ha": 1.7e-05,
+      "binding_kcal_mol": 0.01,
+      "qubits": 12
+    },
+    {
+      "sep_angstrom": 5.0,
+      "E_cluster_ha": -3.411849,
+      "binding_ha": 3e-06,
+      "binding_kcal_mol": 0.002,
+      "qubits": 12
+    }
+  ]
+}
