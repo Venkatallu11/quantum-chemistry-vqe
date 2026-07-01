@@ -1,400 +1,215 @@
-# Quantum Hardware MCP Server
+# Quantum Chemistry VQE — Real Molecular Ground-State Energies
 
-An MCP server that gives AI assistants (Claude, etc.) live data about IBM Quantum computers — queue depths, error rates, coherence times, best qubit picks, and historical snapshots.
+*Computed from geometry. Verified against PySCF.*
 
-Built with the [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) and [qiskit-ibm-runtime](https://github.com/Qiskit/qiskit-ibm-runtime).
+A pure-Python quantum chemistry toolkit that computes the exact ground-state
+energy of molecules the way a quantum computer would — starting from nothing
+but the atoms' positions, with no hardcoded answers baked in. Every result in
+this repo has been independently checked against [PySCF](https://pyscf.org/),
+the standard professional reference for quantum chemistry.
 
----
-
-## Why researchers should care
-
-Running quantum experiments is expensive in two ways: **time** (queue wait) and **quality** (gate errors corrupt results). This server exposes both dimensions as AI-queryable tools, so you can ask natural questions and get grounded answers:
-
-- **Live qubit picks** — `best_qubits` ranks every qubit on a device right now by calibration data, so you can hand the compiler a pre-filtered register instead of hoping the transpiler gets lucky.
-- **Historical lookup** — `device_on_date` retrieves the hardware snapshot for any past date from the local database, so your methods section can cite what the machine actually looked like when you ran the experiment.
-- **Reproducibility** — snapshots are recorded every 6 hours automatically. If a reviewer asks "what was the CX error on the day you ran Figure 3?", you can answer exactly.
-- **Instant comparison** — `compare_devices(sort_by="combined")` blends gate quality and queue depth into a single score, surfacing the best machine to use *right now*.
+It runs on Windows out of the box. PySCF is **not** required to run any of
+the code here — it's only used, off to the side, to double-check that the
+numbers this repo produces are correct.
 
 ---
 
-## Tools exposed
+## Why it matters
 
-| Tool | What it does |
-| ---- | ------------ |
-| `list_devices` | All IBM quantum computers you can access + status |
-| `get_device_details` | Deep info on one machine: error rates, T1/T2, queue |
-| `compare_devices` | Rank machines by CX error, queue depth, qubit count, or combined score |
-| `queue_status` | Current queue snapshot — useful for picking the shortest wait |
-| `device_history` | Snapshots for one machine over the last N days |
-| `best_qubits` | Best n qubits on a machine right now, scored by calibration data |
-| `device_on_date` | Historical stats for a machine on any past date (reproducibility) |
-| `submit_job` | Compile and submit an OpenQASM 2.0 or 3.0 circuit to IBM hardware — returns a `job_id` |
-| `job_status` | Check status of a submitted job (QUEUED / RUNNING / DONE / ERROR) |
-| `job_results` | Retrieve bit-string measurement counts from a completed job |
-| `cancel_job` | Cancel a queued or running job by `job_id` |
-| `list_jobs` | List your most recent jobs with status and backend (newest first) |
-| `run_grover` | Built-in Grover's search demo — builds the circuit, picks the least-busy backend, submits, returns `job_id` |
-| `estimate_expectation` | Run the Estimator primitive — computes expectation values ⟨ψ\|O\|ψ⟩ for Pauli observables (needed for VQE, QAOA, quantum chemistry) |
-| `circuit_report` | Dry-run analysis — transpiles your circuit and returns gate counts, qubit mapping, per-pair CX errors, and an estimated fidelity. No queue time. |
-| `debug_circuit` | Bug detector — checks for missing measurements, decoherence violations, qubit mismatches, and unentangled qubits before you waste hours in a queue. Returns severity-ranked issues with plain-English fixes. |
+Quantum chemistry is the bottleneck behind some of the most important stuck
+problems in science:
 
-### `compare_devices` sort modes
+- **Nitrogen fixation.** The enzyme FeMoco (nitrogenase's active site) turns
+  atmospheric nitrogen into ammonia at room temperature and pressure — a
+  reaction we still don't fully understand. Instead, industry uses the
+  Haber-Bosch process, which has burned roughly **2% of the world's energy
+  supply every year since 1909**, because we can't classically simulate what
+  FeMoco is actually doing.
+- **Drug discovery** depends on accurately predicting how molecules bind —
+  which is a quantum chemistry problem at its core.
+- **Superconductors** and other advanced materials are governed by
+  electron correlations that classical computers can only approximate.
 
-| `sort_by` | What it optimises |
-| --------- | ----------------- |
-| `cx_error` | Lowest 2-qubit gate error — highest fidelity results |
-| `queue` | Fewest pending jobs — fastest turnaround |
-| `qubits` | Most qubits — largest circuits |
-| `combined` | 70% quality + 30% availability, min-max normalised across current devices |
+The common thread: these are all systems where electrons are strongly
+correlated, and classical computers can't simulate that exactly once the
+system gets big enough — the cost grows exponentially. Quantum computers,
+in principle, don't have that problem.
 
----
+This project builds and verifies the lower rungs of that ladder — small
+molecules where an exact classical answer is still possible, so every result
+can be checked — as a path toward the systems that currently can't be
+checked at all:
 
-## Prerequisites
-
-- Python 3.10 or newer
-- An IBM Quantum account (free) — sign up at [quantum.ibm.com](https://quantum.ibm.com)
-- Claude Desktop (to use the MCP integration)
-
----
-
-## Setup
-
-### 1. Clone the repo
-
-```bash
-git clone https://github.com/Lokesh-2025/quantum-hardware-mcp.git
-cd quantum-hardware-mcp
 ```
-
-### 2. Create a virtual environment and install
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-### 3. Add your IBM Quantum token
-
-```bash
-cp .env.example .env
-```
-
-Open `.env` and replace `your_token_here` with your token from [quantum.ibm.com/account](https://quantum.ibm.com/account).
-
-> `.env` is in `.gitignore` — it will never be committed.
-
-### 4. Connect to Claude Desktop
-
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "quantum-hardware": {
-      "command": "/absolute/path/to/.venv/bin/python",
-      "args": ["/absolute/path/to/quantum-hardware-mcp/server.py"]
-    }
-  }
-}
-```
-
-Quit and reopen Claude Desktop. The hammer icon will show the quantum-hardware tools.
-
----
-
-## LLM Provider Support
-
-The agent works with **any of these LLM providers** — you are not locked into Anthropic:
-
-| Provider | Cost | Setup |
-| -------- | ---- | ----- |
-| **Anthropic** (Claude) | Paid | `LLM_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` |
-| **Google Gemini** | Free tier available | `LLM_PROVIDER=gemini` + `GEMINI_API_KEY` |
-| **Ollama** | Free, runs locally | `LLM_PROVIDER=ollama` + `OLLAMA_MODEL` (no API key needed) |
-| **OpenAI** | Paid | `LLM_PROVIDER=openai` + `OPENAI_API_KEY` |
-| **vLLM** | Self-hosted | `LLM_PROVIDER=vllm` + `VLLM_BASE_URL` + `VLLM_MODEL` |
-
-Set `LLM_PROVIDER` in your `.env` file. See `.env.example` for all options with comments.
-
-**Using Gemini (recommended free option):**
-```bash
-LLM_PROVIDER=gemini
-GEMINI_API_KEY=your_key_from_aistudio.google.com
-GEMINI_MODEL=gemini-2.0-flash
-```
-
-**Using Ollama (fully local, no API key, no cost):**
-```bash
-LLM_PROVIDER=ollama
-OLLAMA_MODEL=llama3.2
-# Install Ollama: https://ollama.com — then: ollama pull llama3.2
+H2 → LiH → H2O → NH3 → N2 → ... → FeMoco (54 qubits)
 ```
 
 ---
 
-## Docker
+## Methods and tools used
 
-### MCP server only
-
-Runs just `server.py` in HTTP mode on port 3020. Use this if you want to connect the server to an existing agent or to Claude Desktop over HTTP.
-
-**1. Build:**
-```bash
-docker build -t quantum-mcp .
-```
-
-**2. Run:**
-```bash
-docker run -p 3020:3020 -e IBM_QUANTUM_TOKEN=your_token quantum-mcp
-```
-
-The server will be available at `http://localhost:3020/sse`.
+| Component | What it does |
+|---|---|
+| **`chem.py`** | A pure-Python integral engine (numpy + scipy only) using the McMurchie–Davidson method. Handles s and p orbitals in the STO-3G basis. Computes the overlap, kinetic, nuclear-attraction, and two-electron repulsion integrals directly from atomic geometry, then runs restricted Hartree–Fock (RHF) to get the mean-field energy and molecular orbitals. |
+| **Qubit Hamiltonian** | The molecular-orbital integrals are handed to `qiskit-nature`'s `ElectronicEnergy.from_raw_integrals`, then mapped onto qubits with the Jordan–Wigner transformation (`JordanWignerMapper`). |
+| **Exact ground state** | The qubit Hamiltonian is diagonalized with `scipy.sparse.linalg.eigsh`, taking the smallest eigenvalue — the mathematically exact ground-state energy for that basis, not an approximation. |
+| **Particle-number penalty** | For charged species (ions), the raw qubit Hamiltonian's true ground state can have the wrong electron count. A `SparsePauliOp` number operator with a penalty term is added to force the correct electron count before diagonalizing. |
+| **`h2_vqe.py`** — VQE demo | The Variational Quantum Eigensolver approach: an `EfficientSU2`-style ansatz circuit, optimized with `COBYLA`, evaluated with Qiskit's `StatevectorEstimator`. Demonstrates recovering the correlation energy the same way a real quantum computer would — by measuring, not diagonalizing. |
+| **`fragment_mbe.py`** — Many-Body Expansion | Breaks molecular clusters too large to simulate directly into small fragments, then reconstructs the total energy from fragment and pairwise/triple-wise interaction energies. See below. |
+| **PySCF** | Used **only** to verify results after the fact. It never appears in the actual compute path. |
+| **numpy, scipy, qiskit, qiskit-nature** | Core dependencies. |
 
 ---
 
-### Fullstack (MCP server + agent)
+## Verified results
 
-Runs both `server.py` and Jack's Node.js agent together. The agent connects to the server automatically — no manual config needed.
+Every number below was computed from geometry using the pipeline above, and
+matches PySCF exactly.
 
-**1. Create a `.env` file in the project root:**
-```bash
-IBM_QUANTUM_TOKEN=your_ibm_token
-LLM_PROVIDER=anthropic
-ANTHROPIC_API_KEY=your_anthropic_key
-```
+| Molecule | Qubits | Hartree–Fock (Ha) | Exact ground state (Ha) | Reference |
+|---|---|---|---|---|
+| H2  | 4  | -1.116759   | -1.137284   | PySCF FCI |
+| LiH | 12 | -7.861865   | -7.882324   | PySCF FCI |
+| H2O | 14 | -74.963063  | -75.012647  | PySCF FCI |
+| NH3 | 16 | -55.450180  | -55.511677  | PySCF FCI |
+| N2  | 12 | -107.496501 | -107.538421 | PySCF CASCI(10e,6o) — frozen-core active space, stated honestly (see below) |
 
-**2. Build and start both containers:**
-```bash
-docker compose up --build
-```
+**Ions and atoms** (also match PySCF exactly, using the particle-number
+penalty above):
 
-- MCP server: `http://localhost:3020`
-- Agent API: `http://localhost:3021`
+| Species | Exact ground state (Ha) |
+|---|---|
+| He   | -2.807784 |
+| HeH+ | -2.851024 |
+| H3+  | -1.261200 |
 
-**3. Chat with the agent:**
-
-In a separate terminal, run `node agent/chat.js` (or `npm run chat` from the `agent/` directory) — it will connect to the agent running in Docker.
-
-**To stop:**
-```bash
-docker compose down
-```
-
-The SQLite snapshot database is persisted in a Docker volume (`mcp-data`) so historical data survives container restarts.
+**Stress-tested** beyond the table above:
+- Carbon: CH4 = **-39.726724** Ha, matching PySCF.
+- Full H2 and LiH **dissociation curves** — every single point along the
+  curve matches PySCF FCI, not just the equilibrium geometry.
 
 ---
 
-## HTTP Server Mode (Optional)
+## Many-body expansion (fragmentation)
 
-The MCP server can also run as an HTTP/SSE server for remote access or web-based AI assistants.
+Exact diagonalization needs one qubit per spin-orbital, so a cluster of many
+small molecules quickly becomes too large to simulate directly (six H2
+molecules alone is 24 qubits — infeasible on a laptop). The **Many-Body
+Expansion (MBE)** works around this by never building the full system at
+all:
 
-### Quick Start
+1. Break the cluster into fragments and solve each one **alone** (monomer
+   energies).
+2. Solve every **pair** of fragments together, and take the extra energy
+   above the two monomers — the 2-body interaction correction.
+3. Solve every **triple** of fragments together, and take the extra energy
+   above what the monomers and pairs already explain — the 3-body
+   correction.
+4. Add it all up:
+
+   ```
+   E_MBE(2-body) = sum(monomers) + sum(pairwise corrections)
+   E_MBE(3-body) = E_MBE(2-body) + sum(triple-wise corrections)
+   ```
+
+Every monomer, pair, and triple energy in this sum is computed by the exact
+same `chem.py` → Hartree-Fock → qubit Hamiltonian → `eigsh` pipeline as
+everything else in this repo — MBE only changes *what* gets diagonalized,
+never *how*.
+
+**Verified against a full, un-fragmented exact calculation:**
+
+- **3 H2 cluster:** 2-body MBE recovers **99.7%** of the interaction energy
+  (MBE = -3.365913 Ha vs. full exact = -3.366040 Ha).
+- **4 H2 cluster:** 2-body MBE recovers **99.52%**, and adding the 3-body
+  correction pushes that to **99.96%** (full exact = -4.415285 Ha) —
+  demonstrating that the expansion actually converges toward the truth as
+  more body-orders are added.
+- **6 H2 cluster (24 qubits):** a full calculation is infeasible, but MBE
+  produces an estimate using only fragments of **8 qubits or fewer**.
+
+---
+
+## Honesty section
+
+- Every number in this repo is computed from geometry, with no hardcoded
+  energies and no tuned constants — and every number is independently
+  verified against PySCF.
+- N2 uses a clearly-labelled **frozen-core active space**, CASCI(10e,6o),
+  because the full 20-qubit N2 problem is intractable to exactly
+  diagonalize on a laptop. This is standard practice in real quantum
+  chemistry, not a shortcut, and it's verified against PySCF's CASCI result
+  for the identical active space.
+- **Known limits:**
+  - Closed-shell molecules only — open-shell radicals aren't supported yet.
+  - Full exact diagonalization is limited to roughly 16 qubits on a laptop.
+    Anything bigger needs either an active space (like N2 above) or the
+    Many-Body Expansion.
+
+---
+
+## Setup and usage
 
 ```bash
-# Start HTTP server on localhost (development)
-python server.py --transport http
-
-# Start on all interfaces for remote access
-python server.py --transport http --host 0.0.0.0 --port 8080
-
-# With custom CORS origins
-python server.py --transport http --cors-origins "https://myapp.com,https://api.myapp.com"
+pip install numpy scipy qiskit qiskit-nature
 ```
-
-### Configuration
-
-HTTP server settings can be configured via command-line arguments or environment variables:
-
-| Setting | CLI Argument | Environment Variable | Default |
-| ------- | ------------ | -------------------- | ------- |
-| Host | `--host` | `MCP_HTTP_HOST` | `127.0.0.1` |
-| Port | `--port` | `MCP_HTTP_PORT` | `8000` |
-| CORS Origins | `--cors-origins` | `MCP_CORS_ORIGINS` | `*` |
-
-### Security: API Key Authentication
-
-For production deployments, enable API key authentication:
-
-**1. Generate a secure API key:**
 
 ```bash
-python -c "import secrets; print(secrets.token_urlsafe(32))"
+python vqe/molecules_real.py      # all molecules in the verified table
+python vqe/fragment_mbe.py        # many-body expansion / fragmentation demo
+python vqe/h2_vqe.py              # VQE demo on H2 (local simulator)
 ```
 
-**2. Add to your `.env` file:**
+### Adding your own molecule
 
-```bash
-MCP_API_KEY=your_generated_key_here
-```
-
-**3. Start the server:**
-
-```bash
-python server.py --transport http --host 0.0.0.0 --port 8080
-```
-
-**4. Include the key in client requests:**
-
-Python:
+`vqe/molecules_real.py` defines a `MOLECULES` dict mapping a name to
+`(geometry, n_electrons, active_space)`. To try a new molecule, add an entry
+in the same shape:
 
 ```python
-import requests
-
-headers = {
-    "X-API-Key": "your_generated_key_here",
-    "Content-Type": "application/json"
-}
-
-response = requests.post(
-    "http://your-server:8080/sse",
-    headers=headers
-)
-```
-
-JavaScript:
-
-```javascript
-fetch('http://your-server:8080/sse', {
-  method: 'POST',
-  headers: {
-    'X-API-Key': 'your_generated_key_here',
-    'Content-Type': 'application/json'
-  }
-})
-```
-
-MCP Client Configuration:
-
-```json
-{
-  "mcpServers": {
-    "quantum-hardware": {
-      "url": "http://your-server:8080",
-      "headers": {
-        "X-API-Key": "your_generated_key_here"
-      }
-    }
-  }
+MOLECULES = {
+    ...
+    "MyMolecule": ([("O", (0, 0, 0)), ("H", (0, 0, 0.96))], 10, None),
 }
 ```
 
-### Development vs Production
+- `geometry` is a list of `(element, (x, y, z))` tuples in Angstrom.
+- `n_electrons` is the total electron count (account for charge if the
+  species is an ion).
+- `active_space` is `None` for a full-space exact calculation, or
+  `(n_core_orbitals, n_active_orbitals)` for a frozen-core active space (used
+  for N2, since the full space is too large).
 
-**Development Mode (No Authentication):**
-
-- If `MCP_API_KEY` is not set, the server runs without authentication
-- Convenient for local testing
-- ⚠️ Only use on localhost, never expose to the internet
-
-**Production Mode (With Authentication):**
-
-- Set `MCP_API_KEY` environment variable
-- Prevents unauthorized access
-- Always use HTTPS in production (set up reverse proxy with nginx/caddy)
-- Rotate API keys periodically
-
-### Deployment Examples
-
-#### Docker Deployment
-
-See the **Docker** section above for `Dockerfile`, `agent/Dockerfile`, and `docker-compose.yml`.
-
-#### Reverse Proxy (nginx)
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name quantum-mcp.example.com;
-
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
+Then run `python vqe/molecules_real.py` — it will compute, print, and save
+the Hartree-Fock and exact energies for every molecule in the dict.
 
 ---
 
-## Automatic snapshots
-
-A background agent (`snapshot.py`) records device stats every 6 hours:
-
-- **Locally** — a macOS LaunchAgent writes to `devices.db`, which feeds `device_history` and `device_on_date`.
-- **GitHub Actions** — a scheduled workflow appends rows to `data/snapshots.csv` every 6 hours, building a public historical record.
-
----
-
-## Project structure
+## File structure
 
 ```text
-quantum-hardware-mcp/
-├── server.py          # MCP server — all 13 tools live here
-├── snapshot.py        # Background agent — records device stats every 6h
-├── report.py          # Daily Quantum Weatherman report (runs at 8am)
-├── requirements.txt
-├── .env.example
-├── .github/
-│   └── workflows/
-│       └── snapshot.yml   # GitHub Actions: snapshot → CSV every 6h
-├── data/
-│   └── snapshots.csv      # Growing historical record (committed by CI)
-├── reports/               # Daily reports + charts (git-ignored)
-├── reports/fleet-report/  # Polished fleet analysis report + charts
-├── test_bell_state.py     # End-to-end Bell state test on real hardware
-├── REPORTS.md             # Running summary log
-└── devices.db             # Local SQLite snapshot store (git-ignored)
+vqe/
+├── chem.py                     # Pure-Python integral engine + Hartree-Fock
+├── molecules_real.py           # Exact ground-state energies for the molecule/ion table
+├── fragment_mbe.py             # Many-body expansion (2-body and 3-body) for clusters
+├── h2_vqe.py                   # VQE demo: EfficientSU2 ansatz + COBYLA, local sim or real IBM hardware
+├── molecules_real_results.json # Saved results from molecules_real.py
+└── h2_vqe_results.json         # Saved results from h2_vqe.py
+
+requirements.txt
 ```
 
 ---
 
-## Running quantum circuits
+## Powered by / credits
 
-Use the three job tools together to submit a circuit and get results:
+Built alongside the open-source **Quantum Hardware MCP server** by
+Lokesh Pullakandam, which connects AI assistants to live IBM Quantum
+hardware — the bridge that lets these same molecules eventually run on a
+real quantum machine instead of a classical simulation of one.
 
-```python
-# 1. Pick the least-busy machine
-queue_status()                            # → ibm_kingston (0 jobs)
-
-# 2. Submit an OpenQASM 2.0 circuit
-submit_job("ibm_kingston", """
-OPENQASM 2.0;
-include "qelib1.inc";
-qreg q[2];
-creg c[2];
-h q[0];
-cx q[0],q[1];
-measure q[0] -> c[0];
-measure q[1] -> c[1];
-""", shots=1024)
-# → { "job_id": "d8tvs9lbh0os73eq93ag", "status": "QUEUED", ... }
-
-# 3. Check progress
-job_status("d8tvs9lbh0os73eq93ag")        # → RUNNING → DONE
-
-# 4. Get results
-job_results("d8tvs9lbh0os73eq93ag")
-# → { "counts": {"00": 509, "11": 487, "01": 26, "10": 2}, "total_shots": 1024 }
-```
-
-The circuit above is a Bell state — the ~97% correlation between `00` and `11` outcomes is quantum entanglement measured on real hardware. Run `test_bell_state.py` for an automated end-to-end test.
-
----
-
-## Planned roadmap
-
-- **Trend alerts** — notify when a device's error rate spikes above its 7-day average
-- **Queue forecasting** — predict wait time from historical queue patterns
-- **Multi-vendor** — add IonQ and Quantinuum device data alongside IBM
-- **Circuit-aware ranking** — given a circuit's gate profile, recommend the best machine for that specific workload
-- **Automated report push** — opt-in posting of the daily Weatherman to Slack / Discord
+- MCP server: https://github.com/Lokesh-2025/quantum-hardware-mcp
+- Lokesh: https://www.linkedin.com/in/lokesh-pullakandam/
 
 ---
 
