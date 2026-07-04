@@ -1,0 +1,20 @@
+{
+  "method": "real_ibm_hardware_via_mcp_server",
+  "hamiltonian": "verified (chem.py engine, parity tapering)",
+  "exact_energy_ha": -1.137284,
+  "hardware_energy_ha": -1.1172,
+  "error_ha": 0.020084,
+  "error_kcal_mol": 12.603,
+  "device": "ibm_marrakesh",
+  "job_id": "d949bolgc6cc73feqt20",
+  "optimal_params": [
+    -0.22567815236287483,
+    -0.029828067200415684,
+    2.7518149667829515,
+    3.1727844654365676,
+    3.1351232398207127,
+    -0.03084100253975376,
+    1.010875825446727,
+    1.400722507378816
+  ]
+}

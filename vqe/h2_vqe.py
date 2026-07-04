@@ -37,6 +37,7 @@ import numpy as np
 from scipy.optimize import minimize
 
 from qiskit import QuantumCircuit
+from qiskit.circuit.library import EfficientSU2
 from qiskit.quantum_info import SparsePauliOp
 from qiskit.primitives import StatevectorEstimator
 
@@ -61,13 +62,19 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
 #
 # The XX and YY terms are the interesting ones — they represent quantum
 # correlations between electrons that classical computers can't handle at scale.
+# Derived from our own verified chem.py engine (integrals -> RHF -> qubit
+# Hamiltonian -> parity tapering, nuclear repulsion folded into the "II"
+# constant). Exact ground state = -1.137284 Ha, matching PySCF FCI for
+# real H2 at its equilibrium bond length -- unlike the old hand-picked
+# toy Hamiltonian this replaces (which diagonalized to -1.452303 Ha and
+# was never actually real H2). Parity tapering removes the "YY" term
+# that a naive Jordan-Wigner mapping would otherwise have.
 H2_HAMILTONIAN = {
-    "II":  -0.8105479,   # constant offset (nuclear repulsion + mean field)
-    "IZ":   0.1712076,   # energy of electron in orbital 0
-    "ZI":  -0.2257534,   # energy of electron in orbital 1
-    "ZZ":   0.1209057,   # electron-electron repulsion
-    "XX":   0.1686013,   # quantum correlation ← classically hard at scale
-    "YY":   0.1686013,   # quantum correlation ← classically hard at scale
+    "II": -0.3383171,
+    "IZ":  0.3948444,
+    "ZI": -0.3948444,
+    "ZZ": -0.0112462,
+    "XX":  0.1812105,
 }
 
 # How close to the exact answer is "good enough" for chemistry?
@@ -100,67 +107,57 @@ def exact_ground_state_energy() -> float:
 # The Ansatz Circuit
 # --------------------------------------------------------------------------
 
-def make_ansatz(theta: float) -> QuantumCircuit:
+def make_ansatz(params) -> QuantumCircuit:
     """
-    Build the particle-conserving ansatz for H₂.
+    Build the ansatz for H₂ using qiskit's EfficientSU2(2, reps=1) --
+    a standard hardware-efficient ansatz: alternating layers of
+    single-qubit RY/RZ rotations and CX entanglers.
 
-    For H₂ with 2 electrons, the ground state is always a superposition of
-    exactly two states: |01⟩ and |10⟩ (one electron in each spin orbital).
-    The ansatz must stay in that subspace — this is the "particle conservation"
-    constraint that mirrors real physics (electrons don't disappear).
-
-    The circuit: X(q0) → RY(θ, q1) → CX(q1→q0)
-    produces:    cos(θ/2)|01⟩ + sin(θ/2)|10⟩
-
-    At the optimal θ, this IS the exact ground state — no approximation.
+    Unlike the old hand-built X->RY->CX ansatz (which only worked because
+    the old toy Hamiltonian's ground state happened to live in a simple
+    1-parameter subspace), EfficientSU2(2, reps=1) has 8 free parameters
+    and is expressive enough to reach the exact ground state of the real,
+    verified H2_HAMILTONIAN below.
 
     Args:
-        theta: Single rotation angle (radians). The optimizer tunes this.
+        params: array-like of length ansatz.num_parameters (8 for
+                EfficientSU2(2, reps=1)). The optimizer tunes these.
 
     Returns:
-        A 2-qubit circuit. No measurements — the Estimator handles that.
+        A 2-qubit circuit with `params` bound in. No measurements --
+        the Estimator handles that.
     """
-    qc = QuantumCircuit(2)
+    ansatz = EfficientSU2(2, reps=1)
+    return ansatz.assign_parameters(params)
 
-    # Start in the Hartree-Fock state |01⟩ (qubit 0 has an electron, qubit 1 doesn't)
-    # This is the classical "best guess" ground state — VQE improves on it.
-    qc.x(0)
 
-    # Rotate qubit 1 — this creates a superposition of the two electron configs:
-    #   θ=0  → stays in |01⟩ (pure Hartree-Fock, no quantum correlation)
-    #   optimal θ → the true quantum ground state (electrons correlated)
-    qc.ry(theta, 1)
-
-    # Entangle with qubit 0: when qubit 1 rotates to |1⟩, qubit 0 flips to |0⟩.
-    # This keeps the total electron count exactly 1 — physically correct.
-    # Result: cos(θ/2)|01⟩ + sin(θ/2)|10⟩
-    qc.cx(1, 0)
-
-    return qc
+# Number of free parameters in the ansatz above -- used to size the
+# optimizer's starting guess (x0) in run_vqe_local / run_vqe_real_hardware.
+N_ANSATZ_PARAMS = EfficientSU2(2, reps=1).num_parameters
 
 
 # --------------------------------------------------------------------------
 # Energy measurement
 # --------------------------------------------------------------------------
 
-def measure_energy(theta: float, estimator) -> float:
+def measure_energy(params, estimator) -> float:
     """
-    Compute ⟨ψ(θ)|H|ψ(θ)⟩ — the energy of our trial state.
+    Compute ⟨ψ(params)|H|ψ(params)⟩ — the energy of our trial state.
 
     This is the core of VQE:
-    1. Build the circuit for this angle
+    1. Build the circuit for these parameters
     2. For each Pauli term in H, run the circuit and measure that observable
     3. Weight each measurement by its Hamiltonian coefficient
-    4. Sum everything up → total energy of the molecule at this angle
+    4. Sum everything up → total energy of the molecule at these parameters
 
     Args:
-        theta: Current rotation angle
+        params: Current ansatz parameter vector
         estimator: Quantum estimator (simulator or real IBM hardware)
 
     Returns:
         Energy in Hartree. The optimizer will try to make this as small as possible.
     """
-    qc = make_ansatz(theta)
+    qc = make_ansatz(params)
     energy = 0.0
 
     for pauli_str, coefficient in H2_HAMILTONIAN.items():
@@ -205,28 +202,30 @@ def run_vqe_local() -> dict:
     iteration_log = []
 
     def objective(params):
-        theta = params[0]
-        energy = measure_energy(theta, estimator)
+        energy = measure_energy(params, estimator)
         n = len(iteration_log) + 1
         iteration_log.append({
             "iteration": n,
-            "theta": round(float(theta), 5),
+            "params": [round(float(p), 5) for p in params],
             "energy": round(float(energy), 8),
         })
         # Print progress every 10 iterations
         if n % 10 == 0 or n == 1:
             gap = abs(energy - exact)
             marker = " ✓" if gap < CHEMICAL_ACCURACY_HA else ""
-            print(f"  Iter {n:3d} | θ = {theta:+.4f} | E = {energy:.6f} Ha | gap = {gap:.6f} Ha{marker}")
+            print(f"  Iter {n:3d} | E = {energy:.6f} Ha | gap = {gap:.6f} Ha{marker}")
         return energy
 
     # COBYLA: gradient-free optimizer — works well with quantum noise too.
-    # We start near the Hartree-Fock state (theta=0) and let it explore.
+    # Start near the all-zeros point (close to the Hartree-Fock-like state)
+    # and let it explore the full 8-parameter EfficientSU2 landscape.
+    # 8 free parameters need more iterations to converge tightly than the
+    # old 1-parameter ansatz did (300 wasn't enough; 3000 reaches ~1e-6 Ha).
     result = minimize(
         objective,
-        x0=[0.1],
+        x0=np.full(N_ANSATZ_PARAMS, 0.1),
         method="COBYLA",
-        options={"maxiter": 300, "rhobeg": 0.5},
+        options={"maxiter": 3000, "rhobeg": 0.5, "tol": 1e-10},
     )
 
     final_energy = result.fun
@@ -234,7 +233,7 @@ def run_vqe_local() -> dict:
 
     return {
         "method": "local_statevector_simulator",
-        "optimal_theta": float(result.x[0]),
+        "optimal_params": [float(p) for p in result.x],
         "vqe_energy_ha": round(final_energy, 8),
         "exact_energy_ha": round(exact, 8),
         "error_ha": round(error, 8),
@@ -314,8 +313,7 @@ def run_vqe_real_hardware(device_name: str | None = None) -> dict:
     iteration_log = []
 
     def objective(params):
-        theta = params[0]
-        qc = make_ansatz(theta)
+        qc = make_ansatz(params)
         isa_circuit = pm.run(qc)  # transpile to this backend's native gate set
 
         energy = 0.0
@@ -340,18 +338,18 @@ def run_vqe_real_hardware(device_name: str | None = None) -> dict:
         n = len(iteration_log) + 1
         iteration_log.append({
             "iteration": n,
-            "theta": round(float(theta), 5),
+            "params": [round(float(p), 5) for p in params],
             "energy": round(float(energy), 8),
         })
         gap = abs(energy - exact)
         marker = " ✓" if gap < CHEMICAL_ACCURACY_HA else ""
-        print(f"  Iter {n:3d} | θ = {theta:+.4f} | E = {energy:.6f} Ha | gap = {gap:.6f} Ha{marker}")
+        print(f"  Iter {n:3d} | E = {energy:.6f} Ha | gap = {gap:.6f} Ha{marker}")
         return energy
 
     # Fewer iterations on real hardware — each one is a real quantum job
     result = minimize(
         objective,
-        x0=[0.1],
+        x0=np.full(N_ANSATZ_PARAMS, 0.1),
         method="COBYLA",
         options={"maxiter": 50, "rhobeg": 0.5},
     )
@@ -362,7 +360,7 @@ def run_vqe_real_hardware(device_name: str | None = None) -> dict:
     return {
         "method": "real_ibm_hardware",
         "device": device_name,
-        "optimal_theta": float(result.x[0]),
+        "optimal_params": [float(p) for p in result.x],
         "vqe_energy_ha": round(final_energy, 8),
         "exact_energy_ha": round(exact, 8),
         "error_ha": round(error, 8),
