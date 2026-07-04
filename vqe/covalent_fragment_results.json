@@ -1,0 +1,23 @@
+{
+  "H6_block4": {
+    "full_exact_ha": -3.236066,
+    "tailored_ha": -3.231625,
+    "error_ha": 0.004442,
+    "full_qubits": 12,
+    "max_fragment_qubits": 8
+  },
+  "H8_block4": {
+    "full_exact_ha": -4.307572,
+    "tailored_ha": -4.296862,
+    "error_ha": 0.01071,
+    "full_qubits": 16,
+    "max_fragment_qubits": 8
+  },
+  "H8_block6": {
+    "full_exact_ha": -4.307572,
+    "tailored_ha": -4.305745,
+    "error_ha": 0.001826,
+    "full_qubits": 16,
+    "max_fragment_qubits": 12
+  }
+}
