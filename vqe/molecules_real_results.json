@@ -54,5 +54,12 @@
     "correlation_ha": -0.024398,
     "qubits": 6,
     "type": "exact (full space)"
+  },
+  "CH4": {
+    "hf_energy_ha": -39.726715,
+    "exact_energy_ha": -39.805581,
+    "correlation_ha": -0.078866,
+    "qubits": 16,
+    "type": "exact (active space (1, 8))"
   }
 }

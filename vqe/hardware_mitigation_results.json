@@ -1,0 +1,48 @@
+{
+  "n_qubits": 8,
+  "nelec": 4,
+  "exact_energy_ha": -2.166387,
+  "simulator_target_ha": -2.161638,
+  "simulator_target_error_vs_exact_ha": 0.004749,
+  "physical_qubits_used": [
+    15,
+    112,
+    147,
+    54,
+    0,
+    75,
+    6,
+    1
+  ],
+  "backend": "ibm_marrakesh",
+  "hardware_results": {
+    "raw": {
+      "resilience_level": 0,
+      "job_id": "d956pn5gc6cc73ffrpi0",
+      "energy_ha": -0.601724,
+      "error_vs_exact_ha": 1.564663,
+      "error_vs_exact_kcal_mol": 981.8411,
+      "error_vs_target_ha": 1.559914,
+      "error_vs_target_kcal_mol": 978.8607
+    },
+    "level1": {
+      "resilience_level": 1,
+      "job_id": "d956qievtlqs73fv2930",
+      "energy_ha": -0.592576,
+      "error_vs_exact_ha": 1.573812,
+      "error_vs_exact_kcal_mol": 987.5817,
+      "error_vs_target_ha": 1.569062,
+      "error_vs_target_kcal_mol": 984.6013
+    },
+    "zne": {
+      "resilience_level": 2,
+      "job_id": "d956ruvu62ks7396p6ng",
+      "energy_ha": -0.824359,
+      "error_vs_exact_ha": 1.342029,
+      "error_vs_exact_kcal_mol": 842.1358,
+      "error_vs_target_ha": 1.337279,
+      "error_vs_target_kcal_mol": 839.1555
+    }
+  },
+  "zne_beats_raw_vs_target": true
+}

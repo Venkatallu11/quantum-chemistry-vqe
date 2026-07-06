@@ -69,6 +69,15 @@ MOLECULES = {
     "He":   ([("He", (0, 0, 0))], 2, None),
     "HeH+": ([("He", (0, 0, 0)), ("H", (0, 0, 0.772))], 2, None),
     "H3+":  ([("H", (0, 0, 0)), ("H", (0.87, 0, 0)), ("H", (0.435, 0.753, 0))], 2, None),
+    # CH4: full space is 18 qubits -- infeasible to exactly diagonalize on a
+    # laptop (confirmed: memory allocation failure). Frozen-core active
+    # space (freeze C's 1s core, 8 active electrons/orbitals -> 16 qubits),
+    # same technique already used for N2.
+    "CH4": ([("C", (0, 0, 0)),
+             ("H", (0.629118, 0.629118, 0.629118)),
+             ("H", (-0.629118, -0.629118, 0.629118)),
+             ("H", (-0.629118, 0.629118, -0.629118)),
+             ("H", (0.629118, -0.629118, -0.629118))], 10, (1, 8)),  # active: (8e, 8o)
 }
 
 

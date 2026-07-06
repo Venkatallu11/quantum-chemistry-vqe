@@ -1,0 +1,91 @@
+{
+  "n_qubits": 8,
+  "nelec": 4,
+  "exact_energy_ha": -2.166387,
+  "excitation_preserving": {
+    "reps2": {
+      "COBYLA": {
+        "energy_ha": -2.142126957629492,
+        "error_ha": 0.024260490998064377,
+        "converged": false,
+        "depth": 232,
+        "two_qubit_gates": 112,
+        "gate_counts": {
+          "u": 924,
+          "cx": 112
+        },
+        "time_sec": 875.3,
+        "n_params": 80
+      },
+      "L-BFGS-B": {
+        "energy_ha": -2.161637959162913,
+        "error_ha": 0.004749489464643375,
+        "converged": false,
+        "depth": 232,
+        "two_qubit_gates": 112,
+        "gate_counts": {
+          "u": 924,
+          "cx": 112
+        },
+        "time_sec": 3098.5,
+        "n_params": 80
+      }
+    },
+    "reps3": {
+      "COBYLA": {
+        "energy_ha": -2.13352774239509,
+        "error_ha": 0.03285970623246648,
+        "converged": false,
+        "depth": 328,
+        "two_qubit_gates": 168,
+        "gate_counts": {
+          "u": 1380,
+          "cx": 168
+        },
+        "time_sec": 1072.3,
+        "n_params": 116
+      },
+      "L-BFGS-B": {
+        "energy_ha": -2.160401805579228,
+        "error_ha": 0.005985643048328271,
+        "converged": false,
+        "depth": 328,
+        "two_qubit_gates": 168,
+        "gate_counts": {
+          "u": 1380,
+          "cx": 168
+        },
+        "time_sec": 11537.2,
+        "n_params": 116
+      }
+    }
+  },
+  "uccsd": {
+    "COBYLA": {
+      "energy_ha": -2.166308019084186,
+      "error_ha": 7.94295433701464e-05,
+      "converged": true,
+      "depth": 2168,
+      "two_qubit_gates": 1440,
+      "gate_counts": {
+        "u": 2596,
+        "cx": 1440
+      },
+      "time_sec": 3189.0,
+      "n_params": 26
+    },
+    "L-BFGS-B": {
+      "energy_ha": -2.166308019084197,
+      "error_ha": 7.942954335948826e-05,
+      "converged": true,
+      "depth": 2168,
+      "two_qubit_gates": 1440,
+      "gate_counts": {
+        "u": 2596,
+        "cx": 1440
+      },
+      "time_sec": 896.1,
+      "n_params": 26
+    }
+  }
+}
