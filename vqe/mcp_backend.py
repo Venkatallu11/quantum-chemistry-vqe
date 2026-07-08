@@ -79,33 +79,58 @@ def _load_mcp_server():
 def best_device() -> str:
     """
     Ask Lokesh's MCP server which IBM Quantum device is best RIGHT NOW,
-    blending quality (2-qubit gate error) and availability (queue depth).
+    blending quality (2-qubit gate error) and availability (queue depth) --
+    while skipping any device currently in MAINTENANCE.
 
-    READ-ONLY: calls server.compare_devices('combined'), which only reads
-    live calibration + queue data. No circuit is built, no job is
+    Why the extra check: compare_devices() ranks by operational/queue/
+    error, but "operational" and "in maintenance" turned out to be
+    different things -- a backend can rank at the top of compare_devices
+    while still being in a maintenance window (a separate status field,
+    only exposed by list_devices()). Submitting there gets a job stuck
+    QUEUED indefinitely with no real chance of running (discovered the
+    hard way in hardware_covalent.py). This cross-checks both read-only
+    tools and picks the highest-ranked device that is NOT in maintenance.
+
+    READ-ONLY: calls server.compare_devices('combined') and
+    server.list_devices(), both read-only. No circuit is built, no job is
     submitted, no queue time or quota is used.
 
     Returns:
-        The name of the top-ranked device (str), or None if the MCP
-        server/token isn't available right now -- check the printed
-        message for why.
+        The name of the best non-maintenance device (str), or None if the
+        MCP server/token isn't available, or every device is currently in
+        maintenance -- check the printed message for why.
     """
     mcp_server = _load_mcp_server()
     if mcp_server is None:
         return None
 
     try:
-        raw = mcp_server.compare_devices("combined")
+        ranked_raw = mcp_server.compare_devices("combined")
+        status_raw = mcp_server.list_devices()
     except Exception as e:
         print(f"[mcp_backend] best_device() failed: {e}")
         return None
 
-    data = json.loads(raw)
-    if "error" in data:
-        print(f"[mcp_backend] best_device() failed: {data['error']}")
+    ranked = json.loads(ranked_raw)
+    if "error" in ranked:
+        print(f"[mcp_backend] best_device() failed: {ranked['error']}")
         return None
 
-    return data["devices"][0]["name"]
+    statuses = json.loads(status_raw)
+    if isinstance(statuses, dict) and "error" in statuses:
+        print(f"[mcp_backend] best_device() failed: {statuses['error']}")
+        return None
+    status_by_name = {d["name"]: str(d.get("status", "")).lower() for d in statuses}
+
+    for device in ranked["devices"]:
+        name = device["name"]
+        if status_by_name.get(name) == "maintenance":
+            print(f"[mcp_backend] best_device(): skipping {name} -- currently in maintenance")
+            continue
+        return name
+
+    print("[mcp_backend] best_device(): every ranked device is currently in maintenance")
+    return None
 
 
 def best_qubits_for(device_name: str, n: int = 4) -> list:

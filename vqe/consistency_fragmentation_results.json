@@ -1,0 +1,112 @@
+{
+  "part_a_overlap_extrapolation": {
+    "full_exact_h8_ha": -4.307572,
+    "schemes": [
+      {
+        "label": "no-overlap (block=2)",
+        "block": 2,
+        "overlap": 0,
+        "energy_ha": -4.404601,
+        "error_ha": 0.097029
+      },
+      {
+        "label": "overlap-2 (block=4)",
+        "block": 4,
+        "overlap": 2,
+        "energy_ha": -4.296862,
+        "error_ha": 0.01071
+      },
+      {
+        "label": "overlap-4 (block=6)",
+        "block": 6,
+        "overlap": 4,
+        "energy_ha": -4.305745,
+        "error_ha": 0.001827
+      }
+    ],
+    "aitken_extrapolated_energy_ha": -4.305068,
+    "aitken_extrapolated_error_ha": 0.002504,
+    "best_individual_error_ha": 0.001827,
+    "worst_individual_error_ha": 0.097029,
+    "extrapolation_beats_all_individual_schemes": false
+  },
+  "part_b_redundancy_averaging": {
+    "exact_fragment_sum_h8_ha": -4.296862,
+    "shots_per_sample": 4096,
+    "n_samples": 20,
+    "two_qubit_depolarizing_error": 0.01,
+    "fragments": {
+      "blocks": [
+        {
+          "name": "block1 (0-3)",
+          "indices": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "n_qubits": 8,
+          "exact_energy_ha": -2.166387,
+          "single_sample_ha": -1.44677,
+          "average_ha": -1.459233
+        },
+        {
+          "name": "block2 (2-5)",
+          "indices": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "n_qubits": 8,
+          "exact_energy_ha": -2.166387,
+          "single_sample_ha": -1.449958,
+          "average_ha": -1.462812
+        },
+        {
+          "name": "block3 (4-7)",
+          "indices": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "n_qubits": 8,
+          "exact_energy_ha": -2.166387,
+          "single_sample_ha": -1.452325,
+          "average_ha": -1.464171
+        }
+      ],
+      "overlaps": [
+        {
+          "name": "overlap1 (2-3)",
+          "indices": [
+            2,
+            3
+          ],
+          "n_qubits": 4,
+          "exact_energy_ha": -1.10115,
+          "single_sample_ha": -0.977293,
+          "average_ha": -0.982373
+        },
+        {
+          "name": "overlap2 (4-5)",
+          "indices": [
+            4,
+            5
+          ],
+          "n_qubits": 4,
+          "exact_energy_ha": -1.10115,
+          "single_sample_ha": -0.99464,
+          "average_ha": -0.983464
+        }
+      ]
+    },
+    "single_sample_h8_ha": -2.37712,
+    "single_sample_error_ha": 1.919742,
+    "averaged_h8_ha": -2.420379,
+    "averaged_error_ha": 1.876482,
+    "error_shrink_factor": 1.0231,
+    "expected_shrink_factor_sqrt_n": 4.4721
+  }
+}

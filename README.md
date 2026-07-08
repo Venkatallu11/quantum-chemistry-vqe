@@ -164,6 +164,60 @@ added here once complete, reported exactly as measured, noisy or not.
 
 ---
 
+## Noise-resilience experiments (simulator-only, negative results)
+
+Before spending more real hardware time/credits on the 8-qubit fragment
+frontier, three cheap ideas were tested locally (`qiskit-aer` noise
+models only — no IBM or Azure calls) to see whether fragmentation error
+could be predicted or reduced without paying for more hardware runs. All
+three are reported honestly even though none of them worked.
+
+**1. Does noise cancel in the difference structure?**
+(`test_difference_cancellation.py`) — H6's tailoring sum
+(block1 + block2 − overlap) shares real structural overlap (same H-H
+bond, same physical gates) between fragments. Hypothesis: a systematic
+(coherent) noise bias might partially cancel in that inclusion-exclusion
+sum, unlike purely random (incoherent) noise. Tested two noise models
+calibrated to the same 1% two-qubit gate infidelity — a coherent RZZ
+over-rotation vs. incoherent depolarizing noise.
+
+Result: **not confirmed.** Reassembled H6 error blew up to 1.15 Ha
+(coherent) / 1.28 Ha (incoherent) — 721–806 kcal/mol — with no
+cancellation advantage from the coherent case.
+
+**2. Is Quantinuum-grade hardware worth it for this fragment size?**
+(`fragmentation_noise_prediction.py`) — before spending real Azure
+Quantum credit, a local depolarizing noise model compared Quantinuum-like
+fidelity (0.2% 2-qubit error) against this repo's actually-observed
+IBM-like fidelity (3% 2-qubit error) on the same H6 tailoring fragment.
+
+Result: Quantinuum-level noise still gives 0.34 Ha reassembled error
+(212 kcal/mol); IBM-level noise gives 2.45 Ha (1538 kcal/mol). Even the
+better hardware profile lands nowhere near chemical accuracy
+(~1.5 kcal/mol) at this fragment size — evidence that spending real
+Azure credit here would not currently pay off.
+
+**3. Can the error be extrapolated or averaged away cheaply?**
+(`test_consistency_fragmentation.py`) — Part A: does fragment error
+shrink predictably enough with overlap size to extrapolate (Aitken's
+delta-squared process) toward the near-exact answer from cheap
+small-overlap runs? Part B: does simple redundancy averaging (20 samples
+under 1% depolarizing noise) shrink shot noise the expected 1/√N way?
+
+Result: Part A — extrapolation (0.0025 Ha error) did not beat the best
+individual scheme already measured (0.0018 Ha at block=6). Part B —
+averaging only shrank error by 1.02x, far short of the expected
+√20 ≈ 4.47x, meaning the noise floor here isn't simple shot noise that
+averaging fixes.
+
+**Bottom line:** none of these three cheap simulator-only tricks rescue
+the 8-qubit fragment frontier. The honest conclusion from the hardware
+results above stands — 8-qubit chemistry needs shallower ansätze or
+better gate fidelities, not cleverer classical post-processing of noisy
+fragment energies.
+
+---
+
 ## Integration with Lokesh's Quantum Hardware MCP server
 
 This repo's chemistry engine is fully independent, but it also connects to
@@ -184,6 +238,13 @@ not real noise, a qubit-selection bug. The fix (this repo's own
 `generate_preset_pass_manager` already does connectivity-aware auto-
 placement correctly) is documented and used going forward; `best_qubits`
 itself has not been patched.
+
+**Fixed:** `best_device()` (`mcp_backend.py`) now also cross-checks
+`list_devices()`'s status field and skips any device in MAINTENANCE.
+`compare_devices()` alone can rank a device top by calibration/queue data
+while it's actually in a maintenance window (a separate field it doesn't
+expose) — discovered when a job submitted to a top-ranked device sat
+QUEUED indefinitely during `hardware_covalent.py` testing.
 
 ---
 
@@ -298,7 +359,14 @@ vqe/
 ├── hardware_mitigation_test.py        # Error-mitigation test on one 8-qubit fragment (found the connectivity bug)
 ├── hardware_mitigation_results.json   # Saved results from hardware_mitigation_test.py
 ├── hardware_covalent.py               # Corrected full H6 fragmentation on real hardware (auto-placement, ZNE)
-└── hardware_covalent_results.json     # Saved results from hardware_covalent.py (once complete)
+├── hardware_covalent_results.json     # Saved results from hardware_covalent.py (once complete)
+│
+├── test_difference_cancellation.py    # Simulator test: does noise cancel in the tailoring difference structure?
+├── difference_cancellation_results.json # Saved results (hypothesis not confirmed)
+├── fragmentation_noise_prediction.py  # Simulator test: Quantinuum-like vs IBM-like noise on H6 tailoring
+├── fragmentation_noise_prediction.json # Saved results
+├── test_consistency_fragmentation.py  # Simulator test: overlap extrapolation + redundancy averaging on H8
+└── consistency_fragmentation_results.json # Saved results
 
 requirements.txt
 ```

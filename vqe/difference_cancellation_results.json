@@ -1,0 +1,78 @@
+{
+  "full_exact_h6_ha": -3.236066,
+  "target_two_qubit_infidelity": 0.01,
+  "coherent_rzz_angle_rad": 0.2240752853018187,
+  "shots": 4096,
+  "fragments": {
+    "block1": {
+      "name": "block1 (atoms 0-3)",
+      "indices": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "n_qubits": 8,
+      "exact_energy_ha": -2.166387,
+      "noiseless_energy_ha": -2.161638,
+      "noiseless_error_ha": 0.004749,
+      "coherent_energy_ha": -1.546859,
+      "coherent_error_ha": 0.619529,
+      "incoherent_energy_ha": -1.467235,
+      "incoherent_error_ha": 0.699153
+    },
+    "block2": {
+      "name": "block2 (atoms 2-5)",
+      "indices": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "n_qubits": 8,
+      "exact_energy_ha": -2.166387,
+      "noiseless_energy_ha": -2.161669,
+      "noiseless_error_ha": 0.004719,
+      "coherent_energy_ha": -1.549249,
+      "coherent_error_ha": 0.617139,
+      "incoherent_energy_ha": -1.465252,
+      "incoherent_error_ha": 0.701136
+    },
+    "overlap": {
+      "name": "overlap (atoms 2-3)",
+      "indices": [
+        2,
+        3
+      ],
+      "n_qubits": 4,
+      "exact_energy_ha": -1.10115,
+      "noiseless_energy_ha": -1.10115,
+      "noiseless_error_ha": 0.0,
+      "coherent_energy_ha": -1.009461,
+      "coherent_error_ha": 0.091689,
+      "incoherent_energy_ha": -0.980878,
+      "incoherent_error_ha": 0.120272
+    }
+  },
+  "average_fragment_error_ha": {
+    "coherent": 0.442786,
+    "incoherent": 0.506853
+  },
+  "reassembled_h6_ha": {
+    "coherent": -2.086646,
+    "incoherent": -1.951608
+  },
+  "reassembled_error_ha": {
+    "coherent": 1.14942,
+    "incoherent": 1.284458
+  },
+  "reassembled_error_kcal_mol": {
+    "coherent": 721.2717,
+    "incoherent": 806.0095
+  },
+  "cancellation_ratio": {
+    "coherent": -1.5959,
+    "incoherent": -1.5342
+  },
+  "hypothesis_confirmed": false
+}

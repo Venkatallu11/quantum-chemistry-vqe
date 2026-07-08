@@ -1,0 +1,79 @@
+{
+  "full_exact_h6_ha": -3.236066,
+  "noiseless_tailoring_h6_ha": -3.222174,
+  "noiseless_tailoring_error_ha": 0.013892,
+  "shots": 4096,
+  "noise_levels": {
+    "quantinuum": {
+      "two_q": 0.002,
+      "one_q": 5e-05
+    },
+    "ibm": {
+      "two_q": 0.03,
+      "one_q": 0.001
+    }
+  },
+  "fragments": {
+    "block1": {
+      "name": "block1 (atoms 0-3)",
+      "indices": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "n_qubits": 8,
+      "exact_energy_ha": -2.166387,
+      "noiseless_energy_ha": -2.161666,
+      "noiseless_error_ha": 0.004721,
+      "noise_energies_ha": {
+        "quantinuum": -1.985819,
+        "ibm": -0.783399
+      }
+    },
+    "block2": {
+      "name": "block2 (atoms 2-5)",
+      "indices": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "n_qubits": 8,
+      "exact_energy_ha": -2.166387,
+      "noiseless_energy_ha": -2.161658,
+      "noiseless_error_ha": 0.004729,
+      "noise_energies_ha": {
+        "quantinuum": -1.986055,
+        "ibm": -0.784053
+      }
+    },
+    "overlap": {
+      "name": "overlap (atoms 2-3)",
+      "indices": [
+        2,
+        3
+      ],
+      "n_qubits": 4,
+      "exact_energy_ha": -1.10115,
+      "noiseless_energy_ha": -1.10115,
+      "noiseless_error_ha": 0.0,
+      "noise_energies_ha": {
+        "quantinuum": -1.074617,
+        "ibm": -0.782482
+      }
+    }
+  },
+  "reassembled_h6_ha": {
+    "quantinuum": -2.897256,
+    "ibm": -0.78497
+  },
+  "reassembled_error_ha": {
+    "quantinuum": 0.33881,
+    "ibm": 2.451096
+  },
+  "reassembled_error_kcal_mol": {
+    "quantinuum": 212.6063,
+    "ibm": 1538.0862
+  }
+}
