@@ -1,0 +1,66 @@
+{
+  "molecule": "H4 fragment (atoms 0-3, d=1.0 Ang)",
+  "n_qubits": 8,
+  "enuc_ha": 2.293101,
+  "exact_energy_ha": -2.166387,
+  "schmidt_coefficients": [
+    0.968738,
+    0.203309,
+    0.133133,
+    0.036416,
+    0.028682,
+    0.018386,
+    0.0,
+    0.0
+  ],
+  "n_pauli_terms": 185,
+  "stage1_noiseless_ef": {
+    "1": {
+      "energy_ha": -2.101628,
+      "error_ha": 0.064759,
+      "reference_error_ha": 0.0648,
+      "match": true
+    },
+    "3": {
+      "energy_ha": -2.161992,
+      "error_ha": 0.004396,
+      "reference_error_ha": 0.0044,
+      "match": true
+    },
+    "5": {
+      "energy_ha": -2.165486,
+      "error_ha": 0.000901,
+      "reference_error_ha": 0.0009,
+      "match": true
+    },
+    "8": {
+      "energy_ha": -2.166387,
+      "error_ha": 0.0,
+      "reference_error_ha": 0.0,
+      "match": true
+    }
+  },
+  "stage1_passed": true,
+  "stage2_quantinuum_noise_ef": {
+    "K": 5,
+    "exact_energy_ha": -2.166387,
+    "noiseless_ef_k5_ha": -2.165486,
+    "noiseless_ef_k5_error_ha": 0.000901,
+    "noiseless_ef_k5_error_kcal_mol": 0.5655,
+    "quantinuum_noise_ef_k5_ha": -2.134269,
+    "quantinuum_noise_ef_k5_error_ha": 0.032119,
+    "quantinuum_noise_ef_k5_error_kcal_mol": 20.1548,
+    "noise_model": {
+      "two_qubit_depolarizing": 0.002,
+      "one_qubit_depolarizing": 5e-05,
+      "basis_gates": [
+        "u3",
+        "cx"
+      ]
+    },
+    "transpiled_2q_gate_counts": {
+      "state_prep_circuit": 11,
+      "cross_term_circuit": 11
+    }
+  }
+}
