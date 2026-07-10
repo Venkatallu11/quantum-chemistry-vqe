@@ -1,0 +1,30 @@
+{
+  "molecule": "H4 fragment (atoms 0-3, d=1.0 Ang)",
+  "K": 5,
+  "exact_ha": -2.166387,
+  "scales": [
+    1.0,
+    2.0,
+    3.0
+  ],
+  "energies_ha": [
+    -2.13416,
+    -2.103366,
+    -2.073099
+  ],
+  "zne_linear_fit_coeffs": [
+    0.03053039260658596,
+    -2.164602191427667
+  ],
+  "zne_quadratic_fit_coeffs": [
+    -0.0002634552899105805,
+    0.03158421376622808,
+    -2.1654803757273666
+  ],
+  "no_mitigation_energy_ha": -2.13416,
+  "no_mitigation_err_kcal": 20.2233,
+  "zne_linear_energy_ha": -2.164602,
+  "zne_linear_err_kcal": 1.1203,
+  "zne_quadratic_energy_ha": -2.16548,
+  "zne_quadratic_err_kcal": 0.5692
+}
