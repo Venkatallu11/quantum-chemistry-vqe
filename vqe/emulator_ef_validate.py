@@ -38,7 +38,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import entanglement_forging_h4 as ef
 from azure_backend import connect_workspace
 from azure.quantum.qiskit import AzureQuantumProvider
-from qiskit import QuantumCircuit
+from qiskit import QuantumCircuit, transpile
 from qiskit.circuit.library import StatePreparation
 from qiskit.quantum_info import Pauli
 from qiskit_aer.primitives import EstimatorV2 as AerEstimatorV2
@@ -103,8 +103,12 @@ def main():
     meas_circ = QuantumCircuit(4, 4)
     meas_circ.append(StatePreparation(np.asarray(u0)), range(4))
     meas_circ.measure(range(4), range(4))
+    # Azure's QIR compiler can't parse an opaque StatePreparation instruction
+    # (it lowers to a QASM3 call with literal complex amplitudes it doesn't
+    # understand) -- transpile down to the backend's real gate set first.
+    meas_circ_t = transpile(meas_circ, backend=backend)
 
-    job = backend.run(meas_circ, shots=SHOTS)
+    job = backend.run(meas_circ_t, shots=SHOTS)
     print(f"  job id: {job.id()} -- waiting ...")
     counts = job.result().get_counts()
     real_val = zlabel_expectation_from_counts(counts, LABEL, SHOTS)
