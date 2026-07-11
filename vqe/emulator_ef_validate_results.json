@@ -1,0 +1,11 @@
+{
+  "label": "ZIII",
+  "exact": 0.9979,
+  "local_aer_quantinuum_like": 0.991875,
+  "local_aer_error_vs_exact": 0.006025,
+  "real_quantinuum_emulator": 0.98,
+  "real_emulator_error_vs_exact": 0.0179,
+  "local_vs_real_gap": 0.011875,
+  "shots": 500,
+  "job_id": "835b03e6-7d81-11f1-b0be-24ee9a60c281"
+}
