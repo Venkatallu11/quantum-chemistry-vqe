@@ -218,6 +218,106 @@ fragment energies.
 
 ---
 
+## Entanglement forging + zero-noise extrapolation
+
+The noise-resilience experiments above ended on a negative note: even
+Quantinuum-grade noise (0.2% two-qubit error) gave 212 kcal/mol of
+reassembled error on the 8-qubit H6 tailoring fragment — nowhere close to
+chemical accuracy. **Entanglement forging** (`entanglement_forging_h4.py`)
+revisits that question with a different qubit-reduction trick: split an
+8-qubit fragment (H4, atoms 0-3) into two independent 4-qubit registers
+(alpha-spin / beta-spin orbitals), write the ground state as a Schmidt
+decomposition `|psi> = sum_n lambda_n |u_n>_alpha |v_n>_beta`, and
+reconstruct `<psi|H|psi>` from small circuits measured *separately* on
+each 4-qubit register — the two registers never need to be entangled with
+each other on real hardware.
+
+**Stage 1 (noiseless, numpy)** confirms the bipartite bookkeeping itself is
+correct — truncating to the top `K` Schmidt terms reproduces known
+reference errors exactly:
+
+| K | Error vs exact (Ha) |
+|---|---|
+| 1 | 0.064759 |
+| 3 | 0.004396 |
+| 5 | 0.000901 |
+| 8 (full rank) | 0.000000 |
+
+**Stage 2** replaces the exact matrix elements with ones measured from
+actual 4-qubit circuits (`StatePreparation` + the standard EF
+superposition trick for off-diagonal terms) run through a `qiskit-aer`
+Quantinuum-like depolarizing noise model (0.2% two-qubit, 0.005%
+one-qubit). At K=5, un-mitigated noise pushed the error to **20.15
+kcal/mol** — still far from chemical accuracy (1 kcal/mol), confirming
+raw fragmentation + EF doesn't survive noise on its own.
+
+**Adding ZNE** (`entanglement_forging_zne.py`) closes that gap.
+Zero-noise extrapolation reruns the *same* circuits at 1x, 2x, and 3x the
+noise strength, then fits energy vs. scale and extrapolates back to the
+noiseless limit (scale = 0) — without needing a noise-free device:
+
+| Method | Error (kcal/mol) |
+|---|---|
+| No mitigation (scale=1) | 20.22 |
+| ZNE, linear extrapolation | 1.12 |
+| **ZNE, quadratic extrapolation** | **0.57** |
+
+Quadratic ZNE lands *under* the 1 kcal/mol chemical-accuracy threshold —
+a 35x reduction in error from the un-mitigated result, using only
+classical post-processing of circuits already being run.
+
+**Honest limitation:** both stages use the *exact* Schmidt vectors from
+full diagonalization of the real H4 Hamiltonian, not a variationally
+trained ansatz — this isolates the noise/mitigation question from the
+optimization question. A full EF-VQE (variationally optimizing the two
+4-qubit circuits instead of reading them off exact diagonalization) is
+the natural next step and is **not** done here. The noise model is also
+still a local `qiskit-aer` approximation of Quantinuum hardware, not a
+measurement on an actual Quantinuum device — see the Azure Quantum
+section below for the real-emulator connection that would let this run
+be redone against genuine device noise.
+
+---
+
+## Azure Quantum / Quantinuum connection
+
+To eventually replace the local Quantinuum-*like* noise model above with
+real Quantinuum device/emulator noise, this repo now connects to a real
+Azure Quantum workspace (`vqe/azure_backend.py`), authenticated via
+device-code login (no secrets in code — workspace resource ID, location,
+and tenant ID all come from `.env`, see `.env.example`).
+
+`compare_targets()` mirrors the IBM side's `compare_devices` pattern:
+never hardcode a target, always ask the workspace what's actually live.
+As of this connection, the workspace has 4 simulator targets and no
+provisioned QPU hardware yet:
+
+| Provider | Target | Kind |
+|---|---|---|
+| quantinuum | `quantinuum.sim.h2-1sc` | syntax checker (structural only) |
+| quantinuum | `quantinuum.sim.h2-1e` | emulator (physically realistic noise) |
+| pasqal | `pasqal.sim.emu-free` | simulator |
+| rigetti | `rigetti.sim.qvm` | simulator |
+
+**Connectivity verified with two real jobs** on `quantinuum.sim.h2-1e`
+(`vqe/emulator_smoke_test.py`) — a Bell-state circuit (`H` + `CX`), which
+should split ~50/50 between `|00>` and `|11>` with small noise leakage:
+
+| Job ID | `00` | `01` | `10` | `11` |
+|---|---|---|---|---|
+| `44469383-7d7e-11f1-8269-24ee9a60c281` | 49 | 0 | 0 | 51 |
+
+A clean split confirms the pipeline (auth → connect → submit → real
+result) works end to end. **Known gap:** `estimate_cost()` is not
+implemented on this backend class (`QuantinuumEmulatorQirBackend`), so
+there's currently no pre-submission cost preview before running a job —
+worth fixing before submitting the full ~270-circuit EF+ZNE batch to this
+emulator. **Not yet done:** the entanglement-forging + ZNE experiment
+above has not been rerun against this real emulator — the 0.57 kcal/mol
+result is still local-noise-model-only.
+
+---
+
 ## Integration with Lokesh's Quantum Hardware MCP server
 
 This repo's chemistry engine is fully independent, but it also connects to
@@ -278,6 +378,12 @@ QUEUED indefinitely during `hardware_covalent.py` testing.
 - **Known limits:** closed-shell molecules only (no open-shell radicals);
   full exact diagonalization tops out around 16 qubits on a laptop —
   anything bigger needs an active space or fragmentation.
+- **The entanglement-forging + ZNE result (0.57 kcal/mol) uses exact
+  Schmidt vectors, not a variationally trained ansatz**, and the noise
+  model is a local `qiskit-aer` approximation of Quantinuum hardware, not
+  a real device measurement — see that section above for the full
+  limitation and the real Azure Quantum emulator connection that exists
+  but has not yet been used to rerun this specific experiment.
 
 ---
 
@@ -301,6 +407,15 @@ python vqe/h2_hardware_direct.py      # H2 on hardware, direct qiskit-ibm-runtim
 python vqe/mcp_energy.py              # H2 on hardware, routed through the MCP server
 python vqe/hardware_clean.py          # H2 on hardware, MCP used only for device selection
 python vqe/hardware_covalent.py       # full H6 covalent fragmentation on real hardware
+
+# Entanglement forging + ZNE (simulator, Quantinuum-like noise model)
+python vqe/entanglement_forging_h4.py # EF on H4 fragment: noiseless + Quantinuum-noise stages
+python vqe/entanglement_forging_zne.py # ZNE on top of EF: 20 -> 0.57 kcal/mol
+
+# Real Azure Quantum / Quantinuum (needs AZURE_QUANTUM_* vars in .env)
+python vqe/azure_backend.py           # connect + compare live targets (no job submitted)
+python vqe/emulator_smoke_test.py     # 1 real job on quantinuum.sim.h2-1e (Bell state)
+python vqe/check_job_status.py        # list recent jobs + status in the workspace
 ```
 
 ### Adding your own molecule
@@ -366,7 +481,16 @@ vqe/
 ├── fragmentation_noise_prediction.py  # Simulator test: Quantinuum-like vs IBM-like noise on H6 tailoring
 ├── fragmentation_noise_prediction.json # Saved results
 ├── test_consistency_fragmentation.py  # Simulator test: overlap extrapolation + redundancy averaging on H8
-└── consistency_fragmentation_results.json # Saved results
+├── consistency_fragmentation_results.json # Saved results
+│
+├── entanglement_forging_h4.py         # EF on H4 fragment: noiseless Stage 1 + Quantinuum-noise Stage 2
+├── entanglement_forging_h4_results.json # Saved results from entanglement_forging_h4.py
+├── entanglement_forging_zne.py        # ZNE on top of EF: 20 -> 0.57 kcal/mol (chemical accuracy)
+├── entanglement_forging_zne_results.json # Saved results from entanglement_forging_zne.py
+│
+├── azure_backend.py                   # Real Azure Quantum workspace connection + compare_targets()
+├── emulator_smoke_test.py             # Real job on quantinuum.sim.h2-1e (Bell-state connectivity check)
+└── check_job_status.py                # List recent jobs + status in the Azure Quantum workspace
 
 requirements.txt
 ```
