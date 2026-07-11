@@ -1,11 +1,103 @@
 {
-  "label": "ZIII",
-  "exact": 0.9979,
-  "local_aer_quantinuum_like": 0.991875,
-  "local_aer_error_vs_exact": 0.006025,
-  "real_quantinuum_emulator": 0.98,
-  "real_emulator_error_vs_exact": 0.0179,
-  "local_vs_real_gap": 0.011875,
-  "shots": 500,
-  "job_id": "835b03e6-7d81-11f1-b0be-24ee9a60c281"
+  "n_terms": 10,
+  "labels": [
+    "ZIII",
+    "IIIZ",
+    "IIZI",
+    "IZII",
+    "ZIIZ",
+    "ZIZI",
+    "IZIZ",
+    "ZZII",
+    "IZZI",
+    "IIZZ"
+  ],
+  "shots": 4000,
+  "job_id": "d1564bf2-7d83-11f1-9564-24ee9a60c281",
+  "per_term": {
+    "ZIII": {
+      "exact": 0.9979,
+      "local_aer": 0.991875,
+      "real_emulator": 0.9975,
+      "local_err": 0.006025,
+      "real_err": 0.0004,
+      "local_vs_real_gap": 0.005625
+    },
+    "IIIZ": {
+      "exact": -0.997876,
+      "local_aer": -0.973436,
+      "real_emulator": -0.9865,
+      "local_err": 0.02444,
+      "real_err": 0.011376,
+      "local_vs_real_gap": 0.013064
+    },
+    "IIZI": {
+      "exact": -0.9979,
+      "local_aer": -0.981799,
+      "real_emulator": -0.9905,
+      "local_err": 0.016101,
+      "real_err": 0.0074,
+      "local_vs_real_gap": 0.008701
+    },
+    "IZII": {
+      "exact": 0.997876,
+      "local_aer": 0.98779,
+      "real_emulator": 0.9915,
+      "local_err": 0.010086,
+      "real_err": 0.006376,
+      "local_vs_real_gap": 0.00371
+    },
+    "ZIIZ": {
+      "exact": -0.999878,
+      "local_aer": -0.975457,
+      "real_emulator": -0.986,
+      "local_err": 0.024421,
+      "real_err": 0.013878,
+      "local_vs_real_gap": 0.010543
+    },
+    "ZIZI": {
+      "exact": -1.0,
+      "local_aer": -0.983915,
+      "real_emulator": -0.991,
+      "local_err": 0.016085,
+      "real_err": 0.009,
+      "local_vs_real_gap": 0.007085
+    },
+    "IZIZ": {
+      "exact": -1.0,
+      "local_aer": -0.981565,
+      "real_emulator": -0.984,
+      "local_err": 0.018435,
+      "real_err": 0.016,
+      "local_vs_real_gap": 0.002435
+    },
+    "ZZII": {
+      "exact": 0.999878,
+      "local_aer": 0.985864,
+      "real_emulator": 0.99,
+      "local_err": 0.014014,
+      "real_err": 0.009878,
+      "local_vs_real_gap": 0.004136
+    },
+    "IZZI": {
+      "exact": -0.999878,
+      "local_aer": -0.979765,
+      "real_emulator": -0.986,
+      "local_err": 0.020114,
+      "real_err": 0.013878,
+      "local_vs_real_gap": 0.006235
+    },
+    "IIZZ": {
+      "exact": 0.999878,
+      "local_aer": 0.979567,
+      "real_emulator": 0.985,
+      "local_err": 0.020312,
+      "real_err": 0.014878,
+      "local_vs_real_gap": 0.005433
+    }
+  },
+  "mean_local_err": 0.017003,
+  "mean_real_err": 0.010306,
+  "mean_local_vs_real_gap": 0.006697,
+  "real_over_local_error_ratio": 0.6061
 }
