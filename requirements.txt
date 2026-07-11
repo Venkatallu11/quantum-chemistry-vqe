@@ -6,3 +6,4 @@ python-dotenv>=1.0.0
 matplotlib>=3.7.0
 scipy>=1.11.0
 qiskit-nature>=0.7.0
+azure-quantum[qiskit]>=3.10.0
