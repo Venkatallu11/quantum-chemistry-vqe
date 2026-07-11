@@ -15,9 +15,9 @@ SHOTS = 100
 
 
 def build_probe_circuit():
-    qc = QuantumCircuit(4, 4)
-    qc.h(0); qc.cx(0, 1); qc.cx(1, 2); qc.cx(2, 3)
-    qc.measure(range(4), range(4))
+    qc = QuantumCircuit(2, 2)
+    qc.h(0); qc.cx(0, 1)
+    qc.measure([0, 1], [0, 1])
     return qc
 
 
