@@ -312,9 +312,106 @@ result) works end to end. **Known gap:** `estimate_cost()` is not
 implemented on this backend class (`QuantinuumEmulatorQirBackend`), so
 there's currently no pre-submission cost preview before running a job —
 worth fixing before submitting the full ~270-circuit EF+ZNE batch to this
-emulator. **Not yet done:** the entanglement-forging + ZNE experiment
-above has not been rerun against this real emulator — the 0.57 kcal/mol
-result is still local-noise-model-only.
+emulator.
+
+### Noise-model validation: local model vs. real emulator
+
+The entanglement-forging + ZNE result above (20 → 0.57 kcal/mol) was
+built entirely on a *local* `qiskit-aer` depolarizing noise model
+standing in for Quantinuum-grade hardware. Once real Quantinuum emulator
+access existed, the natural question became: **is that local model
+actually a good approximation of real Quantinuum noise?** Four real
+validation runs answered this — including one that had to be corrected
+after a larger follow-up run reversed it. Every number below is from an
+actual submitted job, reported as measured, corrections included.
+
+**1. Diagonal terms, single term (`ZIII`, 500 shots)**
+(`vqe/emulator_ef_validate.py`, job `835b03e6-7d81-11f1-b0be-24ee9a60c281`) —
+first check, one diagonal Hamiltonian term measured on the alpha
+register's leading Schmidt vector:
+
+| | Value | Error vs. exact |
+|---|---|---|
+| Exact | 0.997900 | — |
+| Local Aer (Quantinuum-like) | 0.991875 | 0.006025 |
+| Real `quantinuum.sim.h2-1e` | 0.980000 | 0.017900 |
+
+Initial read: the local model *underestimates* real noise by ~3x on this
+term. **This did not hold up** — see next result.
+
+**2. Diagonal terms, 10 terms, one job (4000 shots)**
+(`vqe/emulator_ef_validate.py`, job `d1564bf2-7d83-11f1-9564-24ee9a60c281`) —
+a single Z-basis measurement of the same Schmidt vector at higher shot
+count contains the full 4-qubit bitstring distribution, so all 10
+largest-weight diagonal terms were derived from *one* real job instead of
+paying for 10 separate ones:
+
+| Term | Exact | Local Aer | Real emulator | Local err | Real err |
+|---|---|---|---|---|---|
+| ZIII | 0.9979 | 0.9919 | 0.9975 | 0.0060 | 0.0004 |
+| IIIZ | -0.9979 | -0.9734 | -0.9865 | 0.0244 | 0.0114 |
+| IIZI | -0.9979 | -0.9818 | -0.9905 | 0.0161 | 0.0074 |
+| IZII | 0.9979 | 0.9878 | 0.9915 | 0.0101 | 0.0064 |
+| ZIIZ | -0.9999 | -0.9755 | -0.9860 | 0.0244 | 0.0139 |
+| ZIZI | -1.0000 | -0.9839 | -0.9910 | 0.0161 | 0.0090 |
+| IZIZ | -1.0000 | -0.9816 | -0.9840 | 0.0184 | 0.0160 |
+| ZZII | 0.9999 | 0.9859 | 0.9900 | 0.0140 | 0.0099 |
+| IZZI | -0.9999 | -0.9798 | -0.9860 | 0.0201 | 0.0139 |
+| IIZZ | 0.9999 | 0.9796 | 0.9850 | 0.0203 | 0.0149 |
+
+Mean local err = 0.0170, mean real err = 0.0103 → **real/local error
+ratio = 0.61x**. With a real sample size, the conclusion *reverses*: the
+local model actually **overestimates** real Quantinuum-grade noise on
+diagonal terms. The single-term "~3x underestimate" from run 1 does not
+survive a larger sample and should be read as statistical noise from one
+low-shot measurement, not a real effect — left in this README as a record
+of the correction, not scrubbed out.
+
+**3. Off-diagonal terms, first attempt (`XXII`, 4 jobs × 1000 shots)**
+(`vqe/emulator_offdiag_validate.py`) — off-diagonal (X/Y-containing)
+Hamiltonian terms appear in the EF energy as *cross terms*
+`<u_n|P|u_m>` between different Schmidt vectors, measured via the
+superposition trick from `entanglement_forging_h4.py` (4 phase circuits,
+`Re = (E0-E2)/2`, `Im = (E3-E1)/2`). `XXII` was picked as the
+largest-*Hamiltonian-coefficient* off-diagonal term — but its actual
+cross-term magnitude between the two leading Schmidt vectors turned out
+tiny: `|<u_0|XXII|u_1>| ≈ 0.0029`. Real result: `+0.048 +0.004i`, error
+0.048961 — **larger than the true signal itself**. Hamiltonian-coefficient
+size and cross-term magnitude are not the same thing; this run was
+statistically inconclusive, not evidence of anything, and is reported as
+such rather than spun into a finding.
+
+**4. Off-diagonal terms, corrected (`IXXI`, 4 jobs × 1000 shots)**
+(`vqe/emulator_offdiag_validate.py`, jobs `8f38e187-7d88-11f1-abf7-24ee9a60c281`,
+`d9a01da4-7d88-11f1-b4b5-24ee9a60c281`, `238a6d8a-7d89-11f1-a3cd-24ee9a60c281`,
+`6df889ca-7d89-11f1-8eaa-24ee9a60c281`) — checked directly which
+off-diagonal label actually has the largest cross-term magnitude between
+Schmidt vectors 0 and 1: `IXXI`, at `0.961330`, comfortably above the
+shot-noise floor:
+
+| | Value | Error vs. exact |
+|---|---|---|
+| Exact | -0.287634 -0.917290i | — |
+| Local Aer (Quantinuum-like) | -0.281079 -0.897009i | 0.021314 |
+| Real `quantinuum.sim.h2-1e` | -0.254000 -0.913000i | 0.033906 |
+
+This time the signal is real and resolvable. **Real error is ~1.6x the
+local model's error** — the local model *underestimates* real noise here,
+the opposite direction from the diagonal-terms finding (0.61x). Plausible
+explanation: cross-term circuits are deeper (superposition state prep)
+and combine two independently-noisy measurements via subtraction, which a
+flat depolarizing model doesn't fully capture — but this is one label,
+one pair, not a swept study, so held as a lead rather than a conclusion.
+
+**Bottom line:** the local Quantinuum-like noise model's accuracy is
+*not uniform* — it overestimates noise on simple diagonal measurements
+(0.61x) and underestimates it on deeper cross-term circuits (~1.6x), on
+the evidence gathered so far. The 0.57 kcal/mol EF+ZNE headline result
+should be read with that in mind: it's a real, verified simulator result,
+but not yet a claim about what real Quantinuum hardware would give for
+the *full* EF energy (which mixes many diagonal and cross terms together)
+— that full rerun against `quantinuum.sim.h2-1e` is the natural next step
+and has not been done.
 
 ---
 
@@ -381,9 +478,17 @@ QUEUED indefinitely during `hardware_covalent.py` testing.
 - **The entanglement-forging + ZNE result (0.57 kcal/mol) uses exact
   Schmidt vectors, not a variationally trained ansatz**, and the noise
   model is a local `qiskit-aer` approximation of Quantinuum hardware, not
-  a real device measurement — see that section above for the full
-  limitation and the real Azure Quantum emulator connection that exists
-  but has not yet been used to rerun this specific experiment.
+  a real device measurement. Direct validation against the real emulator
+  (see Noise-model validation above) found that approximation is *not*
+  uniformly accurate — it overestimates noise on diagonal terms (0.61x)
+  and underestimates it on off-diagonal cross terms (~1.6x) — so 0.57
+  kcal/mol should be read as a real, verified simulator result, not yet a
+  claim about real hardware performance on the full EF energy.
+- **One validation finding was wrong and got corrected in place, not
+  hidden:** an early single-term, 500-shot check suggested the local
+  noise model underestimates real noise ~3x; a follow-up with 10 terms
+  and 4000 shots reversed that conclusion. Both runs and the correction
+  are documented above rather than only keeping the final answer.
 
 ---
 
@@ -416,6 +521,8 @@ python vqe/entanglement_forging_zne.py # ZNE on top of EF: 20 -> 0.57 kcal/mol
 python vqe/azure_backend.py           # connect + compare live targets (no job submitted)
 python vqe/emulator_smoke_test.py     # 1 real job on quantinuum.sim.h2-1e (Bell state)
 python vqe/check_job_status.py        # list recent jobs + status in the workspace
+python vqe/emulator_ef_validate.py    # local noise model vs real emulator, 10 diagonal terms (1 job)
+python vqe/emulator_offdiag_validate.py # local noise model vs real emulator, 1 cross term (4 jobs)
 ```
 
 ### Adding your own molecule
@@ -490,7 +597,11 @@ vqe/
 │
 ├── azure_backend.py                   # Real Azure Quantum workspace connection + compare_targets()
 ├── emulator_smoke_test.py             # Real job on quantinuum.sim.h2-1e (Bell-state connectivity check)
-└── check_job_status.py                # List recent jobs + status in the Azure Quantum workspace
+├── check_job_status.py                # List recent jobs + status in the Azure Quantum workspace
+├── emulator_ef_validate.py            # Local noise model vs real emulator: 10 diagonal terms, 1 job
+├── emulator_ef_validate_results.json  # Saved results from emulator_ef_validate.py
+├── emulator_offdiag_validate.py       # Local noise model vs real emulator: 1 cross term, 4 jobs
+└── emulator_offdiag_validate_results.json # Saved results from emulator_offdiag_validate.py
 
 requirements.txt
 ```
