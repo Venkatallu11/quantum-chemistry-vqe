@@ -1,0 +1,29 @@
+{
+  "label": "XXII",
+  "pair": [
+    0,
+    1
+  ],
+  "shots_per_job": 1000,
+  "job_ids": [
+    "328b4f46-7d86-11f1-8039-24ee9a60c281",
+    "7cd3c9a3-7d86-11f1-a0f7-24ee9a60c281",
+    "c6a77e35-7d86-11f1-9f01-24ee9a60c281",
+    "10e325e6-7d87-11f1-b941-24ee9a60c281"
+  ],
+  "exact": {
+    "real": -0.000944,
+    "imag": 0.002709
+  },
+  "local_aer": {
+    "real": -0.000927,
+    "imag": 0.00266
+  },
+  "real_emulator": {
+    "real": 0.048,
+    "imag": 0.004
+  },
+  "local_err": 5.3e-05,
+  "real_err": 0.048961,
+  "local_vs_real_gap": 0.048945
+}
