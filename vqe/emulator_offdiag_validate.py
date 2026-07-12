@@ -15,14 +15,16 @@ measure <phi_k|P|phi_k> for each, then
     Re(<u_n|P|u_m>) = (E0 - E2) / 2
     Im(<u_n|P|u_m>) = (E3 - E1) / 2
 
-Label + pair: "XXII" is the largest-weight off-diagonal alpha-register
-term in this Hamiltonian (tied with "YYII"; checked directly against
-decompose_pauli_terms() output, not assumed), chosen specifically because
-it needs only H-basis rotations (no Sdg) -- sidesteps any Y-basis sign
-convention risk for this first real off-diagonal test. (n, m) = (0, 1):
-the two leading Schmidt vectors, i.e. the largest cross-term contribution
-in the K=5 truncated EF energy (lambda_0 * lambda_1 is the largest
-pairwise product among n<m).
+Label + pair: the first version of this script used "XXII" (the
+largest-*Hamiltonian-coefficient* off-diagonal term), but its actual
+cross-term magnitude |<u_0|XXII|u_1>| turned out to be tiny (~0.0029) --
+too small to resolve against ordinary shot noise at 1000 shots/phase,
+making that run statistically inconclusive. Hamiltonian-coefficient size
+and cross-term magnitude are NOT the same thing. Checked directly (not
+assumed): among all off-diagonal alpha labels, "IXXI" has by far the
+largest actual cross-term magnitude between the two leading Schmidt
+vectors, |<u_0|IXXI|u_1>| = 0.961330 -- a strong, easily resolvable
+signal at 1000 shots. (n, m) = (0, 1): the two leading Schmidt vectors.
 
 REAL-HARDWARE CONSTRAINT: Azure's Quantinuum backend only supports ONE
 circuit per job (confirmed directly against the SDK source --
@@ -49,7 +51,7 @@ from qiskit.circuit.library import StatePreparation
 from qiskit.quantum_info import Pauli
 from qiskit_aer.primitives import EstimatorV2 as AerEstimatorV2
 
-LABEL = "XXII"
+LABEL = "IXXI"
 PAIR = (0, 1)
 TARGET = "quantinuum.sim.h2-1e"
 SHOTS = 1000
