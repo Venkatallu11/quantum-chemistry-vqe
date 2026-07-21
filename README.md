@@ -1,5 +1,7 @@
 # Quantum Chemistry VQE
 
+[![Qiskit Ecosystem](https://qisk.it/e-e52f2069)](https://qisk.it/e)
+
 *A from-scratch quantum chemistry engine — exact molecular ground-state energies computed from geometry, verified against PySCF, and run on real IBM Quantum hardware.*
 
 Every simulator result in this repo has been independently checked against
