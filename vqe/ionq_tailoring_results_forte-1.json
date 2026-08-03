@@ -1,0 +1,76 @@
+{
+  "fragments": {
+    "B": {
+      "atoms": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "nelec": 4,
+      "n_qubits": 8,
+      "requested_K": 5,
+      "K": 5,
+      "n_circuits": 325,
+      "exact_energy_ha": -2.166387,
+      "exact_numpy_ef_k_ha": -2.165486,
+      "e_mixed_ha": -0.331478,
+      "measured_energy_ha": -2.026083,
+      "error_vs_own_exact_kcal": 88.0426,
+      "surviving_signal_fraction": 0.92399,
+      "noise_model": "forte-1",
+      "backend": "ionq_simulator"
+    },
+    "A": {
+      "atoms": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "nelec": 4,
+      "n_qubits": 8,
+      "requested_K": 5,
+      "K": 5,
+      "n_circuits": 325,
+      "exact_energy_ha": -2.166387,
+      "exact_numpy_ef_k_ha": -2.165486,
+      "e_mixed_ha": -0.331478,
+      "measured_energy_ha": -2.025174,
+      "error_vs_own_exact_kcal": 88.6128,
+      "surviving_signal_fraction": 0.923494,
+      "noise_model": "forte-1",
+      "backend": "ionq_simulator"
+    },
+    "overlap": {
+      "atoms": [
+        2,
+        3
+      ],
+      "nelec": 2,
+      "n_qubits": 4,
+      "requested_K": 5,
+      "K": 4,
+      "n_circuits": 96,
+      "exact_energy_ha": -1.10115,
+      "exact_numpy_ef_k_ha": -1.10115,
+      "e_mixed_ha": -0.327608,
+      "measured_energy_ha": -1.099096,
+      "error_vs_own_exact_kcal": 1.2894,
+      "surviving_signal_fraction": 0.997344,
+      "noise_model": "forte-1",
+      "backend": "ionq_simulator"
+    }
+  },
+  "assembly": {
+    "K": 5,
+    "E_tailored_ha": -2.952161,
+    "exact_numpy_ef_k_tailored_ha": -3.229822,
+    "pipeline_correctness_gap_kcal": 174.2349,
+    "classical_tailored_ha": -3.231625,
+    "classical_full_exact_ha": -3.236066,
+    "error_vs_classical_tailored_kcal": 175.3663,
+    "error_vs_classical_full_exact_kcal": 178.1531,
+    "total_circuits": 746
+  }
+}

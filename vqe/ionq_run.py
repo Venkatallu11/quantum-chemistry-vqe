@@ -97,20 +97,24 @@ IONQ_QIS_STANDARD_BASIS = [
 # ---------------------------------------------------------------------------
 
 def state_prep_circuit(vec):
-    qc = QuantumCircuit(4)
-    qc.append(StatePreparation(np.asarray(vec)), range(4))
+    n_qubits = int(round(np.log2(len(vec))))
+    qc = QuantumCircuit(n_qubits)
+    qc.append(StatePreparation(np.asarray(vec)), range(n_qubits))
     return qc
 
 
 def transpiled_state_prep(vec, backend):
     """Decompose StatePreparation into the backend's own basis gates
-    (IonQ's 'qis' gateset), on a clean 4-qubit fully-connected coupling
-    map -- NOT `transpile(..., backend=backend)`, which lays the circuit
-    out across the backend's full qubit count (29 for ionq_simulator) and
-    can place the 4 logical qubits on arbitrary physical indices, silently
-    breaking any code (like basis_change()) that assumes qubit i is at
-    position i."""
-    cmap = CouplingMap.from_full(4)
+    (IonQ's 'qis' gateset), on a clean fully-connected coupling map sized
+    to the vector (inferred from len(vec), NOT hardcoded to 4 -- other
+    callers use smaller registers, e.g. ionq_tailoring.py's 2-qubit
+    overlap-fragment registers) -- NOT `transpile(..., backend=backend)`,
+    which lays the circuit out across the backend's full qubit count (29
+    for ionq_simulator) and can place the logical qubits on arbitrary
+    physical indices, silently breaking any code (like basis_change())
+    that assumes qubit i is at position i."""
+    n_qubits = int(round(np.log2(len(vec))))
+    cmap = CouplingMap.from_full(n_qubits)
     return transpile(state_prep_circuit(vec), basis_gates=IONQ_QIS_STANDARD_BASIS,
                       coupling_map=cmap, optimization_level=1)
 

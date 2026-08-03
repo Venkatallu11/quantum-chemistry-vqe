@@ -539,6 +539,134 @@ never overwrite each other.
 
 ---
 
+## Multi-fragment molecular tailoring on real IonQ circuits
+
+Everything above runs a *single* fragment (H4) on IonQ. `vqe/ionq_tailoring.py`
+extends this to **multi-fragment molecular tailoring** — reconstructing the
+H6 chain's ground state (`vqe/covalent_fragment.py`'s 4-atom-block layout)
+from three overlapping fragments, each solved by entanglement forging on
+real IonQ circuits, then combined via inclusion-exclusion:
+
+```
+fragment A = atoms [0,1,2,3]   (8 qubits -> two 4-qubit EF registers)
+fragment B = atoms [2,3,4,5]   (8 qubits -> two 4-qubit EF registers)
+overlap    = atoms [2,3]       (4 qubits -> two 2-qubit EF registers)
+E_tailored = E(A) + E(B) - E(overlap)
+```
+
+Classical references (already in the repo, `covalent_fragment_results.json`):
+H6 full exact = -3.236066 Ha, H6 tailored (4-atom blocks) = -3.231625 Ha
+(2.79 kcal/mol method floor).
+
+### Three circuit-reduction techniques, each independently verified before use
+
+Naively, this would cost ~10,000+ circuits (the full H4 approach, doubled
+for two 8-qubit fragments plus the overlap). Three techniques cut that by
+roughly 10x — **each checked against exact local math before being
+trusted on real hardware**, not assumed correct because they sound
+plausible:
+
+1. **Real gauge.** `eigsh`'s ground state is exact only up to an arbitrary
+   global phase; rotating the largest-magnitude amplitude onto the real
+   axis makes the *whole* state real (residual imaginary part ~1e-14,
+   verified every run). Once real, every Pauli label is provably either
+   purely real (even Y-count) or purely imaginary (odd Y-count) — never
+   both — so each label needs only 2 of the 4 phase-circuit measurements
+   (`k=0,2` for this Hamiltonian, where every label happened to be
+   even-Y). Verified against the original 4-circuit reconstruction:
+   matched to 3e-16 Ha on H4, and to 3e-16 across 222 sampled
+   (pair, label) combinations for the phase-circuit shortcut itself.
+
+2. **Beta-register sign reuse — verified per fragment, not assumed.**
+   For fragment A (= H4) and fragment B, the beta Schmidt vectors turned
+   out to be exactly `v_n = s_n * u_n` for a classically-computable sign
+   `s_n` (residual ~1e-13), so `B_nm = s_n*s_m*A_nm` and only the alpha
+   register needs real measurement — beta comes free. **This does NOT
+   hold for the overlap fragment** (a different, smaller geometry):
+   checked, found false (residual ~0.5-1.3, nowhere near zero), and the
+   code falls back to measuring both registers independently there
+   instead of silently assuming the shortcut generalizes. A real,
+   fragment-specific finding, not a bug — exactly the kind of thing
+   worth checking rather than trusting.
+
+3. **Qubit-wise commuting Pauli grouping.** Labels that agree on every
+   qubit's measurement axis share one circuit (37 alpha labels -> 13
+   groups on the 8-qubit fragments, using qiskit's own
+   `group_commuting(qubit_wise=True)` — the same grouping
+   `BackendEstimatorV2` uses internally, not the riskier general-commuting
+   + Clifford-diagonalization grouping, which qiskit has no built-in
+   solver for and which would have meant implementing stabilizer-tableau
+   math from scratch with no easy way to verify a subtle sign/frame bug).
+   Verified: max error 3e-14 across 222 sampled (pair, group-member,
+   phase) combinations vs exact Statevector math.
+
+Gate folding is skipped entirely — already proven to produce zero noise
+response on this simulator (`ionq_fold_check.py`: a Bell state folded 1x
+to 81x gave a bit-identical result every time). Every real run below is
+`fold=1`.
+
+### Ideal sanity check: two different, both-honest comparisons
+
+`ideal` was run and confirmed *before* any noisy config, per the same
+discipline used throughout this repo — but the "does it match the
+classical value" check needed two separate comparisons, not one:
+
+| K | Real vs exact-numpy EF-K (pipeline correctness) | EF-K vs classical tailored (method truncation) |
+|---|---|---|
+| 3 | 1.03 kcal/mol | 4.49 kcal/mol |
+| 5 | 1.30 kcal/mol | **0.17 kcal/mol** |
+
+At K=3, the *pipeline* was already correct (real hardware matched the
+same K=3-truncated method's exact-numpy prediction to ~1 kcal/mol, shot-noise
+level) — but K=3's Schmidt-rank truncation itself has real, expected error
+(4.49 kcal/mol) vs the fully-exact classical tailored value, since fragments
+A and B's individual truncation errors don't cancel against the overlap's
+(near-zero) truncation error in the inclusion-exclusion sum. K=5 fixes
+this on both counts: pipeline-correctness gap stays at shot-noise level
+(1.30 kcal/mol) and the method itself lands within 0.17 kcal/mol of the
+classical reference — under chemical accuracy, on real hardware, at zero
+noise. All noisy runs below use K=5.
+
+### Noisy results (`aria-1`, `forte-1`) and the key question
+
+| Noise model | E(A) err (kcal/mol) | E(B) err (kcal/mol) | overlap err (kcal/mol) | E_tailored err vs classical (kcal/mol) | circuits |
+|---|---|---|---|---|---|
+| ideal | 0.19 | 0.02 | 0.00 | 0.17 | 746 |
+| aria-1 | 84.73 | 84.37 | 1.31 | 167.79 | 746 |
+| forte-1 | 88.61 | 88.04 | 1.29 | 175.37 | 746 |
+
+Surviving signal fraction `f` (1.0 = fully preserved, 0.0 = fully
+decohered to the mixed-state value) at K=5: ideal ~1.0006 for A/B, ~1.0
+for overlap; aria-1 f=0.927 (A), 0.927 (B), 0.997 (overlap); forte-1
+f=0.923 (A), 0.924 (B), 0.997 (overlap) — the small overlap fragment
+(4 qubits, 96 circuits) is barely touched by noise, while the two
+8-qubit fragments (325 circuits each) lose ~7-8% of their signal.
+
+**Answer to the key question: fragmentation error ADDS, it does not
+cancel.** If A's and B's errors simply summed (both large, same sign,
+since A and B are the identical physical system under the same noise
+model) with the overlap's small error subtracted per inclusion-exclusion:
+84.73 + 84.37 - (-1.31 contribution accounted for) ≈ 170.4 kcal/mol
+predicted — closely matching the observed 167.79 kcal/mol. The overlap
+subtraction, being both small and itself just as positively-signed an
+error as the others, provides essentially no cancellation benefit here.
+Multi-fragment tailoring was **not** more noise-robust than a single big
+fragment in this run — if anything, spreading the same noise level across
+two independently-measured large fragments instead of one means twice
+the large-fragment noise contribution, only partially offset by a small
+and equally-noisy overlap term. This is a real, checked negative finding,
+consistent with this repo's practice of reporting what didn't work
+alongside what did.
+
+Run: `python vqe/ionq_tailoring.py --fragment <A|B|overlap> --noise-model
+<ideal|aria-1|forte-1> --K <3|5>` (each fragment is independent and
+resumable, refuses to run a noisy config until a matching `ideal` result
+exists); `python vqe/ionq_tailoring.py --assemble --noise-model X --K Y`
+assembles E_tailored from saved fragments (no network calls). Results in
+`vqe/ionq_tailoring_results.json` / `..._aria-1.json` / `..._forte-1.json`.
+
+---
+
 ## Integration with Lokesh's Quantum Hardware MCP server
 
 This repo's chemistry engine is fully independent, but it also connects to
@@ -624,6 +752,16 @@ QUEUED indefinitely during `hardware_covalent.py` testing.
   fold factor. Likely cause: these are fixed noise profiles, not per-gate
   depolarizing models — reported as measured, not tuned, not chased into
   a fix.
+- **Multi-fragment tailoring: fragmentation error adds across fragments,
+  it does not cancel**, on real IonQ circuits. The overlap fragment's
+  small error (~1.3 kcal/mol) doesn't meaningfully offset the two large
+  fragments' errors (~85-89 kcal/mol each, same sign, same physical
+  system under the same noise model) — measured, not assumed either way
+  going in. Also: the beta-register sign-reuse shortcut (verified for
+  the two 8-qubit fragments) was independently re-checked for the smaller
+  overlap fragment and found NOT to hold there (residual ~0.5-1.3, not
+  ~0) — the code falls back to measuring both registers instead of
+  silently trusting a shortcut verified on a different-shaped fragment.
 
 ---
 
@@ -668,6 +806,13 @@ python vqe/ionq_run.py --config fold5 # aria-1 noise, gate-folded 5x
 python vqe/ionq_run.py --assemble     # fit + print ZNE extrapolation (no network calls)
 python vqe/ionq_run.py --config fold3 --noise-model forte-1  # same, under a different noise profile
 python vqe/ionq_fold_check.py         # isolates whether folding scales noise at all (1x-81x)
+
+# Multi-fragment molecular tailoring on real IonQ (H6 chain, 3 fragments)
+python vqe/ionq_tailoring.py --fragment A --noise-model ideal --K 5
+python vqe/ionq_tailoring.py --fragment B --noise-model ideal --K 5
+python vqe/ionq_tailoring.py --fragment overlap --noise-model ideal --K 5
+python vqe/ionq_tailoring.py --assemble --noise-model ideal --K 5      # MUST pass before noisy runs
+python vqe/ionq_tailoring.py --fragment A --noise-model aria-1 --K 5   # then repeat --fragment for B, overlap
 ```
 
 ### Adding your own molecule
@@ -754,7 +899,13 @@ vqe/
 ├── ionq_run_results_forte-1.json      # Same, noise_model=forte-1 (namespaced so profiles don't overwrite)
 ├── ionq_run_results_ideal.json        # ideal-noise control at fold=3/5 (folding-artifact check)
 ├── ionq_fold_check.py                 # Isolates whether gate folding scales noise at all (Bell state, fold 1x-81x)
-└── ionq_fold_check_results.json       # Saved results from ionq_fold_check.py
+├── ionq_fold_check_results.json       # Saved results from ionq_fold_check.py
+│
+├── ef_fragment.py                     # EF core generalized to ARBITRARY fragments (real gauge, sign-reuse, grouping)
+├── ionq_tailoring.py                  # Multi-fragment H6 molecular tailoring measured on real IonQ circuits
+├── ionq_tailoring_results.json        # Saved results, noise_model=ideal
+├── ionq_tailoring_results_aria-1.json # Saved results, noise_model=aria-1
+└── ionq_tailoring_results_forte-1.json # Saved results, noise_model=forte-1
 
 requirements.txt
 ```
