@@ -1,0 +1,51 @@
+{
+  "circuit": "2-qubit Bell (H, CX), measured in XX basis",
+  "exact_value": 1.0,
+  "fold_factors": [
+    1,
+    3,
+    5,
+    7,
+    9,
+    11,
+    15,
+    21,
+    31,
+    41,
+    61,
+    81
+  ],
+  "shots": 1000000,
+  "ideal_energies": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "ideal_control_pass": true,
+  "aria1_energies": [
+    0.985492,
+    0.985492,
+    0.985492,
+    0.985492,
+    0.985492,
+    0.985492,
+    0.985492,
+    0.985492,
+    0.985492,
+    0.985492,
+    0.985492,
+    0.985492
+  ],
+  "aria1_range": 0.0,
+  "aria1_fit": null,
+  "verdict": "No detectable trend even out to fold=81 (range 0.000000, noise floor ~0.003000 at 1000000 shots). Gate folding does not appear to be a usable ZNE knob against IonQ's aria-1 simulated noise profile -- consistent with aria-1 being a fixed noise profile rather than a per-gate depolarizing model that responds to stretched circuit depth."
+}

@@ -16,13 +16,16 @@ elements get measured:
   Quantinuum-grade hardware.
 
   ionq_run.py (this file): real circuits, actually submitted to IonQ's
-  cloud simulator, either with noise_model="ideal" (exact probabilities --
-  a sanity check that the real round-trip matches the known numpy answer)
-  or noise_model="aria-1" (IonQ's own noise emulation of their real Aria
-  trapped-ion device). Because it's a SIMULATOR, IonQ's API returns exact
-  probabilities either way (see get_probabilities()), not shot-sampled
-  counts -- so these numbers carry no shot noise, only the noise_model's
-  physics, same determinism as the local Aer density-matrix approach.
+  cloud simulator, either with noise_model="ideal" (a sanity check that
+  the real round-trip matches the known numpy answer) or noise_model=
+  "aria-1" (IonQ's own noise emulation of their real Aria trapped-ion
+  device). IMPORTANT, confirmed empirically: IonQ's simulator
+  "probabilities" are NOT always exact/analytic -- they carry real shot
+  noise once the outcome distribution is more than a couple of basis
+  states (shots=100 gave ~0.01 error on a near-zero expectation value in
+  testing; shots>=1000 matched the exact answer to machine precision).
+  DEFAULT_SHOTS is set high (100k) to keep that noise well under this
+  project's ~1 kcal/mol precision target.
 
 ZNE here can't reuse entanglement_forging_zne.py's trick of scaling a
 LOCAL noise model's error rate by a continuous factor -- IonQ's simulator
@@ -43,11 +46,14 @@ per (noise_model, fold) configuration. Submitted as 15 batched jobs per
 register (one per Schmidt index for diagonal, one per pair for cross)
 rather than one giant job, so a single bad job doesn't blow up the run.
 
-Run:
-    python vqe/ionq_run.py --stage ideal --smoke   # tiny pipeline test
-    python vqe/ionq_run.py --stage ideal           # full sanity check vs exact numpy
-    python vqe/ionq_run.py --stage zne             # aria-1, fold=1,3,5 + extrapolation
-    python vqe/ionq_run.py --stage all             # both
+Run (each --config is a small, independent, resumable process -- a kill
+partway through only loses that one config's work, not the whole run):
+    python vqe/ionq_run.py --config ideal --smoke   # tiny pipeline test
+    python vqe/ionq_run.py --config ideal           # full sanity check vs exact numpy
+    python vqe/ionq_run.py --config fold1           # aria-1, no mitigation
+    python vqe/ionq_run.py --config fold3           # aria-1, gate-folded 3x
+    python vqe/ionq_run.py --config fold5           # aria-1, gate-folded 5x
+    python vqe/ionq_run.py --assemble               # fit + print ZNE (no network calls)
 """
 import os
 import sys
@@ -247,21 +253,25 @@ def run_stage(name, backend, noise_model, fold, terms, lambdas, u_vecs, v_vecs,
     return E, err_ha, err_kcal
 
 
-def results_path(smoke):
+def results_path(smoke, noise_model=NOISY_MODEL):
+    """Namespaced by noise_model so e.g. a forte-1 run never overwrites the
+    already-committed aria-1 results -- the default noise_model keeps the
+    original, un-suffixed filename for backward compatibility."""
     suffix = "_smoke" if smoke else ""
-    return os.path.join(os.path.dirname(__file__), f"ionq_run_results{suffix}.json")
+    model_suffix = "" if noise_model == NOISY_MODEL else f"_{noise_model}"
+    return os.path.join(os.path.dirname(__file__), f"ionq_run_results{model_suffix}{suffix}.json")
 
 
-def load_results(smoke):
-    path = results_path(smoke)
+def load_results(smoke, noise_model=NOISY_MODEL):
+    path = results_path(smoke, noise_model)
     if os.path.exists(path):
         with open(path) as f:
             return json.load(f)
     return {}
 
 
-def save_results(results, smoke):
-    path = results_path(smoke)
+def save_results(results, smoke, noise_model=NOISY_MODEL):
+    path = results_path(smoke, noise_model)
     with open(path, "w") as f:
         json.dump(results, f, indent=2)
     print(f"\n  Results saved -> {path}\n")
@@ -299,24 +309,24 @@ def setup_problem(smoke):
     }
 
 
-CONFIGS = {
-    "ideal": ("ideal", 1),
-    "fold1": (NOISY_MODEL, 1),
-    "fold3": (NOISY_MODEL, 3),
-    "fold5": (NOISY_MODEL, 5),
-}
+CONFIG_FOLDS = {"ideal": 1, "fold1": 1, "fold3": 3, "fold5": 5}
 
 
-def run_one_config(config_key, smoke):
+def run_one_config(config_key, smoke, noise_model=NOISY_MODEL):
     """Run exactly ONE (noise_model, fold) configuration end to end and
     merge its result into the persistent results JSON. Small, bounded
     runtime by design -- meant to be invoked repeatedly (once per config)
     rather than as one long-running process, so a kill/interruption only
-    loses one config's worth of work, not the whole run."""
-    noise_model, fold = CONFIGS[config_key]
+    loses one config's worth of work, not the whole run.
+
+    "ideal" always means noise_model="ideal" regardless of --noise-model --
+    it's the exact-statevector sanity check and doesn't depend on which
+    real device profile the noisy folds are being compared against."""
+    fold = CONFIG_FOLDS[config_key]
+    actual_noise_model = "ideal" if config_key == "ideal" else noise_model
 
     print("\n" + "=" * 70)
-    print(f"  IonQ EF run -- config={config_key} (noise_model={noise_model}, fold={fold})")
+    print(f"  IonQ EF run -- config={config_key} (noise_model={actual_noise_model}, fold={fold})")
     print("=" * 70)
 
     provider = connect_provider()
@@ -332,12 +342,12 @@ def run_one_config(config_key, smoke):
           f"(error {numpy_err_kcal:.3f} kcal/mol)")
 
     E, err_ha, err_kcal = run_stage(
-        config_key, backend, noise_model, fold,
+        config_key, backend, actual_noise_model, fold,
         p["terms"], p["lambdas"], p["u_vecs"], p["v_vecs"], p["enuc"], p["exact_energy"],
         p["alpha_labels"], p["beta_labels"], p["K_run"],
     )
 
-    results = load_results(smoke)
+    results = load_results(smoke, noise_model)
     results.update({
         "molecule": "H4 fragment (atoms 0-3, d=1.0 Ang)",
         "K": p["K_run"],
@@ -352,18 +362,19 @@ def run_one_config(config_key, smoke):
     })
     results.setdefault("configs", {})
     results["configs"][config_key] = {
-        "noise_model": noise_model, "fold": fold,
+        "noise_model": actual_noise_model, "fold": fold,
         "energy_ha": round(E, 6), "error_ha": round(err_ha, 6),
         "error_kcal_mol": round(err_kcal, 4),
     }
-    save_results(results, smoke)
+    save_results(results, smoke, noise_model)
     return results
 
 
-def assemble(smoke):
+def assemble(smoke, noise_model=NOISY_MODEL):
     """No network calls -- just load whatever configs have been saved so
-    far and, if all three aria-1 folds are present, fit + extrapolate."""
-    results = load_results(smoke)
+    far (for this noise_model) and, if enough noisy folds are present,
+    fit + extrapolate."""
+    results = load_results(smoke, noise_model)
     configs = results.get("configs", {})
     print("\n  Configs completed so far:", sorted(configs.keys()))
 
@@ -404,26 +415,31 @@ def assemble(smoke):
         print(f"  ZNE quadratic extrapolation   : {zne_quad_err:.2f} kcal/mol")
 
     results["zne"] = zne_result
-    save_results(results, smoke)
+    save_results(results, smoke, noise_model)
     return results
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", choices=list(CONFIGS.keys()),
+    parser.add_argument("--config", choices=list(CONFIG_FOLDS.keys()),
                          help="run exactly one (noise_model, fold) configuration "
                               "and merge into the results JSON")
     parser.add_argument("--assemble", action="store_true",
                          help="no network calls -- fit/extrapolate ZNE from "
                               "whatever configs are already saved")
+    parser.add_argument("--noise-model", default=NOISY_MODEL,
+                         help=f"IonQ simulator noise profile for the noisy folds "
+                              f"(default {NOISY_MODEL}); ignored for --config ideal. "
+                              f"Results are saved to a separate, namespaced JSON file "
+                              f"so different noise models never overwrite each other.")
     parser.add_argument("--smoke", action="store_true",
                          help="tiny K=2, 3 labels/register -- pipeline validation only")
     args = parser.parse_args()
 
     if args.assemble:
-        assemble(args.smoke)
+        assemble(args.smoke, args.noise_model)
     elif args.config:
-        run_one_config(args.config, args.smoke)
+        run_one_config(args.config, args.smoke, args.noise_model)
     else:
         parser.error("pass --config <ideal|fold1|fold3|fold5> or --assemble")
 

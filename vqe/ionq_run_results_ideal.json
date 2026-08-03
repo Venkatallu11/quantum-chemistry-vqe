@@ -1,0 +1,28 @@
+{
+  "molecule": "H4 fragment (atoms 0-3, d=1.0 Ang)",
+  "K": 5,
+  "n_alpha_labels": 37,
+  "n_beta_labels": 37,
+  "n_terms": 185,
+  "exact_energy_ha": -2.166387,
+  "exact_numpy_ef_k_ha": -2.165486,
+  "exact_numpy_ef_k_err_kcal": 0.5655,
+  "smoke_test": false,
+  "backend": "ionq_simulator",
+  "configs": {
+    "fold5": {
+      "noise_model": "ideal",
+      "fold": 5,
+      "energy_ha": -2.16561,
+      "error_ha": 0.000777,
+      "error_kcal_mol": 0.4878
+    },
+    "fold3": {
+      "noise_model": "ideal",
+      "fold": 3,
+      "energy_ha": -2.165781,
+      "error_ha": 0.000607,
+      "error_kcal_mol": 0.3807
+    }
+  }
+}

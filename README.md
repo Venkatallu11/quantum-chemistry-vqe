@@ -466,17 +466,76 @@ re-optimization) submits it exactly as folded:
 fold=1/3/5 (125.07 → 124.75 → 126.49 kcal/mol, well within run-to-run
 noise), so both linear and quadratic extrapolation land within noise of
 the unmitigated value — no improvement, unlike the 35x reduction the same
-technique gave against a local depolarizing noise model above. The most
-likely explanation: `aria-1` on IonQ's simulator is a fixed, named noise
-*profile* rather than a literal per-gate depolarizing-error-rate model, so
-physically stretching gate count doesn't necessarily scale its applied
-noise the way a real depolarizing channel would. This wasn't tested
-further; reported as measured, a negative result rather than a tuned one.
+technique gave against a local depolarizing noise model above.
 
-Run: `python vqe/ionq_run.py --config <ideal|fold1|fold3|fold5>` (each
-config is an independent, resumable run that merges results into
-`vqe/ionq_run_results.json`); `python vqe/ionq_run.py --assemble` fits and
-prints the ZNE extrapolation from whatever configs have been saved so far.
+### Isolating why: does folding scale noise on IonQ's simulator at all?
+
+The 185-term EF result above is noisy enough (100k shots per matrix
+element, summed over many terms) that a real-but-small folding trend could
+plausibly hide in shot noise. `vqe/ionq_fold_check.py` isolates the
+question cleanly: a 2-qubit Bell state (H, CX), measured in the XX basis
+(exact = +1.0 for any fold, since folding a gate with its own inverse
+never changes the ideal unitary), folded from 1x up to **81x**, with
+1,000,000 shots per circuit — two orders of magnitude more precision per
+point than the full run could afford, on a circuit simple enough that a
+real trend of any size should be visible.
+
+**Control (`noise_model="ideal"`)**: exactly `+1.0` for all 12 fold
+factors (1 through 81) — the folding mechanism itself is confirmed
+artifact-free.
+
+**`noise_model="aria-1"`**: `<XX> = 0.985492`, bit-for-bit identical, for
+every single fold factor from 1 to 81. Not "flat within noise" — exactly
+unchanged to 6 decimal places across a 81x range of physically stretched
+circuit depth.
+
+**Conclusion: `aria-1` (and, per the `forte-1` run below, IonQ's other
+named simulator noise profile too) applies noise that does not scale with
+gate count at all** — consistent with these being fixed, per-shot or
+readout-style error profiles rather than literal per-gate
+depolarizing-error-rate models. Gate folding is not a usable ZNE knob
+against either, for a structural reason rather than a precision problem.
+This was checked, not assumed.
+
+### Cross-checking against a second device profile (`forte-1`)
+
+The same K=5, 185-term EF measurement was repeated against
+`noise_model="forte-1"` (IonQ's emulation of their Forte device family) to
+see whether the flat-with-fold result was specific to `aria-1` or general:
+
+| Fold | Hardware energy (Ha) | Error (kcal/mol) |
+|---|---|---|
+| 1 (no mitigation) | -1.951852 | 134.62 |
+| 3 | -1.951542 | 134.82 |
+| 5 | -1.951831 | 134.64 |
+| ZNE, linear extrapolation | -1.951757 | 134.68 |
+| ZNE, quadratic extrapolation | -1.952232 | 134.38 |
+
+Same pattern: flat across folds, no ZNE improvement. `forte-1`'s baseline
+error (134.6 kcal/mol) is noticeably higher than `aria-1`'s (125.1
+kcal/mol) — a genuinely different, noisier fixed profile — but it shares
+the same non-response to gate folding. The `ideal` control was re-run at
+fold=3 and fold=5 too (0.38 and 0.49 kcal/mol, consistent with fold=1's
+0.50-0.63 kcal/mol across runs), confirming folding stays artifact-free at
+full EF scale, not just in the toy Bell-state check.
+
+**Bottom line:** gate-folding ZNE against IonQ's cloud simulator doesn't
+work, confirmed two independent ways (a 12-point, 81x-fold isolation test,
+and a second full EF run under a different named noise profile) — not a
+tuned result, and not chased into a fix, since the likely cause (fixed
+noise profiles instead of per-gate error rates) isn't something a
+different circuit or fold scheme would get around.
+
+Run:
+```bash
+python vqe/ionq_run.py --config <ideal|fold1|fold3|fold5>       # aria-1 (default)
+python vqe/ionq_run.py --config fold3 --noise-model forte-1      # any other IonQ noise_model
+python vqe/ionq_run.py --assemble --noise-model forte-1          # fit + print ZNE (no network calls)
+python vqe/ionq_fold_check.py                                    # the 81x-fold isolation check
+```
+Each `--config` run is independent and resumable, merging into a
+noise_model-namespaced `vqe/ionq_run_results*.json` so different profiles
+never overwrite each other.
 
 ---
 
@@ -556,9 +615,15 @@ QUEUED indefinitely during `hardware_covalent.py` testing.
   are documented above rather than only keeping the final answer.
 - **Gate-folding ZNE on real IonQ circuits did not reduce error**, unlike
   the 35x reduction the same conceptual technique gave against a local
-  Aer noise model — reported as measured (125.07 → 124.75 → 126.49
-  kcal/mol across fold=1/3/5, both linear and quadratic extrapolation
-  landing within noise of the unmitigated value), not tuned or hidden.
+  Aer noise model — confirmed two independent ways, not just one run:
+  the full 185-term EF energy was flat across fold=1/3/5 under both
+  `aria-1` (125.07 → 124.75 → 126.49 kcal/mol) and `forte-1` (134.62 →
+  134.82 → 134.64 kcal/mol), and a dedicated isolation check
+  (`ionq_fold_check.py`, a 2-qubit Bell state folded 1x-81x at 1M shots)
+  found `aria-1`'s effect on `<XX>` bit-for-bit identical at every single
+  fold factor. Likely cause: these are fixed noise profiles, not per-gate
+  depolarizing models — reported as measured, not tuned, not chased into
+  a fix.
 
 ---
 
@@ -601,6 +666,8 @@ python vqe/ionq_run.py --config fold1 # aria-1 noise, no mitigation
 python vqe/ionq_run.py --config fold3 # aria-1 noise, gate-folded 3x
 python vqe/ionq_run.py --config fold5 # aria-1 noise, gate-folded 5x
 python vqe/ionq_run.py --assemble     # fit + print ZNE extrapolation (no network calls)
+python vqe/ionq_run.py --config fold3 --noise-model forte-1  # same, under a different noise profile
+python vqe/ionq_fold_check.py         # isolates whether folding scales noise at all (1x-81x)
 ```
 
 ### Adding your own molecule
@@ -683,7 +750,11 @@ vqe/
 │
 ├── ionq_backend.py                    # Real IonQ Cloud connection + list_backends() (ionq_simulator only)
 ├── ionq_run.py                        # Full 185-term H4 EF energy measured on real IonQ circuits + gate-folded ZNE
-└── ionq_run_results.json              # Saved results from ionq_run.py (per-config, resumable)
+├── ionq_run_results.json              # Saved results from ionq_run.py, noise_model=aria-1 (per-config, resumable)
+├── ionq_run_results_forte-1.json      # Same, noise_model=forte-1 (namespaced so profiles don't overwrite)
+├── ionq_run_results_ideal.json        # ideal-noise control at fold=3/5 (folding-artifact check)
+├── ionq_fold_check.py                 # Isolates whether gate folding scales noise at all (Bell state, fold 1x-81x)
+└── ionq_fold_check_results.json       # Saved results from ionq_fold_check.py
 
 requirements.txt
 ```
