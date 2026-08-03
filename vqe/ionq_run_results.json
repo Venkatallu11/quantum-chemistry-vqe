@@ -1,0 +1,59 @@
+{
+  "molecule": "H4 fragment (atoms 0-3, d=1.0 Ang)",
+  "K": 5,
+  "n_alpha_labels": 37,
+  "n_beta_labels": 37,
+  "n_terms": 185,
+  "exact_energy_ha": -2.166387,
+  "exact_numpy_ef_k_ha": -2.165486,
+  "exact_numpy_ef_k_err_kcal": 0.5655,
+  "smoke_test": false,
+  "backend": "ionq_simulator",
+  "configs": {
+    "ideal": {
+      "noise_model": "ideal",
+      "fold": 1,
+      "energy_ha": -2.165385,
+      "error_ha": 0.001003,
+      "error_kcal_mol": 0.6293
+    },
+    "fold1": {
+      "noise_model": "aria-1",
+      "fold": 1,
+      "energy_ha": -1.96708,
+      "error_ha": 0.199307,
+      "error_kcal_mol": 125.0671
+    },
+    "fold3": {
+      "noise_model": "aria-1",
+      "fold": 3,
+      "energy_ha": -1.967587,
+      "error_ha": 0.1988,
+      "error_kcal_mol": 124.7489
+    },
+    "fold5": {
+      "noise_model": "aria-1",
+      "fold": 5,
+      "energy_ha": -1.964808,
+      "error_ha": 0.20158,
+      "error_kcal_mol": 126.4931
+    }
+  },
+  "zne": {
+    "fold_factors": [
+      1,
+      3,
+      5
+    ],
+    "energies_ha": [
+      -1.96708,
+      -1.967587,
+      -1.964808
+    ],
+    "no_mitigation_err_kcal": 125.067,
+    "zne_linear_energy_ha": -1.968196,
+    "zne_linear_err_kcal": 124.3669,
+    "zne_quadratic_energy_ha": -1.965594,
+    "zne_quadratic_err_kcal": 125.9994
+  }
+}

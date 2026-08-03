@@ -417,6 +417,69 @@ and has not been done.
 
 ---
 
+## IonQ Cloud connection
+
+Alongside the IBM and Azure/Quantinuum connections above, this repo also
+connects to IonQ's cloud API (`vqe/ionq_backend.py`), authenticated via an
+API key from `.env`. It only ever targets `ionq_simulator` — free,
+unmetered against QPU credits — never `ionq_qpu` (real paid trapped-ion
+hardware), which this repo deliberately does not touch.
+
+`list_backends()` mirrors the same pattern as `compare_devices`/
+`compare_targets` on the other two providers: connect, list what's
+actually live, never hardcode a target.
+
+### Entanglement forging + ZNE on real IonQ circuits
+
+The entanglement-forging + ZNE result above (20 → 0.57 kcal/mol) was built
+on a *local* `qiskit-aer` noise model. `vqe/ionq_run.py` repeats the same
+H4-fragment (K=5, all 185 Pauli terms) EF measurement, but via **real
+circuits submitted to IonQ's cloud simulator** instead of a local
+approximation — every diagonal and cross-term matrix element is measured
+by an actual job round-trip, not estimated.
+
+**Sanity check (`noise_model="ideal"`)**: a real cloud round-trip
+reconstructing the full 185-term EF energy from scratch lands within
+0.63 kcal/mol of the exact numpy answer (0.57 kcal/mol) — confirming the
+circuit construction and measurement math are correct at full scale, not
+just in the small-molecule cases already verified above.
+
+**Noisy (`noise_model="aria-1"`, IonQ's own emulation of their real Aria
+device) + Zero-Noise Extrapolation via gate folding**: IonQ's simulator
+doesn't expose a continuous noise-scale knob the way a local Aer noise
+model does, so ZNE here uses the standard real-hardware technique
+instead — local unitary gate folding (every 2-qubit gate `G` replaced
+with `G (G⁻¹G)ᵏ`, physically stretching circuit depth to 1x/3x/5x without
+changing the ideal unitary), applied after transpilation so IonQ's own
+circuit converter (a straight instruction-by-instruction translation, no
+re-optimization) submits it exactly as folded:
+
+| Fold | Hardware energy (Ha) | Error (kcal/mol) |
+|---|---|---|
+| 1 (no mitigation) | -1.967080 | 125.07 |
+| 3 | -1.967587 | 124.75 |
+| 5 | -1.964808 | 126.49 |
+| ZNE, linear extrapolation | -1.968196 | 124.37 |
+| ZNE, quadratic extrapolation | -1.965594 | 126.00 |
+
+**Result: gate-folding ZNE did not work here.** The error is flat across
+fold=1/3/5 (125.07 → 124.75 → 126.49 kcal/mol, well within run-to-run
+noise), so both linear and quadratic extrapolation land within noise of
+the unmitigated value — no improvement, unlike the 35x reduction the same
+technique gave against a local depolarizing noise model above. The most
+likely explanation: `aria-1` on IonQ's simulator is a fixed, named noise
+*profile* rather than a literal per-gate depolarizing-error-rate model, so
+physically stretching gate count doesn't necessarily scale its applied
+noise the way a real depolarizing channel would. This wasn't tested
+further; reported as measured, a negative result rather than a tuned one.
+
+Run: `python vqe/ionq_run.py --config <ideal|fold1|fold3|fold5>` (each
+config is an independent, resumable run that merges results into
+`vqe/ionq_run_results.json`); `python vqe/ionq_run.py --assemble` fits and
+prints the ZNE extrapolation from whatever configs have been saved so far.
+
+---
+
 ## Integration with Lokesh's Quantum Hardware MCP server
 
 This repo's chemistry engine is fully independent, but it also connects to
@@ -491,6 +554,11 @@ QUEUED indefinitely during `hardware_covalent.py` testing.
   noise model underestimates real noise ~3x; a follow-up with 10 terms
   and 4000 shots reversed that conclusion. Both runs and the correction
   are documented above rather than only keeping the final answer.
+- **Gate-folding ZNE on real IonQ circuits did not reduce error**, unlike
+  the 35x reduction the same conceptual technique gave against a local
+  Aer noise model — reported as measured (125.07 → 124.75 → 126.49
+  kcal/mol across fold=1/3/5, both linear and quadratic extrapolation
+  landing within noise of the unmitigated value), not tuned or hidden.
 
 ---
 
@@ -525,6 +593,14 @@ python vqe/emulator_smoke_test.py     # 1 real job on quantinuum.sim.h2-1e (Bell
 python vqe/check_job_status.py        # list recent jobs + status in the workspace
 python vqe/emulator_ef_validate.py    # local noise model vs real emulator, 10 diagonal terms (1 job)
 python vqe/emulator_offdiag_validate.py # local noise model vs real emulator, 1 cross term (4 jobs)
+
+# Real IonQ Cloud (needs IONQ_API_KEY in .env; ionq_simulator only, free)
+python vqe/ionq_backend.py            # connect + list live backends (no job submitted)
+python vqe/ionq_run.py --config ideal # full 185-term EF energy, real circuits, sanity check
+python vqe/ionq_run.py --config fold1 # aria-1 noise, no mitigation
+python vqe/ionq_run.py --config fold3 # aria-1 noise, gate-folded 3x
+python vqe/ionq_run.py --config fold5 # aria-1 noise, gate-folded 5x
+python vqe/ionq_run.py --assemble     # fit + print ZNE extrapolation (no network calls)
 ```
 
 ### Adding your own molecule
@@ -603,7 +679,11 @@ vqe/
 ├── emulator_ef_validate.py            # Local noise model vs real emulator: 10 diagonal terms, 1 job
 ├── emulator_ef_validate_results.json  # Saved results from emulator_ef_validate.py
 ├── emulator_offdiag_validate.py       # Local noise model vs real emulator: 1 cross term, 4 jobs
-└── emulator_offdiag_validate_results.json # Saved results from emulator_offdiag_validate.py
+├── emulator_offdiag_validate_results.json # Saved results from emulator_offdiag_validate.py
+│
+├── ionq_backend.py                    # Real IonQ Cloud connection + list_backends() (ionq_simulator only)
+├── ionq_run.py                        # Full 185-term H4 EF energy measured on real IonQ circuits + gate-folded ZNE
+└── ionq_run_results.json              # Saved results from ionq_run.py (per-config, resumable)
 
 requirements.txt
 ```
