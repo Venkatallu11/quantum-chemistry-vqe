@@ -44,7 +44,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(__file__))
 from qiskit.circuit import QuantumCircuit
-from qiskit_ionq.ionq_gates import GPI2Gate, MSGate, ZZGate
+from qiskit_ionq.ionq_gates import GPIGate, GPI2Gate, MSGate, ZZGate
 
 from ionq_backend import connect_provider, get_simulator, get_native_simulator
 from ionq_run import fold_circuit, basis_change, pauli_expectation
@@ -224,12 +224,23 @@ def fold_native_2q(qc, fold, gate_name):
     the SAME (not negated) params, not a valid native-gateset instruction
     and not actually the inverse. Real bug caught by testing, not assumed.
 
-    Uses theta' = 2 - theta instead of -theta: IonQ's API rejects a
-    negative "angle" for ms/zz ("must be greater than or equal to 0",
-    hit on a real submission) even though -theta is mathematically the
-    correct inverse. Verified numerically that MS/ZZ(..., 2-theta) is
-    matrix-identical to MS/ZZ(..., -theta) (sin/cos are 2-periodic in
-    theta), and 2-theta stays positive for any theta in (0, 2)."""
+    Two real IonQ API constraints discovered via actual rejected
+    submissions (not anticipated in advance): both ms and zz angle must
+    be in [0, 0.25] (a genuine native-pulse-angle limit, not just a sign
+    convention) -- so neither -theta nor 2-theta (e.g. 1.75) can be
+    submitted directly as a single gate.
+
+    MS: has a phase parameter to exploit instead -- MS(phi0+0.5, phi1,
+    theta) is matrix-identical to MS(phi0, phi1, -theta) (verified
+    numerically), keeping theta unchanged and in-range. One gate.
+
+    ZZ: has no extra phase parameter, so instead uses the standard
+    conjugation identity X.ZZ(theta).X = ZZ(-theta) (verified numerically
+    -- conjugating either qubit by X flips the sign of ZZ's phase). X is
+    exactly GPI(0) (verified: GPI(0) matrix == Pauli X). Three gates
+    (GPI(0), ZZ(theta) at the SAME in-range theta, GPI(0)) stand in for
+    the single "inverse" gate; still exactly `fold` total 2-qubit gates,
+    just with two extra single-qubit gates per rep."""
     if fold == 1:
         return qc.copy()
     assert fold % 2 == 1, "fold factor must be odd"
@@ -239,10 +250,14 @@ def fold_native_2q(qc, fold, gate_name):
         op, qargs, cargs = instr.operation, instr.qubits, instr.clbits
         folded.append(op, qargs, cargs)
         if op.name == gate_name:
-            inv = ZZGate(2 - op.params[0]) if gate_name == "zz" else \
-                MSGate(op.params[0], op.params[1], 2 - op.params[2])
             for _ in range(reps):
-                folded.append(inv, qargs, cargs)
+                if gate_name == "ms":
+                    inv = MSGate(op.params[0] + 0.5, op.params[1], op.params[2])
+                    folded.append(inv, qargs, cargs)
+                else:  # zz: X . ZZ(theta) . X sandwich, same in-range theta
+                    folded.append(GPIGate(0), [qargs[0]])
+                    folded.append(op, qargs, cargs)
+                    folded.append(GPIGate(0), [qargs[0]])
                 folded.append(op, qargs, cargs)
     return folded
 
