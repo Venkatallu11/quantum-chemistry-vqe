@@ -39,12 +39,14 @@ Run:
 import os
 import sys
 import json
+import argparse
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(__file__))
 from qiskit.circuit import QuantumCircuit
+from qiskit_ionq.ionq_gates import GPI2Gate, MSGate, ZZGate
 
-from ionq_backend import connect_provider, get_simulator
+from ionq_backend import connect_provider, get_simulator, get_native_simulator
 from ionq_run import fold_circuit, basis_change, pauli_expectation
 
 FOLD_FACTORS = [1, 3, 5, 7, 9, 11, 15, 21, 31, 41, 61, 81]
@@ -96,7 +98,7 @@ def fit_exponential_decay(folds, energies):
     }
 
 
-def main():
+def abstract_fold_check():
     print("\n" + "=" * 70)
     print("  IonQ fold-check -- does folding scale noise on ionq_simulator?")
     print("=" * 70)
@@ -166,6 +168,172 @@ def main():
         json.dump(results, f, indent=2)
     print(f"\n  Results saved -> {out}\n")
     return results
+
+
+# ---------------------------------------------------------------------------
+# Native-gate experiment: does the compiler cancel abstract-gate folds?
+# ---------------------------------------------------------------------------
+# Hypothesis (unverified attribution, treated as a hypothesis to test, not
+# fact -- see conversation): IonQ's cloud-side compiler may be cancelling
+# the folded G G^-1 pairs before execution when circuits are submitted as
+# abstract gates. Confirmed separately that qiskit-ionq's OWN optimizer
+# plugin (TrappedIonOptimizerPlugin) ships FuseConsecutiveZZ/FuseConsecutiveMS
+# passes that would do exactly this if invoked -- plausible mechanism, even
+# though this repo's own code never calls that plugin (no backend= passed to
+# transpile(), nothing re-transpiles after folding). "native" gateset
+# submission is meant to bypass generic circuit-level recompilation, so this
+# tests whether that holds.
+#
+# NATIVE_2Q_BY_FAMILY (qiskit-ionq's own mapping): "aria" -> ms, "forte" -> zz.
+# Two different probe circuits are used because they entangle differently:
+#   zz-probe (GPI2(1/4) on both qubits + ZZ(1/4)) is a clean XX eigenstate (+1).
+#   ms-probe (bare MS(0,0,1/4) on |00>) is NOT an XX eigenstate (it has an i
+#     relative phase between |00> and |11>) but IS a clean ZZ eigenstate (+1)
+#     -- verified via Statevector before use, not assumed. ZZ needs no
+#     basis-change gates at all (direct Z-basis measurement).
+# Both verified locally: folding preserves the exact ideal value (+1.0) at
+# every fold factor tested, with the correct native-gate count present in
+# the circuit, before any real submission.
+#
+# PASS/FAIL: ideal staying at 1.0 proves nothing either way (a cancelled
+# fold also returns 1.0 under noiseless execution) -- only aria-1/forte-1
+# decaying with fold is evidence gateset=native bypasses the cancellation.
+
+NATIVE_FOLD_FACTORS = [1, 3, 5, 9, 21, 81]
+NATIVE_SHOTS = 1_000_000
+
+
+def native_probe_zz():
+    qc = QuantumCircuit(2)
+    qc.append(GPI2Gate(0.25), [0])
+    qc.append(GPI2Gate(0.25), [1])
+    qc.append(ZZGate(0.25), [0, 1])
+    return qc
+
+
+def native_probe_ms():
+    qc = QuantumCircuit(2)
+    qc.append(MSGate(0, 0, 0.25), [0, 1])
+    return qc
+
+
+def fold_native_2q(qc, fold, gate_name):
+    """Fold ONLY the single 2-qubit native gate: G -> G (G^-1 G)^reps.
+    EXPLICIT correct inverse -- verified that the generic Gate.inverse()
+    on ZZGate/MSGate returns a mis-parametrized "zz_dg"/"ms_dg" gate with
+    the SAME (not negated) params, not a valid native-gateset instruction
+    and not actually the inverse. Real bug caught by testing, not assumed."""
+    if fold == 1:
+        return qc.copy()
+    assert fold % 2 == 1, "fold factor must be odd"
+    reps = (fold - 1) // 2
+    folded = qc.copy_empty_like()
+    for instr in qc.data:
+        op, qargs, cargs = instr.operation, instr.qubits, instr.clbits
+        folded.append(op, qargs, cargs)
+        if op.name == gate_name:
+            inv = ZZGate(-op.params[0]) if gate_name == "zz" else \
+                MSGate(op.params[0], op.params[1], -op.params[2])
+            for _ in range(reps):
+                folded.append(inv, qargs, cargs)
+                folded.append(op, qargs, cargs)
+    return folded
+
+
+def native_measurement_circuit(base, gate_name):
+    qc = base.copy()
+    if gate_name == "zz":  # XX observable needs an X-basis rotation
+        qc.append(GPI2Gate(0.25), [0])
+        qc.append(GPI2Gate(0.25), [1])
+    # ms-probe: ZZ observable, direct Z-basis measurement, no rotation needed
+    qc.measure_all()
+    return qc
+
+
+def native_run_sweep(backend, noise_model, gate_name):
+    probe = native_probe_zz() if gate_name == "zz" else native_probe_ms()
+    circuits = [
+        native_measurement_circuit(fold_native_2q(probe, f, gate_name), gate_name)
+        for f in NATIVE_FOLD_FACTORS
+    ]
+    job = backend.run(circuits, noise_model=noise_model, shots=NATIVE_SHOTS)
+    result = job.result()
+    probs_list = result.get_probabilities()
+    if not isinstance(probs_list, list):
+        probs_list = [probs_list]
+    label = "XX" if gate_name == "zz" else "ZZ"
+    return [pauli_expectation(dict(p), label) for p in probs_list]
+
+
+def surviving_fraction(values, ideal_value=1.0, mixed_value=0.0):
+    """f = (measured - mixed) / (ideal - mixed). Both probes are traceless
+    2-qubit Paulis (XX, ZZ) so the fully-decohered/mixed-state expectation
+    is exactly 0 -- same formula convention as ionq_tailoring.py."""
+    return [(v - mixed_value) / (ideal_value - mixed_value) for v in values]
+
+
+def run_native_experiment():
+    print("\n" + "=" * 70)
+    print("  Native-gate fold check -- does gateset=native bypass fold cancellation?")
+    print("=" * 70)
+
+    provider = connect_provider()
+    native_backend = get_native_simulator(provider)
+    print(f"\n  Connected. Target backend: {native_backend.name} (gateset=native)")
+    print(f"  Fold factors: {NATIVE_FOLD_FACTORS}, shots={NATIVE_SHOTS}")
+
+    results = {"fold_factors": NATIVE_FOLD_FACTORS, "shots": NATIVE_SHOTS, "models": {}}
+
+    for noise_model in ("ideal", "aria-1", "forte-1"):
+        gate_name = "ms" if noise_model in ("ideal", "aria-1") else "zz"
+        print(f"\n  -- noise_model={noise_model} (native {gate_name.upper()} gate) --")
+        values = native_run_sweep(native_backend, noise_model, gate_name)
+        f_values = surviving_fraction(values)
+        for fold, v, f in zip(NATIVE_FOLD_FACTORS, values, f_values):
+            print(f"    fold={fold:3d}: measured={v:.6f}  f={f:.6f}")
+        results["models"][noise_model] = {
+            "gate": gate_name,
+            "values": [round(float(v), 6) for v in values],
+            "f": [round(float(v), 6) for v in f_values],
+        }
+
+    ideal_vals = results["models"]["ideal"]["values"]
+    ideal_ok = all(abs(v - 1.0) < 1e-3 for v in ideal_vals)
+    print(f"\n  ideal control (must stay ~1.0 at every fold): "
+          f"{'PASS' if ideal_ok else 'FAIL'} -- note: even a CANCELLED fold "
+          "returns 1.0 under ideal, so this alone proves nothing either way.")
+
+    verdicts = {}
+    for noise_model in ("aria-1", "forte-1"):
+        f_vals = results["models"][noise_model]["f"]
+        frange = max(f_vals) - min(f_vals)
+        noise_floor = 3 * NATIVE_SHOTS ** -0.5
+        decaying = frange > noise_floor and f_vals[-1] < f_vals[0] - noise_floor
+        verdicts[noise_model] = "PASS (f decays with fold)" if decaying else \
+            "FAIL (f pinned near baseline, same flat pattern as before)"
+        print(f"  {noise_model}: f range={frange:.6f}, f[0]={f_vals[0]:.6f}, "
+              f"f[-1]={f_vals[-1]:.6f} -> {verdicts[noise_model]}")
+
+    results["ideal_control_pass"] = ideal_ok
+    results["verdicts"] = verdicts
+
+    out = os.path.join(os.path.dirname(__file__), "ionq_native_fold_results.json")
+    with open(out, "w") as f:
+        json.dump(results, f, indent=2)
+    print(f"\n  Results saved -> {out}\n")
+    return results
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--native", action="store_true",
+                         help="run the native-gate fold-cancellation experiment "
+                              "(vqe/ionq_native_fold_results.json) instead of the "
+                              "original abstract-gate one")
+    args = parser.parse_args()
+    if args.native:
+        return run_native_experiment()
+    return abstract_fold_check()
 
 
 if __name__ == "__main__":

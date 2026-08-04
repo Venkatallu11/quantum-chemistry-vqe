@@ -1,0 +1,307 @@
+{
+  "real_gauge_residual": 1.022629423047192e-15,
+  "baseline_cx_gates": 11,
+  "K": 5,
+  "targets": {
+    "u_0": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 9.375194040901627e-16,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 8.701582435744938e-16,
+        "verified": true
+      }
+    },
+    "u_1": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 1.2713708414250023e-15,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 1.3191124616108293e-15,
+        "verified": true
+      }
+    },
+    "u_2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 2.443344905150964e-15,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 2.261681718182288e-15,
+        "verified": true
+      }
+    },
+    "u_3": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 6.241325880822937e-15,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 6.224987271026779e-15,
+        "verified": true
+      }
+    },
+    "u_4": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 1.9815641660655266e-14,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 1.981019694459734e-14,
+        "verified": true
+      }
+    },
+    "(u_0+u_1)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 7.721984209549645e-16,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 6.456994322856585e-16,
+        "verified": true
+      }
+    },
+    "(u_0-u_1)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 8.89083483902334e-16,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 8.040091826262094e-16,
+        "verified": true
+      }
+    },
+    "(u_0+u_2)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 1.905864370691943e-15,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 1.9628029082771788e-15,
+        "verified": true
+      }
+    },
+    "(u_0-u_2)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 1.7640847277182299e-15,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 1.822934318283725e-15,
+        "verified": true
+      }
+    },
+    "(u_0+u_3)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 1.0788369514222734e-15,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 7.942210854279347e-16,
+        "verified": true
+      }
+    },
+    "(u_0-u_3)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 8.34419041382574e-16,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 1.6485249698479641e-15,
+        "verified": true
+      }
+    },
+    "(u_0+u_4)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 4.256763481841352e-15,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 4.284516712592783e-15,
+        "verified": true
+      }
+    },
+    "(u_0-u_4)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 4.113409511172656e-15,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 4.621217515858473e-15,
+        "verified": true
+      }
+    },
+    "(u_1+u_2)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 6.403627692158766e-16,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 8.119548280342089e-16,
+        "verified": true
+      }
+    },
+    "(u_1-u_2)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 6.634925289305413e-16,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 6.186487184651335e-16,
+        "verified": true
+      }
+    },
+    "(u_1+u_3)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 5.047187336675005e-15,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 4.9009540407766345e-15,
+        "verified": true
+      }
+    },
+    "(u_1-u_3)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 4.144540990121434e-15,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 4.225501908873009e-15,
+        "verified": true
+      }
+    },
+    "(u_1+u_4)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 6.345034463386815e-16,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 7.031060741275246e-16,
+        "verified": true
+      }
+    },
+    "(u_1-u_4)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 9.01925533010667e-16,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 9.87925777022596e-16,
+        "verified": true
+      }
+    },
+    "(u_2+u_3)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 8.221260846405179e-16,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 8.622028721126222e-16,
+        "verified": true
+      }
+    },
+    "(u_2-u_3)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 9.496440550031663e-16,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 1.2351191421007425e-15,
+        "verified": true
+      }
+    },
+    "(u_2+u_4)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 5.534587611156227e-15,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 5.6377204002377315e-15,
+        "verified": true
+      }
+    },
+    "(u_2-u_4)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 1.4430674196902225e-14,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 1.461019540180408e-14,
+        "verified": true
+      }
+    },
+    "(u_3+u_4)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 8.307701913908657e-16,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 8.510959249937197e-16,
+        "verified": true
+      }
+    },
+    "(u_3-u_4)/sqrt2": {
+      "ms": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 1.708919717753926e-15,
+        "verified": true
+      },
+      "zz": {
+        "n_two_qubit_gates": 14,
+        "statevector_error": 1.4951988531380628e-15,
+        "verified": true
+      }
+    }
+  }
+}

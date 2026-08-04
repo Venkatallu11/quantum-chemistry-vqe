@@ -64,6 +64,16 @@ def get_simulator(provider: IonQProvider):
     return provider.get_backend("ionq_simulator")
 
 
+def get_native_simulator(provider: IonQProvider):
+    """Same free simulator, but with gateset="native" -- circuits submitted
+    through this backend must already be in IonQ's native gate set
+    (gpi/gpi2/ms/zz), not standard qiskit gates. Used to submit circuits
+    that must reach the device exactly as built (e.g. gate-folded circuits,
+    where any further abstract-gate transpilation could re-optimize and
+    cancel the fold)."""
+    return provider.get_backend("ionq_simulator", gateset="native")
+
+
 def main():
     print("\n" + "=" * 70)
     print("  IonQ Cloud — API connection + live backend listing")
