@@ -1,0 +1,31 @@
+{
+  "circuits_per_register_k5": 325,
+  "native_2q_gates_per_stateprep": 14,
+  "fold_factors": [
+    1,
+    3,
+    5
+  ],
+  "per_fold": [
+    {
+      "fold": 1,
+      "native_2q_gates_per_circuit": 14,
+      "total_2q_gates_this_fold": 4550
+    },
+    {
+      "fold": 3,
+      "native_2q_gates_per_circuit": 42,
+      "total_2q_gates_this_fold": 13650
+    },
+    {
+      "fold": 5,
+      "native_2q_gates_per_circuit": 70,
+      "total_2q_gates_this_fold": 22750
+    }
+  ],
+  "real_total_2q_gates_one_register_one_model": 40950,
+  "old_cancelled_assumption_total": 13650,
+  "real_vs_old_ratio": 3.0,
+  "real_total_both_registers_one_model": 81900,
+  "real_total_both_registers_two_models": 163800
+}

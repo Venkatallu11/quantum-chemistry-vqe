@@ -468,6 +468,16 @@ noise), so both linear and quadratic extrapolation land within noise of
 the unmitigated value — no improvement, unlike the 35x reduction the same
 technique gave against a local depolarizing noise model above.
 
+**Update, later in this repo's history:** this turned out to have a
+specific, fixable cause — see "Native-gate folding" further down. Folds
+submitted as *abstract* gates were being cancelled by IonQ's compiler
+before execution; submitting the same folds as *native* gates
+(`GPi`/`GPi2`/`MS`/`ZZ`) recovers a real, monotonic noise-vs-fold
+response on both `aria-1` and `forte-1`. The flat result above is real
+and correctly reported for what was actually run (abstract gates) — it
+just wasn't the final word on whether folding works on this hardware at
+all.
+
 ### Isolating why: does folding scale noise on IonQ's simulator at all?
 
 The 185-term EF result above is noisy enough (100k shots per matrix
@@ -667,6 +677,187 @@ assembles E_tailored from saved fragments (no network calls). Results in
 
 ---
 
+## Native-gate folding: recovering ZNE from a compiler-cancellation bug
+
+The "Gate-folding ZNE did not work here" finding above (`aria-1`/`forte-1`
+flat across fold=1/3/5, `<XX>` bit-for-bit identical from fold=1 to
+fold=81 in `ionq_fold_check.py`) turned out to have a specific,
+addressable cause: circuits submitted as **abstract gates** go through
+IonQ's compiler, and qiskit-ionq ships its own optimizer plugin
+(`TrappedIonOptimizerPlugin`, with `FuseConsecutiveZZ`/`FuseConsecutiveMS`
+passes) that would fuse a folded gate's `G G⁻¹ G` triple straight back
+down to `G` if invoked — a real, working mechanism, even though this
+repo's own code never calls that plugin locally. **Native-gate
+submission** (`gateset="native"`, circuits built directly from IonQ's
+`GPi`/`GPi2`/`MS`/`ZZ` instructions) is meant to bypass that kind of
+circuit-level recompilation, so `ionq_fold_check.py --native` tests
+whether it actually does.
+
+### Result: it does. Native folding recovers real per-gate noise response
+
+| Fold | `aria-1` f | `forte-1` f |
+|---|---|---|
+| 1 | 0.986496 | 0.985268 |
+| 3 | 0.960874 | 0.957220 |
+| 5 | 0.935376 | 0.930132 |
+| 9 | 0.886640 | 0.878748 |
+| 21 | 0.755160 | 0.740006 |
+| 81 | **0.338992** | **0.312134** |
+
+Both noise models show a clean, monotonic decay from ~0.985 down to
+~0.31-0.34 as fold goes 1→81 — a sharp contrast to the abstract-gate
+result's flat 0.985492 at *every single fold*. The `ideal` control stayed
+at exactly 1.0 throughout (folding mechanism itself intact — but per the
+experiment design, this alone proves nothing either way, since a
+cancelled fold also returns 1.0 under noiseless execution; only the
+noisy decay is evidence). Two probe circuits were used since they
+entangle differently: a `GPI2`+`ZZ`-built probe is a clean `XX`
+eigenstate, a bare `MS` gate on `|00⟩` is a clean `ZZ` eigenstate
+(verified via Statevector before use, not assumed) — `aria-1` uses the
+`MS` probe (its native family), `forte-1` the `ZZ` probe.
+
+**Two real API constraints were discovered by actual submission
+failures, not anticipated in advance:**
+1. `Gate.inverse()` on `ZZGate`/`MSGate` returns a mis-parametrized
+   `"zz_dg"`/`"ms_dg"` gate with the **same, not negated**, parameters —
+   not a valid native-gateset instruction and not actually the inverse.
+   Folding uses an explicit, numerically-verified inverse construction
+   instead.
+2. IonQ's real API rejects `ms`/`zz` angle outside `[0, 0.25]` (a genuine
+   native-pulse-angle limit, not just a sign convention) — caught on a
+   real rejected submission (`"angle" must be less than or equal to
+   0.25`), not predicted. `MS` has a phase parameter to exploit instead
+   (`MS(φ0+0.5, φ1, θ)` is matrix-identical to `MS(φ0, φ1, -θ)`, verified
+   numerically, θ stays in-range). `ZZ` has no such parameter, so its
+   inverse uses the conjugation identity `X · ZZ(θ) · X = ZZ(-θ)`
+   (verified numerically; `GPI(0)` is exactly the Pauli `X` matrix) — a
+   3-gate sandwich at the *same* in-range θ standing in for the single
+   out-of-range gate, still exactly `fold` total 2-qubit gates.
+
+### Resource estimate: genuine folding costs 3x the old assumption
+
+Because the old abstract-gate folds were being silently cancelled, any
+circuit-count-based resource estimate from that era was really only
+paying for fold=1's worth of real gate work, no matter what fold factor
+was requested. `vqe/ionq_resource_estimate.py` recomputes this using
+genuine (uncancelled) native folding, from numbers already measured
+elsewhere in this repo (325 circuits/register at K=5, from
+`ionq_tailoring_results.json`'s fragment A; 14 native 2-qubit gates per
+state-prep circuit, from `native_stateprep_results.json`, itself verified
+on real IonQ, not just locally):
+
+| Fold | 2q gates/circuit | Total 2q gates (1 register) |
+|---|---|---|
+| 1 | 14 | 4,550 |
+| 3 | 42 | 13,650 |
+| 5 | 70 | 22,750 |
+
+Summed across fold={1,3,5}: **40,950** real two-qubit gate operations for
+one register at K=5 under one noise model — **3.0x** the old
+cancelled-fold assumption (13,650, since every fold was secretly costing
+the same as fold=1). Both registers, one noise model: 81,900. Both
+registers, `aria-1`+`forte-1`: 163,800. This is a resource estimate for
+`ionq_simulator` (free); it is not a cost estimate for `ionq_qpu` (real
+paid trapped-ion hardware), which this project does not touch and has
+not priced out — the point is that any future real-hardware decision
+needs to budget for the *real* total, not the old (cancelled-fold) one.
+
+### Native state prep, re-verified: still 14, and it works on real IonQ
+
+The Experiment B result stands (see below) — `native_stateprep.py`'s
+hand-derived real-only state prep costs 14 two-qubit native gates, not
+fewer than the 11-CX generic baseline. What's new: those circuits were
+only checked against local Statevector math before; `python vqe/native_stateprep.py
+--real-check` now actually submits a representative sample to the real
+`ionq_simulator` (`noise_model="ideal"`) and confirms every emitted
+`ms`/`zz` angle is within IonQ's real `[0, 0.25]` limit *and* that the
+measured probabilities match `|target|²` to shot-noise-level precision
+(8.6e-5 to 5.1e-4 across the sample) — closing the same
+"local-math-isn't-enough" gap the fold-check experiment exposed.
+
+Run: `python vqe/ionq_fold_check.py --native` (results in
+`vqe/ionq_native_fold_results.json`); `python vqe/ionq_resource_estimate.py`
+(results in `vqe/ionq_resource_estimate_results.json`); `python
+vqe/native_stateprep.py --real-check` (results merged into
+`vqe/native_stateprep_results.json`).
+
+### The real test: does native folding help the FULL forged energy, not just a probe
+
+The probe above is one Schmidt vector through one Z-type observable — a
+clean, minimal test of whether folding survives at all. `vqe/ionq_native_forged_energy.py`
+measures the real thing: the complete K=5, 185-term H4 forged energy
+(same physical system as fragment A above), built entirely from native
+gates (state prep via `native_stateprep.py`'s hand-derived real-only
+tree, folded via `ionq_fold_check.fold_native_2q`'s verified inverses,
+basis-change built abstractly then translated to native via IonQ's own
+equivalence library and *appended* — never re-transpiled together with
+the already-folded state prep, so the fold is never at risk of being
+re-optimized away). `ideal` was run and confirmed (0.222 kcal/mol from
+exact) before any noisy config, per this repo's standing rule.
+
+**The per-fold effective error rate is NOT constant here** — unlike the
+simple probe's tight ~0.0133–0.0134 consistency across fold 1 through 81:
+
+| | fold=1 | fold=3 | fold=5 | spread |
+|---|---|---|---|---|
+| `aria-1`, 1−f^(1/L) | 0.157 | 0.142 | 0.137 | 0.0205 |
+| `forte-1`, 1−f^(1/L) | 0.161 | 0.149 | 0.145 | 0.0159 |
+
+This is checked, not assumed, and the honest conclusion is exactly what
+the check is for: **the extrapolation below should not be trusted as a
+clean per-gate-depolarizing fit** the way the probe's was. The full
+185-term aggregate — many different circuits, many different basis
+rotations, many different 4-qubit states pushed through the 14-gate
+native tree — doesn't decay as simply as one Bell-like pair does.
+
+| | `aria-1` | `forte-1` |
+|---|---|---|
+| Raw (fold=1) | 181.47 kcal/mol | 185.83 kcal/mol |
+| ZNE linear | 88.31 kcal/mol | 87.58 kcal/mol |
+| ZNE quadratic | 34.25 kcal/mol | 31.82 kcal/mol |
+| ZNE exponential | n/a — energies hit the fit's log(0) edge case, reported as unavailable rather than faked | n/a, same reason |
+
+Mitigation genuinely reduces the error (181 → 34 kcal/mol at best,
+`aria-1` quadratic) — real, computed from real data — but even the best
+case lands **nowhere near** chemical accuracy (1 kcal/mol) or the
+classical EF-K=5 method floor (0.5655 kcal/mol), and comes with the
+caveat above that the fit's own assumption isn't cleanly satisfied.
+Also notable: native fold=1's raw error (181–186 kcal/mol) is
+meaningfully *higher* than the earlier abstract-gate fold=1 result
+(125.07/134.62 kcal/mol) — the hand-derived 14-gate native state-prep
+circuit, while mathematically correct, is less gate-efficient than
+whatever qiskit's abstract-to-qis-gateset path produced, so it starts
+from a noisier baseline even before folding.
+
+**Resource cost (actual, from this run, not a prediction):** 325
+circuits per configuration, 14 native two-qubit gates per fold=1
+state-prep circuit, scaling to 14×fold per circuit under folding —
+**86,450 real two-qubit gate operations** across all 7 configurations
+run (`ideal` + `aria-1`/`forte-1` × fold {1,3,5}), 2,275 real circuits
+submitted in total. This project has no verified IonQ `ionq_qpu` pricing
+data and does not estimate a dollar figure — that would be fabricating a
+number this repo has no basis for, exactly what the honesty rules here
+exist to prevent. The real, checkable number is the gate count above.
+
+**Plain English:** no, H4 does not reach chemical accuracy on Forte (or
+Aria) with this approach, even after ZNE — the best mitigated result is
+roughly 30-35 kcal/mol from exact, about 30-35x too large. It costs
+86,450 real two-qubit gate operations to find that out on the free
+simulator. Native gates fixed the *compiler-cancellation* problem (the
+probe proves gate folding is a real, working noise-scaling knob on this
+hardware) — but they exposed a *second*, different problem: the
+full forged energy's noise response isn't the simple single-parameter
+decay the probe suggested, so folding's benefit here is real but limited,
+not the clean fix the probe result on its own would have suggested.
+
+Run: `python vqe/ionq_native_forged_energy.py --noise-model <ideal|aria-1|forte-1>
+--fold <1|3|5>` (ideal/fold=1 first, required before any noisy config);
+`python vqe/ionq_native_forged_energy.py --assemble` (no network calls —
+fits ZNE and prints the consistency check). Results in
+`vqe/native_forged_zne_results.json`.
+
+---
+
 ## Integration with Lokesh's Quantum Hardware MCP server
 
 This repo's chemistry engine is fully independent, but it also connects to
@@ -813,6 +1004,14 @@ python vqe/ionq_tailoring.py --fragment B --noise-model ideal --K 5
 python vqe/ionq_tailoring.py --fragment overlap --noise-model ideal --K 5
 python vqe/ionq_tailoring.py --assemble --noise-model ideal --K 5      # MUST pass before noisy runs
 python vqe/ionq_tailoring.py --fragment A --noise-model aria-1 --K 5   # then repeat --fragment for B, overlap
+
+# Native-gate folding: does it fix ZNE? (fold-cancellation isolation, then the real forged energy)
+python vqe/ionq_fold_check.py --native        # 2-qubit probe, fold 1-81, native gates
+python vqe/native_stateprep.py --real-check   # native state-prep, verified on real IonQ
+python vqe/ionq_resource_estimate.py          # gate-count cost of genuine (uncancelled) folding
+python vqe/ionq_native_forged_energy.py --noise-model ideal --fold 1     # required first
+python vqe/ionq_native_forged_energy.py --noise-model aria-1 --fold 1    # then fold 3, 5, and forte-1
+python vqe/ionq_native_forged_energy.py --assemble    # ZNE fits + consistency check, no network calls
 ```
 
 ### Adding your own molecule
@@ -899,13 +1098,21 @@ vqe/
 ├── ionq_run_results_forte-1.json      # Same, noise_model=forte-1 (namespaced so profiles don't overwrite)
 ├── ionq_run_results_ideal.json        # ideal-noise control at fold=3/5 (folding-artifact check)
 ├── ionq_fold_check.py                 # Isolates whether gate folding scales noise at all (Bell state, fold 1x-81x)
-├── ionq_fold_check_results.json       # Saved results from ionq_fold_check.py
+├── ionq_fold_check_results.json       # Saved results from ionq_fold_check.py (abstract gates)
+├── ionq_native_fold_results.json      # Saved results from ionq_fold_check.py --native
 │
 ├── ef_fragment.py                     # EF core generalized to ARBITRARY fragments (real gauge, sign-reuse, grouping)
 ├── ionq_tailoring.py                  # Multi-fragment H6 molecular tailoring measured on real IonQ circuits
 ├── ionq_tailoring_results.json        # Saved results, noise_model=ideal
 ├── ionq_tailoring_results_aria-1.json # Saved results, noise_model=aria-1
-└── ionq_tailoring_results_forte-1.json # Saved results, noise_model=forte-1
+├── ionq_tailoring_results_forte-1.json # Saved results, noise_model=forte-1
+│
+├── native_stateprep.py                # Hand-derived real-only state prep in native gates (14 vs 11-CX baseline)
+├── native_stateprep_results.json      # Saved results, incl. real-IonQ verification sample
+├── ionq_resource_estimate.py          # Real 2q gate cost of genuine (uncancelled) native folding
+├── ionq_resource_estimate_results.json
+├── ionq_native_forged_energy.py       # Full K=5 H4 forged energy on real IonQ, native gates, folds 1/3/5
+└── native_forged_zne_results.json     # Saved results: energies, f, ZNE fits, consistency check, resource cost
 
 requirements.txt
 ```

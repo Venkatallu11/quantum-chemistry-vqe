@@ -162,11 +162,57 @@ def verify(vec, native_circuit, tol=1e-9):
     return err, err < tol
 
 
+def check_angle_ranges(native_circuit, gate_name, lo=0.0, hi=0.25, tol=1e-9):
+    """IonQ's real API rejects ms/zz angle outside [0, 0.25] (a genuine
+    native-pulse-angle limit, discovered on a real submission during the
+    fold-check experiment, not documented anywhere checked in advance).
+    qiskit's own equivalence-library CX->native translation only ever
+    emits exactly ms(0,0,1/4)/zz(1/4) per CX (both in-range by
+    construction), but this checks every emitted gate directly rather
+    than assuming that holds after optimization_level=1 transpilation."""
+    bad = []
+    for instr in native_circuit.data:
+        if instr.operation.name == gate_name:
+            theta = float(instr.operation.params[-1])
+            if not (lo - tol <= theta <= hi + tol):
+                bad.append(theta)
+    return bad
+
+
+def verify_on_real_ionq(vec, native_circuit, backend, shots=100_000):
+    """Actually submit to the real ionq_simulator (noise_model=ideal) and
+    compare measured probabilities to |target|^2 -- local Statevector math
+    alone was NOT sufficient evidence during the fold-check experiment
+    (real API angle-range rejections only showed up on real submission),
+    so this repeats that lesson here rather than trusting local math only."""
+    qc_meas = native_circuit.copy()
+    qc_meas.measure_all()
+    job = backend.run([qc_meas], noise_model="ideal", shots=shots)
+    probs = dict(job.result().get_probabilities())
+    n = int(round(np.log2(len(vec))))
+    max_err = 0.0
+    for i, amp in enumerate(vec):
+        if abs(amp) > 1e-9:
+            bitstr = format(i, f"0{n}b")
+            max_err = max(max_err, abs(probs.get(bitstr, 0.0) - amp ** 2))
+    return max_err
+
+
 # ---------------------------------------------------------------------------
 # Main: run for the actual H4 fragment's Schmidt vectors + phase states
 # ---------------------------------------------------------------------------
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--real-check", action="store_true",
+                         help="also submit a representative sample of targets to the "
+                              "real ionq_simulator (noise_model=ideal) -- local "
+                              "Statevector math alone was NOT sufficient evidence "
+                              "during the fold-check experiment (real angle-range "
+                              "rejections only showed up on real submission)")
+    args = parser.parse_args()
+
     print("\n" + "=" * 70)
     print("  Native-gate state prep -- H4 fragment Schmidt vectors")
     print("=" * 70)
@@ -212,6 +258,35 @@ def main():
           "per-layer UCRY tree doesn't merge boundary CNOTs the way Qiskit's "
           "more sophisticated isometry-based synthesis does. Correct (verified "
           "to machine precision), just not smaller.")
+
+    all_angles_ok = True
+    for name, vec in targets.items():
+        for gate in ("ms", "zz"):
+            native, _ = native_state_prep(vec, gate)
+            bad = check_angle_ranges(native, gate)
+            if bad:
+                all_angles_ok = False
+                print(f"  ANGLE RANGE VIOLATION: {name} ({gate}): {bad}")
+    print(f"  All emitted ms/zz angles within IonQ's real [0, 0.25] limit: {all_angles_ok}")
+    results["all_angles_in_range"] = all_angles_ok
+
+    if args.real_check:
+        print("\n  -- Real IonQ verification (a representative sample, not all 25*2) --")
+        from ionq_backend import connect_provider, get_native_simulator
+        provider = connect_provider()
+        backend = get_native_simulator(provider)
+        sample_names = [f"u_0", f"u_{K - 1}", f"(u_0+u_1)/sqrt2"]
+        real_results = {}
+        for name in sample_names:
+            vec = targets[name]
+            row = {}
+            for gate in ("ms", "zz"):
+                native, _ = native_state_prep(vec, gate)
+                err = verify_on_real_ionq(vec, native, backend)
+                row[gate] = round(err, 6)
+                print(f"    {name} ({gate}): real submission prob error = {err:.2e}")
+            real_results[name] = row
+        results["real_ionq_check"] = real_results
 
     out = os.path.join(os.path.dirname(__file__), "native_stateprep_results.json")
     with open(out, "w") as f:

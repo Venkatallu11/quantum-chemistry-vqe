@@ -1,0 +1,177 @@
+{
+  "configs": {
+    "ideal_fold1": {
+      "noise_model": "ideal",
+      "gate": "ms",
+      "fold": 1,
+      "K": 5,
+      "n_circuits": 325,
+      "exact_energy_ha": -2.166387,
+      "exact_numpy_ef_k_ha": -2.165486,
+      "e_mixed_ha": -0.331478,
+      "measured_energy_ha": -2.166034,
+      "error_kcal": 0.222,
+      "f": 1.000298
+    },
+    "aria-1_fold1": {
+      "noise_model": "aria-1",
+      "gate": "ms",
+      "fold": 1,
+      "K": 5,
+      "n_circuits": 325,
+      "exact_energy_ha": -2.166387,
+      "exact_numpy_ef_k_ha": -2.165486,
+      "e_mixed_ha": -0.331478,
+      "measured_energy_ha": -1.877189,
+      "error_kcal": 181.4747,
+      "f": 0.842805
+    },
+    "aria-1_fold3": {
+      "noise_model": "aria-1",
+      "gate": "ms",
+      "fold": 3,
+      "K": 5,
+      "n_circuits": 325,
+      "exact_energy_ha": -2.166387,
+      "exact_numpy_ef_k_ha": -2.165486,
+      "e_mixed_ha": -0.331478,
+      "measured_energy_ha": -1.489567,
+      "error_kcal": 424.7115,
+      "f": 0.631452
+    },
+    "aria-1_fold5": {
+      "noise_model": "aria-1",
+      "gate": "ms",
+      "fold": 5,
+      "K": 5,
+      "n_circuits": 325,
+      "exact_energy_ha": -2.166387,
+      "exact_numpy_ef_k_ha": -2.165486,
+      "e_mixed_ha": -0.331478,
+      "measured_energy_ha": -1.210766,
+      "error_kcal": 599.6616,
+      "f": 0.479435
+    },
+    "forte-1_fold1": {
+      "noise_model": "forte-1",
+      "gate": "zz",
+      "fold": 1,
+      "K": 5,
+      "n_circuits": 325,
+      "exact_energy_ha": -2.166387,
+      "exact_numpy_ef_k_ha": -2.165486,
+      "e_mixed_ha": -0.331478,
+      "measured_energy_ha": -1.870253,
+      "error_kcal": 185.8271,
+      "f": 0.839023
+    },
+    "forte-1_fold3": {
+      "noise_model": "forte-1",
+      "gate": "zz",
+      "fold": 3,
+      "K": 5,
+      "n_circuits": 325,
+      "exact_energy_ha": -2.166387,
+      "exact_numpy_ef_k_ha": -2.165486,
+      "e_mixed_ha": -0.331478,
+      "measured_energy_ha": -1.463583,
+      "error_kcal": 441.0168,
+      "f": 0.617284
+    },
+    "forte-1_fold5": {
+      "noise_model": "forte-1",
+      "gate": "zz",
+      "fold": 5,
+      "K": 5,
+      "n_circuits": 325,
+      "exact_energy_ha": -2.166387,
+      "exact_numpy_ef_k_ha": -2.165486,
+      "e_mixed_ha": -0.331478,
+      "measured_energy_ha": -1.169139,
+      "error_kcal": 625.7827,
+      "f": 0.456738
+    }
+  },
+  "zne_report": {
+    "aria-1": {
+      "folds": [
+        1,
+        3,
+        5
+      ],
+      "energies_ha": [
+        -1.877189,
+        -1.489567,
+        -1.210766
+      ],
+      "f": [
+        0.842805,
+        0.631452,
+        0.479435
+      ],
+      "effective_error_rate": [
+        0.15719499999999997,
+        0.1420800222424392,
+        0.13673139471783946
+      ],
+      "rate_spread": 0.020464,
+      "rate_consistent": false,
+      "no_mitigation_kcal": 181.4745,
+      "zne_linear_kcal": 88.3088,
+      "zne_quadratic_kcal": 34.2489,
+      "zne_exponential_kcal": null,
+      "zne_exponential_note": "energies not monotonic across folds -- exponential fit not well-posed, not faked",
+      "raw_baseline_kcal_from_abstract_gate_run": 125.07
+    },
+    "forte-1": {
+      "folds": [
+        1,
+        3,
+        5
+      ],
+      "energies_ha": [
+        -1.870253,
+        -1.463583,
+        -1.169139
+      ],
+      "f": [
+        0.839023,
+        0.617284,
+        0.456738
+      ],
+      "effective_error_rate": [
+        0.16097700000000004,
+        0.14854505241281024,
+        0.14506434597645435
+      ],
+      "rate_spread": 0.015913,
+      "rate_consistent": false,
+      "no_mitigation_kcal": 185.8269,
+      "zne_linear_kcal": 87.5751,
+      "zne_quadratic_kcal": 31.8237,
+      "zne_exponential_kcal": null,
+      "zne_exponential_note": "energies not monotonic across folds -- exponential fit not well-posed, not faked",
+      "raw_baseline_kcal_from_abstract_gate_run": 134.62
+    }
+  },
+  "classical_floor_kcal": 0.5655,
+  "chemical_accuracy_kcal": 1.0,
+  "resource_estimate": {
+    "note": "actual empirical counts from this run, not a prediction",
+    "n_circuits_per_config": 325,
+    "native_2q_gates_per_stateprep_circuit_fold1": 14,
+    "per_config_2q_gate_ops": {
+      "ideal_fold1": 4550,
+      "aria-1_fold1": 4550,
+      "aria-1_fold3": 13650,
+      "aria-1_fold5": 22750,
+      "forte-1_fold1": 4550,
+      "forte-1_fold3": 13650,
+      "forte-1_fold5": 22750
+    },
+    "total_2q_gate_ops_this_run": 86450,
+    "total_real_circuits_submitted": 2275,
+    "dollar_cost": null,
+    "dollar_cost_note": "no verified IonQ ionq_qpu pricing data exists in this project -- not estimated, not fabricated. This is a free ionq_simulator run; a real hardware cost would need IonQ's actual published rate, which has not been looked up here."
+  }
+}
