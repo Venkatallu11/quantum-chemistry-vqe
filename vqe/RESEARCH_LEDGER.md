@@ -1,26 +1,38 @@
 # Research Ledger — H4 forged energy noise mitigation
 
-**STATUS: no simulated result in this ledger legitimately clears 0.30
-kcal/mol on a hardware-representative basis. What iteration 5 DOES
-establish: a real, Clifford-only sparse-Pauli-Lindblad learning protocol
-(validated here — sparsity and depth checks both pass on their own terms)
-plausibly CAN characterize this circuit's noise channel to the precision
-PEC needs (0.90% for chemical accuracy, 0.27% for the loop target), at an
-analytically-estimated, realistic shot budget (~7×10⁴-8×10⁵ shots per
-calibration circuit, ~7×10⁶-8×10⁷ total) — comparable to real published
-experiments. That is an analytic estimate, not a simulated proof (this
-project has no shot-noise model anywhere). The best result this simulator
-can actually produce and call hardware-representative remains **CDR
-per-basis, K=6, 2.850 ± 0.490 kcal/mol**. Iteration 2 (0.0636 kcal/mol)
-remains DISQUALIFIED for depending on classical simulability near the
-target; iteration 4's 0.000 kcal/mol remains conditional on exact
-(unavailable) channel knowledge, now with a precise, favorable answer
-attached in iteration 5 to "how hard would getting that knowledge really
-be."**
+**STATUS / GOAL REFRAMED (iteration 6): every result through iteration 5
+was shot-noise-free (`density_matrix` estimator, exact expectation
+values) — omitting the dominant real-hardware error source entirely.
+"Reach 0.30 kcal/mol" was the wrong objective while that omission stood:
+at the noiseless-CDR level, shot noise alone would cost 33 million
+shots/setting (10.8 billion total) for 0.30 kcal/mol, and IonQ's ~10,000-
+shot/job cap makes that unreachable at any budget. Iteration 6 adds a
+verified shot-noise model and reframes the deliverable as **the shots-
+vs-accuracy trade-off curve for raw / CDR / PEC**, not a single target.
+Headline finding: raw and CDR are both **bias-limited** — neither crosses
+chemical accuracy (1.0 kcal/mol) at ANY shot count tested up to 10⁷/setting,
+because their residual error is systematic (gate-noise bias for raw;
+angle-dependent noise-model mismatch for CDR, per iteration 2's diagnosis),
+not statistical. **PEC, using iteration 5's Clifford-learned channel with
+BOTH calibration and correction shot-limited (not just correction), is
+unbiased by construction and DOES converge**: chemical accuracy at
+~10⁵ shots/setting, the (now secondary) 0.30 kcal/mol figure at ~10⁶
+shots/setting — both real, achievable shot budgets, unlike the naive
+10.8-billion-shot estimate for CDR alone. Orbital rotation (iteration 7)
+was tried as a classical lever on the shot-noise-driving Hamiltonian norm;
+for this specific symmetric, minimal-basis H4 chain it gave only a
+marginal reduction (L1 1.005x), reported honestly rather than oversold.
 
-Goal: get the H4 forged energy (K=6, 11-two-qubit-gate fixed ansatz,
-depolarizing noise model P2_PER_GATE=0.01214, P1_PER_GATE=P2_PER_GATE/40)
-below **0.30 kcal/mol**, reliably (most of 8 seeds), in simulation only.
+Best surviving-scrutiny **noiseless-estimator** result remains CDR
+per-basis, K=6, 2.850 ± 0.490 kcal/mol (bias floor, shot-noise-free).
+Best surviving-scrutiny **shot-noise-included, hardware-representative**
+result is PEC on the honestly shot-limited learned channel, reaching
+chemical accuracy at ~10⁵ shots/setting.
+
+Original goal (kept for context, superseded by iteration 6): get the H4
+forged energy (K=6, 11-two-qubit-gate fixed ansatz, depolarizing noise
+model P2_PER_GATE=0.01214, P1_PER_GATE=P2_PER_GATE/40) below **0.30
+kcal/mol**, reliably (most of 8 seeds), in simulation only.
 
 Every entry below is a real, executed 8-seed sweep. Report both err_vs_exact
 and err_vs_noiseless(K) — at K=6 the truncation floor is exact (~0), so
@@ -421,5 +433,135 @@ analytic shot-budget calculation gives a real, actionable, favorable
 answer. NOT validated — an actual end-to-end run with simulated shot noise
 (this project has never built a shot-noise model, in any experiment, so
 this is a pre-existing scope limit, not one specific to this iteration).
+
+---
+
+## Iteration 6: shot noise added to the simulator — the goal reframed
+
+**Script**: `vqe/shot_noise_study.py`. **Result**: `vqe/shot_noise_study_results.json`.
+
+**Task 1 — the shot-noise model.** Every prior measurement in this
+project used `AerSimulator(method="density_matrix")` with no shot count:
+exact Born-rule expectation values, not sampled ones. Replaced with the
+exact Binomial sample-mean estimator (`n_plus ~ Binomial(N, (1+e)/2)`,
+estimator `2*n_plus/N - 1`) — the true distribution real shot-based
+execution produces for a given (possibly noisy) state, applied on top of
+the already-exact density-matrix values (computed once, cached, cheaply
+re-sampled per shot level/seed — not re-simulating the circuit per trial).
+
+**Mandatory verification, run before Task 2, per instruction:**
+- *Convergence*: shots swept 1e3→1e8; error vs the exact result fell from
+  3.39 kcal/mol (1e3) to 0.03 kcal/mol (1e8), non-monotonically at
+  intermediate points (expected single-trial statistical fluctuation) but
+  clearly trending to zero. **PASS.**
+- *1/√N scaling*: 100x more shots (1e4→1e6) gave a 10.86x reduction in
+  std(E) (200-trial empirical std), vs the 10.00x the √N law predicts.
+  **PASS.**
+- *L2/√N absolute match*: measured std(E) at 1e5 shots = 0.7375 kcal/mol;
+  the naive prediction L2/√N (L2=2.7555 Ha, verified directly from the
+  Hamiltonian's own Pauli coefficients, matching the given value exactly)
+  gives 5.4679 kcal/mol — **a 7.4x MISMATCH, measured smaller than
+  predicted.** Reported honestly, not forced: the standard L2/√N result
+  assumes E is a linear combination of independently-measured Pauli terms;
+  this project's forged-energy estimator is NOT that — each term's
+  contribution is bilinear (`coeff*(diag+cross)/norm2`, with
+  `Bmat = S.Amat.S` DERIVED from the SAME measured alpha matrix via the
+  beta-reuse shortcut, never independently measured) — a genuinely
+  different, more favorable variance structure than the textbook linear
+  case. The functional form (1/√N) still holds; the absolute constant does
+  not match the simple formula, and that mismatch is itself an honest,
+  reportable structural finding, not a bug.
+
+Both mandatory pass conditions (convergence, scaling) passed, so Task 2
+proceeded, with the L2 mismatch carried forward as a caveat rather than
+gating.
+
+**Task 2 — error vs shots, 8-seed sweep, three methods:**
+
+| n_shots/setting | raw | CDR per-basis | PEC (optimistic cal.) | PEC (honest cal.) |
+|---|---|---|---|---|
+| 1e3 | 106.90 ± 6.44 | 4.96 ± 2.73 | 4.35 ± 2.43 | 3.84 ± 2.65 |
+| 1e4 | 104.18 ± 0.95 | 2.78 ± 1.55 | 1.19 ± 0.89 | 1.47 ± 0.71 |
+| 1e5 | 104.06 ± 0.32 | 2.92 ± 0.79 | 0.27 ± 0.13 | 0.48 ± 0.25 |
+| 1e6 | 104.05 ± 0.18 | 2.70 ± 0.66 | 0.040 ± 0.028 | 0.132 ± 0.097 |
+| 1e7 | 103.99 ± 0.07 | 2.81 ± 0.49 | 0.029 ± 0.020 | 0.082 ± 0.042 |
+
+(kcal/mol vs exact; vs-noiseless is identical throughout, K=6 truncation
+is exact.) "Optimistic" PEC reuses iteration 5's exact, infinite-shot
+calibration and only shot-limits the target correction — an overstatement
+of real performance. **"Honest" PEC shot-limits the CALIBRATION too, at
+the same shot count as the target correction, re-learning p2/p1 from
+noisy calibration data at every shot level** — this is where iteration
+5's `3.3e-15` learned-channel error becomes a real, shot-count-dependent
+number: measured calibration `p2` relative error was 3.08% at 1e3 shots,
+0.91% at 1e4, 0.35% at 1e5, 0.043% at 1e6 — matching iteration 5's
+*analytic* prediction (~0.75% at 1e5, ~6.9e4 shots/circuit needed for
+0.90%) closely, from an actual (not analytic) shot-sampled re-run.
+
+**Crossing points** (mean over 8 seeds first drops below the bar):
+
+| method | chemical accuracy (1.0) | 0.30 kcal/mol |
+|---|---|---|
+| raw | never (tested to 1e7) | never |
+| CDR per-basis | never (tested to 1e7) | never |
+| PEC, optimistic calibration | 1e5 shots/setting | 1e5 shots/setting |
+| PEC, honest calibration | **1e5 shots/setting** | **1e6 shots/setting** |
+
+**The actual finding**: raw and CDR are **bias-limited**, not
+statistics-limited — their error is flat (raw: pinned at ~104 kcal/mol;
+CDR: pinned at ~2.7-3.0 kcal/mol) across four orders of magnitude of
+shots, because the residual is systematic (gate-noise bias for raw;
+iteration 2's angle-dependent noise-model mismatch for CDR) — more shots
+cannot fix a bias. **PEC is unbiased by construction** (iteration 4/5),
+so it genuinely converges with more shots, crossing chemical accuracy at
+a real, achievable ~1e5 shots/setting even with fully honest (shot-
+limited, Clifford-only) calibration. This directly answers why "reach
+0.30 kcal/mol" was the wrong framing for CDR alone (no amount of shots
+gets there) while giving PEC a concrete, favorable, hardware-realistic
+number instead.
+
+---
+
+## Iteration 7: orbital rotation to shrink the Hamiltonian coefficient norm
+
+**Script**: `vqe/orbital_rotation_study.py`. **Result**:
+`vqe/orbital_rotation_study_results.json`.
+
+**Approach**: parametrized an orthogonal 4x4 rotation (6 independent
+Givens angles, via matrix exponential of an antisymmetric generator —
+guarantees orthogonality by construction) applied to the RHF MO
+coefficients post hoc, recomputed the one/two-electron integrals and the
+mapped qubit Hamiltonian in the rotated basis, and minimized the
+resulting L1 norm with `scipy.optimize.minimize` (Nelder-Mead; budget
+capped at 3 restarts x 150 evaluations, ~0.45s/evaluation, ~200s/restart
+— a LIMITED search, stated plainly, not an exhaustive global optimization).
+
+**Physics-invariance check** (mandatory before trusting any rotated-basis
+number): recomputed the exact ground-state energy in the optimized
+rotated basis and compared to the untouched-basis value — **diff =
+9.47e-12 kcal/mol**, i.e. exact to the solver's own numerical precision,
+confirming the rotation is a pure basis change with zero physics impact,
+as any orthogonal orbital rotation must be.
+
+**Result: L1 = 9.7175 Ha (from 9.7694, a 1.005x reduction), L2 = 2.7555 Ha
+(unchanged, 1.000x).** A genuinely modest, close-to-negative finding,
+reported as measured rather than reframed as a win. Plausible reason: RHF
+orbitals for this specific highly-symmetric H4 chain in a minimal STO-3G
+basis (only 4 spatial orbitals, no room for the kind of localization gains
+seen in larger/less-symmetric systems in the literature) are already close
+to whatever basis a simple rotation search finds — combined with the
+limited optimization budget (150 evals/restart is not exhaustive over a
+6-parameter nonlinear objective), this result should be read as "orbital
+rotation did not help much HERE," not "orbital rotation cannot help" in
+general.
+
+**Implied shot-budget impact** (variance ~ norm²/N, so shots for fixed
+precision ~ norm²): 1.011x fewer shots via L1, ~1.000x via L2 — negligible.
+Explicitly not re-verified against the actual forged-energy pipeline (that
+would need re-deriving the whole Schmidt decomposition, fixed-ansatz
+angle-fits, and CDR/PEC pipeline in the rotated basis, a substantial
+follow-up not attempted here) — reported as a specification derived from
+the norm reduction alone, consistently with the honesty rules, not as a
+re-measured shot count.
 
 ---

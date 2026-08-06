@@ -1,0 +1,472 @@
+{
+  "L1": 9.769449765587728,
+  "L2": 2.7554918606210363,
+  "task1_verification": {
+    "convergence": [
+      {
+        "n_shots": 1000.0,
+        "E": -1.9955112415244485,
+        "diff_from_exact_kcal": 3.2312132686659853
+      },
+      {
+        "n_shots": 10000.0,
+        "E": -1.996748411623455,
+        "diff_from_exact_kcal": 2.4548773105117667
+      },
+      {
+        "n_shots": 100000.0,
+        "E": -2.0011312358950133,
+        "diff_from_exact_kcal": 0.2953864430447264
+      },
+      {
+        "n_shots": 1000000.0,
+        "E": -2.000359795505102,
+        "diff_from_exact_kcal": 0.18869971029967436
+      },
+      {
+        "n_shots": 10000000.0,
+        "E": -2.000669488395918,
+        "diff_from_exact_kcal": 0.005635512737601571
+      },
+      {
+        "n_shots": 100000000.0,
+        "E": -2.000702034271788,
+        "diff_from_exact_kcal": 0.026058358187627615
+      }
+    ],
+    "convergence_pass": true,
+    "variance_check": {
+      "n_shots": 100000,
+      "n_trials": 200,
+      "measured_std_ha": 0.0011752413162579548,
+      "measured_std_kcal": 0.7374750602622546,
+      "predicted_std_ha": 0.008713630353617705,
+      "predicted_std_kcal": 5.46788560037891,
+      "ratio": 0.13487390083858913,
+      "close_to_prediction": false
+    },
+    "scaling_check": {
+      "n_shots_pair": [
+        10000,
+        1000000
+      ],
+      "stds": [
+        0.004182790375346858,
+        0.0003852790481519969
+      ],
+      "ratio_std": 10.856521774048561,
+      "expected_ratio_std": 10.0,
+      "scaling_ok": true
+    }
+  },
+  "learned_channel": {
+    "p2_learned": 0.01214000000000004,
+    "p1_learned": 0.0003035000000000121,
+    "gamma_total": 1.314962271811461
+  },
+  "shot_levels": [
+    1000,
+    10000,
+    100000,
+    1000000,
+    10000000
+  ],
+  "n_seeds": 8,
+  "sweep": {
+    "1000": {
+      "raw": {
+        "exact": {
+          "mean": 106.90022388295372,
+          "std": 6.43556785843413,
+          "min": 94.72047149456533,
+          "max": 120.1377621776329,
+          "reached_chem_acc": "0/8",
+          "reached_target": "0/8"
+        },
+        "noiseless": {
+          "mean": 106.90022388294591,
+          "std": 6.43556785843413,
+          "min": 94.72047149455753,
+          "max": 120.13776217762509,
+          "reached_chem_acc": "0/8",
+          "reached_target": "0/8"
+        }
+      },
+      "cdr_per_basis": {
+        "exact": {
+          "mean": 4.958762451555939,
+          "std": 2.7258080728811214,
+          "min": 1.6680402811314763,
+          "max": 8.814804790036462,
+          "reached_chem_acc": "0/8",
+          "reached_target": "0/8"
+        },
+        "noiseless": {
+          "mean": 4.95876245155984,
+          "std": 2.7258080728807172,
+          "min": 1.6680402811236736,
+          "max": 8.81480479002866,
+          "reached_chem_acc": "0/8",
+          "reached_target": "0/8"
+        }
+      },
+      "pec_optimistic_calibration": {
+        "exact": {
+          "mean": 4.3502176332552445,
+          "std": 2.427387324340984,
+          "min": 0.4847276472241999,
+          "max": 7.993146150249921,
+          "reached_chem_acc": "1/8",
+          "reached_target": "0/8"
+        },
+        "noiseless": {
+          "mean": 4.350217633253294,
+          "std": 2.4273873243415225,
+          "min": 0.48472764721639716,
+          "max": 7.993146150257724,
+          "reached_chem_acc": "1/8",
+          "reached_target": "0/8"
+        }
+      },
+      "pec_honest_calibration": {
+        "exact": {
+          "mean": 3.841528654404305,
+          "std": 2.646758500574045,
+          "min": 0.189608130087414,
+          "max": 9.588218585366008,
+          "reached_chem_acc": "1/8",
+          "reached_target": "1/8"
+        },
+        "noiseless": {
+          "mean": 3.841528654410157,
+          "std": 2.6467585005698098,
+          "min": 0.1896081300952168,
+          "max": 9.588218585358204,
+          "reached_chem_acc": "1/8",
+          "reached_target": "1/8"
+        },
+        "mean_p2_relative_error": 0.030795419221752742
+      }
+    },
+    "10000": {
+      "raw": {
+        "exact": {
+          "mean": 104.18170260122304,
+          "std": 0.9488213679092353,
+          "min": 102.97043090476414,
+          "max": 106.24942651467515,
+          "reached_chem_acc": "0/8",
+          "reached_target": "0/8"
+        },
+        "noiseless": {
+          "mean": 104.18170260121524,
+          "std": 0.9488213679092353,
+          "min": 102.97043090475634,
+          "max": 106.24942651466735,
+          "reached_chem_acc": "0/8",
+          "reached_target": "0/8"
+        }
+      },
+      "cdr_per_basis": {
+        "exact": {
+          "mean": 2.7801791642640854,
+          "std": 1.5529549976129038,
+          "min": 0.2900044701717134,
+          "max": 4.747960202961107,
+          "reached_chem_acc": "1/8",
+          "reached_target": "1/8"
+        },
+        "noiseless": {
+          "mean": 2.7801791642699376,
+          "std": 1.5529549976160317,
+          "min": 0.2900044701639106,
+          "max": 4.74796020296891,
+          "reached_chem_acc": "1/8",
+          "reached_target": "1/8"
+        }
+      },
+      "pec_optimistic_calibration": {
+        "exact": {
+          "mean": 1.1876169355257407,
+          "std": 0.886847122431058,
+          "min": 0.3122308858971681,
+          "max": 3.21924605015499,
+          "reached_chem_acc": "4/8",
+          "reached_target": "0/8"
+        },
+        "noiseless": {
+          "mean": 1.1876169355237898,
+          "std": 0.8868471224344974,
+          "min": 0.3122308858893653,
+          "max": 3.2192460501627926,
+          "reached_chem_acc": "4/8",
+          "reached_target": "0/8"
+        }
+      },
+      "pec_honest_calibration": {
+        "exact": {
+          "mean": 1.4653025240431108,
+          "std": 0.7071587774482195,
+          "min": 0.036012027279505865,
+          "max": 2.2397658500378927,
+          "reached_chem_acc": "1/8",
+          "reached_target": "1/8"
+        },
+        "noiseless": {
+          "mean": 1.4653025240489628,
+          "std": 0.7071587774488309,
+          "min": 0.03601202728730863,
+          "max": 2.2397658500456954,
+          "reached_chem_acc": "1/8",
+          "reached_target": "1/8"
+        },
+        "mean_p2_relative_error": 0.00909291270450396
+      }
+    },
+    "100000": {
+      "raw": {
+        "exact": {
+          "mean": 104.06398571132274,
+          "std": 0.31945448787757996,
+          "min": 103.30576200953989,
+          "max": 104.41495357849,
+          "reached_chem_acc": "0/8",
+          "reached_target": "0/8"
+        },
+        "noiseless": {
+          "mean": 104.06398571131493,
+          "std": 0.319454487877578,
+          "min": 103.30576200953209,
+          "max": 104.41495357848218,
+          "reached_chem_acc": "0/8",
+          "reached_target": "0/8"
+        }
+      },
+      "cdr_per_basis": {
+        "exact": {
+          "mean": 2.924490153893542,
+          "std": 0.7932587797682242,
+          "min": 2.3982008392121363,
+          "max": 4.928573091000113,
+          "reached_chem_acc": "0/8",
+          "reached_target": "0/8"
+        },
+        "noiseless": {
+          "mean": 2.9244901539013446,
+          "std": 0.793258779768224,
+          "min": 2.398200839219939,
+          "max": 4.928573091007916,
+          "reached_chem_acc": "0/8",
+          "reached_target": "0/8"
+        }
+      },
+      "pec_optimistic_calibration": {
+        "exact": {
+          "mean": 0.2743461104367496,
+          "std": 0.1265392331425655,
+          "min": 0.09209041731817967,
+          "max": 0.44482427399534546,
+          "reached_chem_acc": "8/8",
+          "reached_target": "5/8"
+        },
+        "noiseless": {
+          "mean": 0.27434611043870033,
+          "std": 0.1265392331425838,
+          "min": 0.0920904173103769,
+          "max": 0.4448242739875427,
+          "reached_chem_acc": "8/8",
+          "reached_target": "5/8"
+        }
+      },
+      "pec_honest_calibration": {
+        "exact": {
+          "mean": 0.48434680798893576,
+          "std": 0.24666948687001047,
+          "min": 0.13005711158324057,
+          "max": 0.9538980997996869,
+          "reached_chem_acc": "8/8",
+          "reached_target": "2/8"
+        },
+        "noiseless": {
+          "mean": 0.4843468079908864,
+          "std": 0.24666948687139084,
+          "min": 0.13005711159104333,
+          "max": 0.9538980998074896,
+          "reached_chem_acc": "8/8",
+          "reached_target": "2/8"
+        },
+        "mean_p2_relative_error": 0.003477638427722175
+      }
+    },
+    "1000000": {
+      "raw": {
+        "exact": {
+          "mean": 104.0500483847637,
+          "std": 0.1797198556396969,
+          "min": 103.68100085145718,
+          "max": 104.28824501357312,
+          "reached_chem_acc": "0/8",
+          "reached_target": "0/8"
+        },
+        "noiseless": {
+          "mean": 104.05004838475588,
+          "std": 0.17971985563969428,
+          "min": 103.68100085144938,
+          "max": 104.28824501356532,
+          "reached_chem_acc": "0/8",
+          "reached_target": "0/8"
+        }
+      },
+      "cdr_per_basis": {
+        "exact": {
+          "mean": 2.703909158727167,
+          "std": 0.6626387395402152,
+          "min": 1.776545457396787,
+          "max": 3.9832682276511826,
+          "reached_chem_acc": "0/8",
+          "reached_target": "0/8"
+        },
+        "noiseless": {
+          "mean": 2.7039091587349695,
+          "std": 0.6626387395402155,
+          "min": 1.7765454574045896,
+          "max": 3.9832682276589857,
+          "reached_chem_acc": "0/8",
+          "reached_target": "0/8"
+        }
+      },
+      "pec_optimistic_calibration": {
+        "exact": {
+          "mean": 0.03953990449622163,
+          "std": 0.027672397811855504,
+          "min": 0.004902306638462406,
+          "max": 0.0748484289281302,
+          "reached_chem_acc": "8/8",
+          "reached_target": "8/8"
+        },
+        "noiseless": {
+          "mean": 0.039539904496221634,
+          "std": 0.02767239780940101,
+          "min": 0.004902306646265171,
+          "max": 0.07484842893593296,
+          "reached_chem_acc": "8/8",
+          "reached_target": "8/8"
+        }
+      },
+      "pec_honest_calibration": {
+        "exact": {
+          "mean": 0.1321984259446667,
+          "std": 0.09730377297295252,
+          "min": 0.013866225278423638,
+          "max": 0.2776684988791046,
+          "reached_chem_acc": "8/8",
+          "reached_target": "8/8"
+        },
+        "noiseless": {
+          "mean": 0.132198425942716,
+          "std": 0.09730377297523002,
+          "min": 0.013866225270620872,
+          "max": 0.27766849887130185,
+          "reached_chem_acc": "8/8",
+          "reached_target": "8/8"
+        },
+        "mean_p2_relative_error": 0.00043304086791335353
+      }
+    },
+    "10000000": {
+      "raw": {
+        "exact": {
+          "mean": 103.98723468278013,
+          "std": 0.07080818864952192,
+          "min": 103.88844222333852,
+          "max": 104.12617005572534,
+          "reached_chem_acc": "0/8",
+          "reached_target": "0/8"
+        },
+        "noiseless": {
+          "mean": 103.98723468277231,
+          "std": 0.07080818864952192,
+          "min": 103.88844222333071,
+          "max": 104.12617005571754,
+          "reached_chem_acc": "0/8",
+          "reached_target": "0/8"
+        }
+      },
+      "cdr_per_basis": {
+        "exact": {
+          "mean": 2.8121551286015,
+          "std": 0.490294406789078,
+          "min": 1.956086245009365,
+          "max": 3.6726221683979503,
+          "reached_chem_acc": "0/8",
+          "reached_target": "0/8"
+        },
+        "noiseless": {
+          "mean": 2.8121551286093025,
+          "std": 0.490294406789078,
+          "min": 1.9560862450171677,
+          "max": 3.672622168405753,
+          "reached_chem_acc": "0/8",
+          "reached_target": "0/8"
+        }
+      },
+      "pec_optimistic_calibration": {
+        "exact": {
+          "mean": 0.029180186164552917,
+          "std": 0.02013921104950078,
+          "min": 0.0017755655630517903,
+          "max": 0.05938728913610179,
+          "reached_chem_acc": "8/8",
+          "reached_target": "8/8"
+        },
+        "noiseless": {
+          "mean": 0.029180186160651534,
+          "std": 0.020139211050259044,
+          "min": 0.001775565555249025,
+          "max": 0.05938728914390456,
+          "reached_chem_acc": "8/8",
+          "reached_target": "8/8"
+        }
+      },
+      "pec_honest_calibration": {
+        "exact": {
+          "mean": 0.08179657529833227,
+          "std": 0.041629816597070254,
+          "min": 0.043664537053483124,
+          "max": 0.1381299396574944,
+          "reached_chem_acc": "8/8",
+          "reached_target": "8/8"
+        },
+        "noiseless": {
+          "mean": 0.08179657530028298,
+          "std": 0.04162981660208002,
+          "min": 0.04366453704568036,
+          "max": 0.13812993966529719,
+          "reached_chem_acc": "8/8",
+          "reached_target": "8/8"
+        },
+        "mean_p2_relative_error": 0.0004008526227652978
+      }
+    }
+  },
+  "crossings": {
+    "raw": {
+      "chemical_accuracy_at_shots": null,
+      "loop_target_at_shots": null
+    },
+    "cdr_per_basis": {
+      "chemical_accuracy_at_shots": null,
+      "loop_target_at_shots": null
+    },
+    "pec_optimistic_calibration": {
+      "chemical_accuracy_at_shots": 100000,
+      "loop_target_at_shots": 100000
+    },
+    "pec_honest_calibration": {
+      "chemical_accuracy_at_shots": 100000,
+      "loop_target_at_shots": 1000000
+    }
+  },
+  "chemical_accuracy_kcal": 1.0,
+  "loop_target_kcal": 0.3
+}
