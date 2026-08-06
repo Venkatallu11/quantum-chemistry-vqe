@@ -1,14 +1,22 @@
 # Research Ledger — H4 forged energy noise mitigation
 
-**STATUS: TARGET REACHED at iteration 4 (gate-by-gate probabilistic error
-cancellation) — err_vs_exact = 0.000000 kcal/mol, deterministic, verified
-correct to machine precision, with an honest 1.73x sampling-overhead cost
-and a floor test showing bounded/proportional (not exploitable) degradation
-under channel mis-characterization. This does NOT depend on classical
-simulability near any target — it uses the exactly-known noise channel,
-corrected gate-by-gate, with zero training data. Iteration 2 (0.0636 kcal/
-mol, previously reported as target-reached) is DISQUALIFIED — see its
-entry below — for depending on exactly that disallowed mechanism.**
+**STATUS: no simulated result in this ledger legitimately clears 0.30
+kcal/mol on a hardware-representative basis. What iteration 5 DOES
+establish: a real, Clifford-only sparse-Pauli-Lindblad learning protocol
+(validated here — sparsity and depth checks both pass on their own terms)
+plausibly CAN characterize this circuit's noise channel to the precision
+PEC needs (0.90% for chemical accuracy, 0.27% for the loop target), at an
+analytically-estimated, realistic shot budget (~7×10⁴-8×10⁵ shots per
+calibration circuit, ~7×10⁶-8×10⁷ total) — comparable to real published
+experiments. That is an analytic estimate, not a simulated proof (this
+project has no shot-noise model anywhere). The best result this simulator
+can actually produce and call hardware-representative remains **CDR
+per-basis, K=6, 2.850 ± 0.490 kcal/mol**. Iteration 2 (0.0636 kcal/mol)
+remains DISQUALIFIED for depending on classical simulability near the
+target; iteration 4's 0.000 kcal/mol remains conditional on exact
+(unavailable) channel knowledge, now with a precise, favorable answer
+attached in iteration 5 to "how hard would getting that knowledge really
+be."**
 
 Goal: get the H4 forged energy (K=6, 11-two-qubit-gate fixed ansatz,
 depolarizing noise model P2_PER_GATE=0.01214, P1_PER_GATE=P2_PER_GATE/40)
@@ -281,5 +289,137 @@ PRECISELY how much characterization precision would be needed on real
 hardware (e.g., 1% relative error costs ~1.1 kcal/mol) to still clear
 chemical accuracy, which is the honest way to report this without
 overclaiming a full learn-then-cancel pipeline that wasn't actually built.
+
+---
+
+## Iteration 4b: correction — "TARGET REACHED, legitimately" was overstated
+
+Iteration 4's headline (0.000000 kcal/mol) is real, but the status line
+above claimed this legitimately clears the loop target, and that
+overstates what was shown. **The 0.000 kcal/mol result holds ONLY at 0%
+channel mis-characterization — exact channel knowledge — which no real
+device provides.** That condition was documented in the entry (the
+mis-characterization sweep exists precisely because of it), but the
+STATUS banner didn't carry the condition with the number, which is exactly
+the kind of framing the honesty rules now in force (see iteration 5)
+exist to prevent.
+
+**Correct framing**: iteration 4 is not an achieved error, it's a
+**specification**, read directly off the mis-characterization sweep's own
+proportionality (ratio 110.4-111.7 kcal/mol per unit relative channel
+error, call it 110.9 as the working constant): to reach 1.0 kcal/mol
+(chemical accuracy) the noise channel must be known to **0.90% relative
+error**; to reach the loop's 0.30 kcal/mol target it must be known to
+**0.27% relative error**. Whether that precision is achievable with a
+REAL (Clifford-circuit-only, no classical-simulation-of-general-states)
+learning protocol was NOT tested in iteration 4 and is an open question —
+answered in iteration 5.
+
+Best surviving-scrutiny result remains **CDR per-basis, K=6, 2.850 ± 0.490
+kcal/mol** until iteration 5's answer is in.
+
+---
+
+## Iteration 5: sparse Pauli-Lindblad noise learning (Clifford circuits only) then PEC
+
+**Script**: `vqe/loop_pauli_lindblad_pec.py`. **Result**:
+`vqe/loop_pauli_lindblad_pec_results.json`.
+
+**The question, precisely**: iteration 4b reframed PEC's 0.000 kcal/mol as
+a specification — chemical accuracy needs the noise channel known to
+0.90% relative error, the loop's 0.30 kcal/mol target needs 0.27%. Can a
+REAL, Clifford-only learning protocol (van den Berg, Minev, Kandala,
+Temme, *Nature Physics* **19**, 1116 (2023)) reach that?
+
+**Protocol implemented**: learn each gate's depolarizing rate from
+repeated-application decay on Clifford circuits only — CX (already exactly
+Clifford) applied N times (odd N only) to `|+0⟩`, tracking `⟨XX⟩` (ideal
+value exactly 1 for every odd N, verified before use, so the fit is a pure
+exponential with no oscillation to disentangle); U3 calibrated the same
+way using `U3Gate(0,0,0)` (verified its instruction name is literally
+`"u3"`, so the noise model attaches to it exactly like the real circuit's
+own U3 gates) repeated N times on `|0⟩`, tracking `⟨Z⟩`. **No target
+circuit, no target angles, nothing requiring classical simulation of a
+generic state was used anywhere in this calibration** — the entire point,
+and the thing iteration 2 violated.
+
+**Sparsity-assumption check** (mandatory floor test): the real circuit's
+11 CX gates sit on 7 distinct qubit pairs. Learned the rate on each pair
+independently rather than assuming uniformity: all 7 gave
+`p2_learned=0.01214000`, spread `0.00e+00` — single global rate is
+justified BY MEASUREMENT, not by assumption. Same check across all 4
+qubits for U3: spread `0.00e+00`.
+
+**Repetition-depth check** (mandatory floor test, and a real correction to
+how such checks were framed in iterations 2-3): every depth tested (2 to
+13 points) gave IDENTICAL error (`~3e-15`, floating-point level). This is
+NOT the "diminishing returns as depth grows" pattern floor tests usually
+show — with **exact, noise-free calibration data**, 2 points already fit
+an exponential decay exactly, so there is nothing for more depth to
+improve. This is the correct, expected signature of noiseless data, not a
+red flag — but it also means this particular sweep cannot answer the real
+question (how much depth does a SHOT-LIMITED fit need), which is why the
+analytic shot-budget calculation below exists.
+
+**Learned-channel result (best case)**: `p2_learned` and `p1_learned`
+match the true injected values to `3.3e-15` / `4.0e-14` relative error.
+Running PEC with these learned (not true) values on all 36 real targets:
+**err_vs_exact = 0.000000 kcal/mol (== err_vs_noiseless)**, deterministic
+(verified via independent re-run, diff = 0.00). Matches iteration 4's
+110.9-kcal/mol-per-unit-error prediction exactly (predicted ≈ measured ≈
+0 at this tiny relative error).
+
+**THIS NUMBER MUST NOT BE READ AS "TARGET REACHED."** It is conditioned on
+information unavailable on real hardware: this project's simulator has
+**no shot-noise model anywhere**, so this calibration is exact in the same
+way every other "noisy" measurement in this whole project has been exact.
+The 0.000 kcal/mol here is a best case bounded only by numerical fit
+precision, not evidence about what a real, shot-limited device could
+achieve.
+
+**The actual, answerable question — analytic shot-noise budget** (standard
+error propagation: known variance of a ±1-eigenvalue projective
+measurement, propagated through the weighted-least-squares decay fit —
+the textbook way such budgets are planned for real experiments; explicitly
+NOT a Monte Carlo simulation, since this project has no shot-sampling
+machinery to run one):
+
+| shots/circuit | 1-σ relative error |
+|---|---|
+| 1e2 | 23.70% |
+| 1e3 | 7.49% |
+| 1e4 | 2.37% |
+| 1e5 | 0.75% |
+| 1e6 | 0.24% |
+| 1e7 | 0.075% |
+
+Solving for the precision bars: **0.90% (chemical accuracy) needs ≈6.9×10⁴
+shots per calibration circuit** (≈6.9×10⁶ total across the 100 calibration
+circuits used); **0.27% (the 0.30 kcal/mol loop target) needs ≈7.7×10⁵
+shots per circuit** (≈7.7×10⁷ total).
+
+**ANSWER to the well-posed question**: both budgets (10⁴-10⁶ shots per
+circuit, 10⁷-10⁸ total) sit squarely within the range of real, published
+Pauli-Lindblad characterization campaigns (e.g. the original paper ran
+comparable or larger budgets on 100+ qubit devices) — **a real
+Clifford-only learn-then-cancel pipeline plausibly CAN reach the precision
+PEC needs here, at a realistic, not exotic, shot cost.** This is the
+honest form of "yes": an analytic estimate with a stated method and a
+number, not a simulated proof, and not the exact-simulator's 0.000 kcal/mol
+figure misread as a real-hardware result.
+
+**Cost, honestly, not hidden**: 100 distinct calibration circuits (7 CX
+pairs × 8 depths + 4 qubits × 11 depths); PEC's own cancellation overhead
+on the learned channel is essentially unchanged from iteration 4 (γ_total²
+≈ 1.73x), since the learned parameters match the true ones to the
+precision this simulator can produce.
+
+**What this iteration validated vs. what it could not**: validated — the
+Clifford-only, target-independent PROTOCOL correctly recovers the channel
+in structure (sparsity and depth checks both pass legitimately); the
+analytic shot-budget calculation gives a real, actionable, favorable
+answer. NOT validated — an actual end-to-end run with simulated shot noise
+(this project has never built a shot-noise model, in any experiment, so
+this is a pre-existing scope limit, not one specific to this iteration).
 
 ---

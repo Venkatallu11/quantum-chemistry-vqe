@@ -1,0 +1,125 @@
+{
+  "idea": "sparse Pauli-Lindblad-style noise learning (Clifford circuits only) then PEC on the learned channel",
+  "verified_u3_gate_name": "u3",
+  "distinct_cx_pairs": [
+    "(0, 1)",
+    "(0, 2)",
+    "(0, 3)",
+    "(2, 0)",
+    "(2, 1)",
+    "(3, 0)",
+    "(3, 1)"
+  ],
+  "depth_floor_test": {
+    "3": {
+      "p_learned": 0.01214000000000004,
+      "relative_error": 3.2865436530038357e-15
+    },
+    "5": {
+      "p_learned": 0.01214000000000004,
+      "relative_error": 3.2865436530038357e-15
+    },
+    "9": {
+      "p_learned": 0.01214000000000004,
+      "relative_error": 3.2865436530038357e-15
+    },
+    "15": {
+      "p_learned": 0.01214000000000004,
+      "relative_error": 3.2865436530038357e-15
+    },
+    "25": {
+      "p_learned": 0.01214000000000004,
+      "relative_error": 3.2865436530038357e-15
+    }
+  },
+  "depth_floor_test_verdict": "converges_to_tiny_floor",
+  "sparsity_check": {
+    "per_pair_p2_learned": {
+      "(0, 1)": 0.01214000000000004,
+      "(0, 2)": 0.01214000000000004,
+      "(0, 3)": 0.01214000000000004,
+      "(2, 0)": 0.01214000000000004,
+      "(2, 1)": 0.01214000000000004,
+      "(3, 0)": 0.01214000000000004,
+      "(3, 1)": 0.01214000000000004
+    },
+    "relative_spread": 0.0,
+    "single_global_rate_justified": true
+  },
+  "u3_calibration": {
+    "per_qubit_p1_learned": {
+      "0": 0.0003035000000000121,
+      "1": 0.0003035000000000121,
+      "2": 0.0003035000000000121,
+      "3": 0.0003035000000000121
+    },
+    "relative_spread": 0.0
+  },
+  "p2_learned": 0.01214000000000004,
+  "p2_true": 0.01214,
+  "p2_relative_error": 3.2865436530038357e-15,
+  "p1_learned": 0.0003035000000000121,
+  "p1_true": 0.0003035,
+  "p1_relative_error": 3.983148014238344e-14,
+  "E_learned_ha": -2.1663874486275314,
+  "err_vs_exact_kcal": 1.1146807460404418e-12,
+  "err_vs_noiseless_kcal": 2.2293614920808836e-12,
+  "determinism_check_diff_kcal": 0.0,
+  "prediction_from_iteration4": {
+    "combined_relative_error": 3.983148014238344e-14,
+    "predicted_kcal": 4.417311147790324e-12,
+    "measured_kcal": 1.1146807460404418e-12,
+    "note": "measured result is far below both the 0.90% (chemical accuracy) and 0.27% (loop target) precision bars converted via the 110.9 kcal/mol/unit-error relationship -- consistent with the tiny learned-channel error achieved here"
+  },
+  "reached_030_target_best_case": true,
+  "reached_chemical_accuracy_best_case": true,
+  "honesty_caveat": "ALL precision numbers in this file are best-case, exact-simulator-limited (protocol-structure-limited) precision, NOT evidence about real shot-noise-limited hardware -- this project's simulator has no shot-noise model anywhere. What IS validated: the Clifford-only, target-independent learning PROTOCOL correctly recovers the injected channel, and the sparsity/depth floor tests pass legitimately (no interpolate-to-the-answer pattern).",
+  "cost_accounting": {
+    "n_calibration_circuits": 100,
+    "n2q_gates_in_real_circuit": 11,
+    "n1q_gates_in_real_circuit": 51,
+    "gamma_2q_per_gate": 1.0230422327050395,
+    "gamma_1q_per_gate": 1.0004553882103218,
+    "gamma_total": 1.314962271811461,
+    "pec_shots_multiplier": 1.729125776287559
+  },
+  "analytic_shot_noise_budget": {
+    "method": "standard error propagation (weighted least squares on the log-linear decay fit), NOT a Monte Carlo simulation -- this project's simulator has no shot-noise model",
+    "shot_sweep": [
+      {
+        "shots_per_circuit": 100.0,
+        "one_sigma_relative_error": 0.23695163981085973
+      },
+      {
+        "shots_per_circuit": 1000.0,
+        "one_sigma_relative_error": 0.07493068771141462
+      },
+      {
+        "shots_per_circuit": 10000.0,
+        "one_sigma_relative_error": 0.023695163981085975
+      },
+      {
+        "shots_per_circuit": 100000.0,
+        "one_sigma_relative_error": 0.007493068771141462
+      },
+      {
+        "shots_per_circuit": 1000000.0,
+        "one_sigma_relative_error": 0.002369516398108597
+      },
+      {
+        "shots_per_circuit": 10000000.0,
+        "one_sigma_relative_error": 0.0007493068771141461
+      },
+      {
+        "shots_per_circuit": 100000000.0,
+        "one_sigma_relative_error": 0.00023695163981085976
+      }
+    ],
+    "shots_per_circuit_for_chemical_accuracy_090pct": 69316.14766550051,
+    "shots_per_circuit_for_loop_target_027pct": 770179.4185055607,
+    "total_calibration_circuits": 100,
+    "total_shots_for_chemical_accuracy": 6931614.766550051,
+    "total_shots_for_loop_target": 77017941.85055608,
+    "conclusion": "the estimated shot budget (1e5-1e6 shots/circuit, ~1e7-1e8 total) is within the range of real published Pauli-Lindblad characterization experiments -- a real learn-then-cancel pipeline plausibly CAN reach the precision PEC needs here, at a realistic shot cost. This is the answerable part of the task's central question; the exact-simulator-limited 0.000 kcal/mol result above is NOT that answer by itself and should not be read as one."
+  }
+}
