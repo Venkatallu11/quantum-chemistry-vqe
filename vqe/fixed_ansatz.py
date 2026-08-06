@@ -169,8 +169,18 @@ def fit_angles(target, n_attempts=10, tol=1e-10):
 
 
 def two_qubit_gate_count():
+    """optimization_level=0 (pure rule-based BasisTranslator substitution),
+    NOT a higher optimization level: verified (not assumed) that
+    optimization_level>=1's numerically-adaptive two-qubit synthesis
+    collapses to FEWER CX gates for specific fitted-angle solutions that
+    happen to land near periodic special values (e.g. multiples of pi) --
+    a real bug found while building zne_vs_cdr.py, where opt_level=1 gave
+    7-11 CX depending on target, silently violating the fixed-circuit
+    premise CDR depends on. opt_level=0 was confirmed constant (11) across
+    all 25 real targets AND 10 random training-style angle draws before
+    adopting it here."""
     qc = build_ansatz([0.1, 0.2, 0.3, 0.4, 0.5])
-    t = transpile(qc, basis_gates=["u3", "cx"], optimization_level=3)
+    t = transpile(qc, basis_gates=["u3", "cx"], optimization_level=0)
     return t.count_ops().get("cx", 0)
 
 
@@ -289,6 +299,19 @@ def main():
 
     print(f"\n  {n_ok}/{len(targets)} converged to <1e-10, worst={worst:.2e}")
 
+    abstract_cx_counts = set()
+    for name in solutions:
+        qc = build_ansatz(solutions[name]["angles"])
+        t = transpile(qc, basis_gates=["u3", "cx"], optimization_level=0)
+        abstract_cx_counts.add(t.count_ops().get("cx", 0))
+    abstract_cx_fixed = abstract_cx_counts == {n_2q}
+    print(f"\n  abstract (u3/cx, opt_level=0) 2-qubit gate count across all 25 targets: "
+          f"{abstract_cx_counts} ({'FIXED, as required' if abstract_cx_fixed else 'NOT FIXED -- this breaks the CDR premise'})")
+    assert abstract_cx_fixed, (
+        f"abstract circuit's 2-qubit gate count varies across targets ({abstract_cx_counts}) -- "
+        "training and target circuits would NOT be structurally identical, refusing to proceed"
+    )
+
     print("\n  Native-gate transpile + TrappedIonOptimizerPlugin (aria-1/ms)...")
     sample_angle_sets = [solutions[name]["angles"] for name in ("u_0", "u_2", "(u0+u3)")]
     native_runs = [native_optimized_gate_counts(a, "ms") for a in sample_angle_sets]
@@ -311,6 +334,8 @@ def main():
         "weight2_leakage_max": max_leakage,
         "two_qubit_gate_count": n_2q,
         "two_qubit_gate_count_v1": 33,
+        "abstract_cx_count_fixed_across_25_targets": abstract_cx_fixed,
+        "abstract_cx_counts_observed": sorted(abstract_cx_counts),
         "baseline_native_14": 14,
         "baseline_cx_11": 11,
         "n_targets": len(targets),

@@ -46,6 +46,21 @@ TWO CHANGES FROM THE PRECEDING VERSION OF THIS FILE, BOTH REQUIRED:
      independent training-data draws; the headline numbers are mean +/-
      std over seeds, not a cherry-picked best case.
 
+THIRD FIX, found while building zne_vs_cdr.py: every transpile call here
+uses optimization_level=0, not 1. Verified (not assumed): at
+optimization_level>=1, qiskit's two-qubit gate synthesis is numerically
+ADAPTIVE -- for specific fitted-angle solutions that happen to land near
+periodic special values (multiples of pi, which several of the 25 targets'
+least_squares solutions did), it silently collapses the circuit to FEWER
+CX gates (7-9 instead of 11 for 4 of the 25 targets, measured directly).
+That means 4 target circuits were getting LESS noise than every training
+circuit (which almost never lands on a special angle), a real violation of
+the "structurally identical" premise this whole file exists to satisfy.
+optimization_level=0 (pure rule-based substitution, no adaptive synthesis)
+was confirmed to give a constant 11 CX across all 25 targets AND 10 random
+training-style angle draws before adopting it here -- see fixed_ansatz.py's
+own now-added self-check (abstract_cx_count_fixed_across_25_targets).
+
 TWO FIXES CARRIED FORWARD FROM EARLIER (already-debugged) ATTEMPTS -- both
 silent-corruption bugs if skipped:
   1. NEVER rescale the identity Pauli label. <I>=1 exactly for any
@@ -223,7 +238,7 @@ def exact_labels(angles, labels):
 
 
 def noisy_labels(angles, labels, estimator):
-    qc = transpile(build_ansatz(angles), basis_gates=BASIS_GATES, optimization_level=1)
+    qc = transpile(build_ansatz(angles), basis_gates=BASIS_GATES, optimization_level=0)
     obs = [Pauli(l) for l in labels]
     result = estimator.run([(qc, obs)]).result()
     evs = np.atleast_1d(result[0].data.evs)
@@ -235,7 +250,7 @@ def abstract_circuit_gate_counts():
     ansatz) -- reported for honesty, since these differ from both the
     abstract-CX count (11) and the native-optimized counts in
     fixed_ansatz.py's own report (which vary per target)."""
-    qc = transpile(build_ansatz([0.1, 0.2, 0.3, 0.4, 0.5]), basis_gates=BASIS_GATES, optimization_level=1)
+    qc = transpile(build_ansatz([0.1, 0.2, 0.3, 0.4, 0.5]), basis_gates=BASIS_GATES, optimization_level=0)
     counts = qc.count_ops()
     return {"n2q": counts.get("cx", 0), "n1q": counts.get("u3", 0)}
 
