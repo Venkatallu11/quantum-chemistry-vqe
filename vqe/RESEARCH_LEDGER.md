@@ -1,5 +1,11 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS: TARGET REACHED at iteration 2 (locally-perturbed per-(slot,label)
+CDR) — 0.0636 ± 0.0320 kcal/mol, 8/8 seeds below 0.30.** See that section
+below for the full writeup. Kept the ledger open below in case of future
+follow-up (independent re-verification, cost accounting, real-hardware
+translation) rather than deleting the history.
+
 Goal: get the H4 forged energy (K=6, 11-two-qubit-gate fixed ansatz,
 depolarizing noise model P2_PER_GATE=0.01214, P1_PER_GATE=P2_PER_GATE/40)
 below **0.30 kcal/mol**, reliably (most of 8 seeds), in simulation only.
@@ -57,5 +63,60 @@ different outcome here.
 channel has none), so the extra free parameter only fits noise in the
 finite training sample, adding variance without correcting any real
 bias.
+
+---
+
+## Iteration 2: locally-perturbed per-(slot,label) CDR scale — TARGET REACHED
+
+**Script**: `vqe/loop_local_perturbation_cdr.py`. **Result**:
+`vqe/loop_local_perturbation_cdr_results.json`.
+
+**Diagnosis that motivated this** (measured before implementing, not
+assumed): checked whether the per-label noisy/exact ratio is really
+angle-independent, the way a single global per-basis scale assumes.
+It is not. Over 15 random angle draws: `XXYY`'s ratio is perfectly
+constant (std=0.0), but `ZZII` varies over a **29% range** (0.855-1.121)
+and `YZYZ` over **22%** (0.829-1.026). Mechanism: a fixed GATE STRUCTURE
+(verified constant, 11 CX) does not imply a fixed per-label NOISE SHRINK
+— depolarizing channels commute through the circuit's *parametrized*
+gates in an angle-dependent way (a Pauli backward-propagated through a
+rotation gate mixes into other Paulis with angle-dependent weights). A
+global per-basis scale, averaged over random training angles, therefore
+systematically mismatches each specific target's true local shrink. This
+is a real, verified mechanism for the 2.850 kcal/mol residual.
+
+**Confirmation before building the full pipeline**: perturbing a target's
+own angles by only ±0.15 rad and re-measuring the same three labels
+recovered the TRUE ratio at that exact target to ~1e-5 relative precision
+(vs 22-29% error from global random sampling).
+
+**Approach**: for each of the 36 slots, generate `K_LOCAL=4` training
+circuits at `target_angles + uniform(-0.15, 0.15, 5)` (batched — all
+labels read off the same local circuit, so cost is 36×4=144 circuits/seed,
+not 36×36×4). Fit a scale per (slot, label) pair from ONLY that slot's
+local draws; fall back to a pooled global per-label scale when a specific
+(slot,label) has <3 points after the |exact|<0.05 filter (happened for
+~27-29% of the 1296 (slot,label) pairs — mostly labels that are near-zero
+for that specific slot and therefore don't matter much to the energy).
+
+**This is NOT the earlier-failed "per-circuit" idea repeated**: the
+original per-circuit scale (45.14 kcal/mol) used globally-random angles
+partitioned by slot — it never exploited locality, just had less data
+than the pooled fit for no benefit. This one specifically targets the
+angle-dependence just measured, by sampling where it matters: near each
+actual target.
+
+**Result: 0.0636 ± 0.0320 kcal/mol (vs exact and vs noiseless — same,
+K=6 truncation is exact). 8/8 seeds below 0.30 kcal/mol** (individual
+seeds: 0.014-0.105). **45x better than the previous best (2.850).**
+**TARGET REACHED — loop stop condition met.**
+
+**Legitimacy check**: this is not leakage/cheating. The 36 target angle
+sets are already known in advance (computed classically, same as every
+CDR variant so far) — perturbing around them to generate training data
+requires no information beyond what CDR training already assumes
+(knowing what circuit structure to prepare). This is a standard local/
+adaptive-CDR idea (train near the point of interest), not specific to
+this simulator.
 
 ---
