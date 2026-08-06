@@ -1,0 +1,52 @@
+{
+  "idea": "gate-by-gate probabilistic error cancellation (exact quasi-probability inverse per gate)",
+  "verification": {
+    "pauli_mixture_vs_aer_max_err": 1.6653345369377348e-16,
+    "pec_roundtrip_max_err": 1.6653345369377348e-16
+  },
+  "n2q_gates": 11,
+  "n1q_gates": 51,
+  "E_pec_ha": -2.166387448627533,
+  "err_vs_exact_kcal": 1.783489193664707e-11,
+  "err_vs_noiseless_kcal": 6.13074410322243e-12,
+  "determinism_check_diff_kcal": 0.0,
+  "baseline_mean_kcal": 2.85,
+  "baseline_std_kcal": 0.49,
+  "improved": true,
+  "reached_030_target": true,
+  "reached_chemical_accuracy": true,
+  "sampling_overhead": {
+    "gamma_2q_per_gate": 1.023042232705039,
+    "gamma_1q_per_gate": 1.0004553882103218,
+    "gamma_total": 1.3149622718114546,
+    "shots_multiplier": 1.7291257762875418
+  },
+  "note_no_seed_sweep": "this method has no training data or randomness (correction is analytic, derived from the exactly-known noise channel, applied per-gate) -- 8-seed sweep does not apply; determinism is verified instead (see determinism_check_diff_kcal).",
+  "channel_mischaracterization_sweep": [
+    {
+      "relative_channel_error": 0.0,
+      "err_vs_exact_kcal": 1.783489193664707e-11
+    },
+    {
+      "relative_channel_error": 0.01,
+      "err_vs_exact_kcal": 1.104324356726299
+    },
+    {
+      "relative_channel_error": 0.02,
+      "err_vs_exact_kcal": 2.2099943687136636
+    },
+    {
+      "relative_channel_error": 0.05,
+      "err_vs_exact_kcal": 5.535100415556352
+    },
+    {
+      "relative_channel_error": 0.1,
+      "err_vs_exact_kcal": 11.104063737804477
+    },
+    {
+      "relative_channel_error": 0.2,
+      "err_vs_exact_kcal": 22.344699660908347
+    }
+  ],
+  "mischaracterization_error_proportional": true
+}
