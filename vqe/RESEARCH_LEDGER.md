@@ -1,10 +1,9 @@
 # Research Ledger — H4 forged energy noise mitigation
 
-**STATUS: TARGET REACHED at iteration 2 (locally-perturbed per-(slot,label)
-CDR) — 0.0636 ± 0.0320 kcal/mol, 8/8 seeds below 0.30.** See that section
-below for the full writeup. Kept the ledger open below in case of future
-follow-up (independent re-verification, cost accounting, real-hardware
-translation) rather than deleting the history.
+**STATUS: iteration 2 DISQUALIFIED (see below) — reopened. Best legitimate
+result is still CDR per-basis, K=6, 2.850 ± 0.490 kcal/mol. Target
+(<0.30 kcal/mol reliably, simulator only, without depending on classical
+simulability near the target) not yet reached.**
 
 Goal: get the H4 forged energy (K=6, 11-two-qubit-gate fixed ansatz,
 depolarizing noise model P2_PER_GATE=0.01214, P1_PER_GATE=P2_PER_GATE/40)
@@ -118,5 +117,91 @@ requires no information beyond what CDR training already assumes
 (knowing what circuit structure to prepare). This is a standard local/
 adaptive-CDR idea (train near the point of interest), not specific to
 this simulator.
+
+**DISQUALIFIED.** The "legitimacy check" above missed the actual problem:
+the METHOD's own free parameter (`PERTURB_RADIUS`) has no floor. Verified
+directly (single-seed sweep, radius -> error_vs_exact): 0.60 rad -> 0.439,
+0.30 -> 0.132, 0.15 -> 0.028, 0.05 -> 0.008, 0.01 -> 0.007 kcal/mol —
+monotonically decreasing toward zero with no plateau. As the radius
+shrinks, the "local training circuit" converges to the target circuit
+itself, and the method converges to just classically re-evaluating the
+target's own exact energy and reporting that as the answer. It never
+measured a device-representative noise residual; it interpolated toward
+an answer already available from the classical Statevector call sitting
+right next to every "noisy" measurement in this codebase. The real tell
+was in the method itself, not just the final number: PERTURB_RADIUS is a
+knob with a trivial win at one extreme, which the floor test (now
+mandatory for every future entry) is designed to catch before a result
+gets recorded, not after.
+
+**Root cause of the disqualification, stated plainly**: this whole
+simulator-only testbed can always cheat this way, because "exact" is one
+Statevector call away for every circuit, including circuits placed
+arbitrarily close to the target. Any method whose accuracy is gated by
+"how close is the training point to the target, in a space where I can
+also just evaluate the target exactly" is not doing device-representative
+noise mitigation — it is exploiting a property (classical simulability)
+that will not exist for the register sizes CDR is actually for. Future
+ideas must not have a free parameter that trades classical-simulation
+cost for accuracy in this way.
+
+Independently re-verified the disqualification with a fresh single-seed
+sweep before writing this up: radius 0.60 -> 0.439, 0.30 -> 0.132,
+0.15 -> 0.028, 0.05 -> 0.008, 0.01 -> 0.007 kcal/mol. Monotonic, no floor,
+confirmed.
+
+---
+
+## Iteration 3: global functional (angle-feature) per-label CDR scale
+
+**Script**: `vqe/loop_functional_cdr.py`. **Result**:
+`vqe/loop_functional_cdr_results.json`.
+
+**Why this is NOT the disqualified idea repeated**: training points are
+GLOBALLY random (same distribution, same cost profile as the original
+per-basis CDR) — nothing is chosen based on proximity to any target. What's
+fit is a full FUNCTION of the 5 state-prep angles per label,
+`f(angles) = coeffs . [1, cos(th_i), sin(th_i) for i in 0..4]` (11
+features, motivated by: backward-propagating a Pauli through a rotation
+gate generates trig functions of that gate's angle), then EVALUATED
+(cheap, no new simulation) at each target's own already-known angles.
+Training cost is fixed regardless of how many targets exist or how
+precisely each is corrected — the opposite of iteration 2's scaling
+behavior.
+
+**Pre-registered expectation**: a quick 3-label check (200 global draws)
+showed the 11-feature linear model reduces per-label fit-residual std by
+only 1.05x-1.86x vs a constant scale (ZZII 1.05x, YZYZ 1.86x, IIIZ 1.41x)
+— real but modest. Stated up front: probably not enough alone to reach
+0.30, worth recording regardless.
+
+**Mandatory floor test** (N_TRAIN, the method's only real free parameter):
+100 -> 7.69, 200 -> 9.18, 400 -> 9.24, 800 -> 8.57 kcal/mol (2-seed means).
+Not monotonically improving, no interpolate-to-zero pattern — a genuine
+plateau/floor around 7.7-9.2 kcal/mol. **This confirms the method is not
+cheating the way iteration 2 did.**
+
+**Result: 8.879 ± 0.981 kcal/mol (vs exact, == vs noiseless). WORSE than
+the 2.850 ± 0.490 baseline (constant per-basis scale). 0/8 seeds reach
+0.30.** Despite passing its own floor test and despite the modest
+per-label residual improvement measured beforehand, the actual forged
+energy got noticeably WORSE, not better.
+
+**Diagnosis (plausible, not fully isolated)**: a degree-1 trig model fit
+from globally-scattered random angles is being evaluated by EXTRAPOLATION
+at each of the 36 specific target angle combinations — if those targets
+sit in a region of angle-space that's a poor fit for a LOW-ORDER model
+(the true angle-dependence is presumably richer than single-angle
+cos/sin terms, e.g. involves cross terms between the double-excitation
+angle and the four Givens angles, which this model doesn't include), the
+fitted function can be systematically WRONG at exactly the points that
+matter, even while its residual on the (differently-distributed) training
+sample looks modest. A constant scale is a poor model everywhere but
+UNBIASED on average; this richer model is a better fit MOST places but can
+be worse at the specific 36 points being corrected — the sampling
+distribution mismatch (global training vs specific fixed targets) matters
+more than model expressiveness here. Not chasing a higher-order feature
+set next without a specific reason to expect it fixes THIS problem rather
+than making the same mismatch worse.
 
 ---
