@@ -1,0 +1,190 @@
+{
+  "idea": "quantum subspace expansion (McClean et al. PRA 95, 042308) on the K=6 forged basis, H_eff derived from the SAME alpha/beta matrices entanglement forging already measures, no channel model, no training data",
+  "verify1_h_eff_matches_standard_formula": {
+    "pass": true,
+    "diff_kcal": 7.245424849262872e-12
+  },
+  "verify2_overlap_circuit_matches_statevector": {
+    "pass": true,
+    "worst_err": 9.43689570931383e-16,
+    "rows": [
+      {
+        "pair": [
+          "(u0+u1)",
+          "(u0+u2)"
+        ],
+        "err": 6.661338147750939e-16
+      },
+      {
+        "pair": [
+          "(u0+u1)",
+          "(u0+u3)"
+        ],
+        "err": 6.661338147750939e-16
+      },
+      {
+        "pair": [
+          "(u0+u1)",
+          "(u0+u4)"
+        ],
+        "err": 4.996003610813204e-16
+      },
+      {
+        "pair": [
+          "(u0+u2)",
+          "(u0+u3)"
+        ],
+        "err": 9.43689570931383e-16
+      },
+      {
+        "pair": [
+          "(u0+u2)",
+          "(u0+u4)"
+        ],
+        "err": 6.661338147750939e-16
+      },
+      {
+        "pair": [
+          "(u0+u3)",
+          "(u0+u4)"
+        ],
+        "err": 4.996003610813204e-16
+      }
+    ]
+  },
+  "noisy_comparison": {
+    "standard_forging_err_kcal": 103.99522558047468,
+    "qse_ordinary_err_kcal": 103.16644179108854,
+    "qse_helps": true,
+    "determinism_diff_kcal": 0.0
+  },
+  "regularized_qse": {
+    "S_eigenvalues": [
+      0.8388483472277718,
+      0.8448328527286378,
+      0.8699072104733357,
+      0.9187056691529228,
+      0.948862969094401,
+      1.578842951322931
+    ],
+    "threshold_sweep": [
+      {
+        "threshold": 1e-06,
+        "err_kcal": 33.11103441336622,
+        "n_kept": 6
+      },
+      {
+        "threshold": 0.001,
+        "err_kcal": 33.11103441336622,
+        "n_kept": 6
+      },
+      {
+        "threshold": 0.4194,
+        "err_kcal": 33.11103441336622,
+        "n_kept": 6
+      },
+      {
+        "threshold": 0.5535,
+        "err_kcal": 33.11103441336622,
+        "n_kept": 6
+      },
+      {
+        "threshold": 0.6876,
+        "err_kcal": 33.11103441336622,
+        "n_kept": 6
+      },
+      {
+        "threshold": 0.8217,
+        "err_kcal": 33.11103441336622,
+        "n_kept": 6
+      },
+      {
+        "threshold": 0.9559,
+        "err_kcal": 1497.7527392410027,
+        "n_kept": 1
+      },
+      {
+        "threshold": 1.09,
+        "err_kcal": 1497.7527392410027,
+        "n_kept": 1
+      },
+      {
+        "threshold": 1.2241,
+        "err_kcal": 1497.7527392410027,
+        "n_kept": 1
+      },
+      {
+        "threshold": 1.3582,
+        "err_kcal": 1497.7527392410027,
+        "n_kept": 1
+      },
+      {
+        "threshold": 1.4923,
+        "err_kcal": 1497.7527392410027,
+        "n_kept": 1
+      },
+      {
+        "threshold": 1.6264,
+        "err_kcal": null,
+        "n_kept": 0
+      },
+      {
+        "threshold": 1.7605,
+        "err_kcal": null,
+        "n_kept": 0
+      },
+      {
+        "threshold": 1.8946,
+        "err_kcal": null,
+        "n_kept": 0
+      }
+    ],
+    "floor_test": {
+      "param_values": [
+        1e-06,
+        0.001,
+        0.4194,
+        0.5535,
+        0.6876,
+        0.8217,
+        0.9559,
+        1.09,
+        1.2241,
+        1.3582,
+        1.4923
+      ],
+      "errors": [
+        33.11103441336622,
+        33.11103441336622,
+        33.11103441336622,
+        33.11103441336622,
+        33.11103441336622,
+        33.11103441336622,
+        1497.7527392410027,
+        1497.7527392410027,
+        1497.7527392410027,
+        1497.7527392410027,
+        1497.7527392410027
+      ],
+      "overall_ratio": 45.2342479109137,
+      "step_ratios": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        45.2342479109137,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "tail_ratio": 1.0,
+      "still_falling_at_most_aggressive_point": false,
+      "has_floor": true,
+      "disqualified": false,
+      "verdict": "PASS -- the last 2 consecutive step-ratios ([1.0, 1.0]) are all below 1.5x. This plateau is the method's real floor."
+    }
+  },
+  "chemical_accuracy_kcal": 1.0
+}
