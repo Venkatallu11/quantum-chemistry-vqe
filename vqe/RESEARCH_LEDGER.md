@@ -1,5 +1,20 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 9, real hardware): every finding below iteration
+9 used this project's OWN synthetic depolarizing noise model. Iteration 9
+ran the same raw/CDR/PEC comparison for real, on IonQ's free
+`ionq_simulator`, against real `aria-1`/`forte-1` noise, concurrently with
+an `ideal` correctness control. Result: a clean, diagnosable negative.
+Real target-circuit error (35-43 kcal/mol) is 15-25x larger than a
+Clifford-learned channel (from a REDUCED, 1-pair/1-qubit calibration probe)
+predicted — the probe under-samples the real noise, not a PEC failure.
+CDR, which helped 36x locally, makes things 2.1-2.6x WORSE on real noise
+and its binding curve becomes unstable (not just biased). PEC (run at
+d=1.0 only) still clearly beats CDR (2.8x) and modestly beats raw
+(8-25%), so its correction logic still works — it is just correcting a
+channel that was under-characterized for real hardware. See iteration 9
+below for the full table and the two honest candidate causes.
+
 **STATUS / GOAL REFRAMED AGAIN (iteration 8): chemistry needs energy
 DIFFERENCES (reaction energies, binding curves, barrier heights), not
 absolute energies, and chemical accuracy is DEFINED on differences.
@@ -740,5 +755,187 @@ specified, now backed by a real, queried number rather than an assumption.
 
 Full data: `vqe/ionq_resource_estimate_results.json` (`real_pricing_check` key).
 Code: `vqe/ionq_resource_estimate.py::real_pricing_check()`.
+
+## Iteration 9, Task 2: does PEC's advantage survive noise it did not design? Real submission to IonQ's free `ionq_simulator`, concurrent ideal/aria-1/forte-1
+
+**Every result in this ledger through iteration 8 used this project's OWN
+depolarizing noise model** (`P2_PER_GATE=0.01214`, `P1_PER_GATE`
+=`P2_PER_GATE/40`) — PEC's near-exactness (iterations 4-5) is close to
+tautological against a channel built to be exactly the kind of channel
+PEC inverts. This task ran the same raw/CDR/PEC comparison for real,
+submitted to IonQ's free cloud simulator (`ionq_simulator`, zero cost —
+never `ionq_qpu`), against `aria-1` and `forte-1`'s own real noise
+models, with `ideal` as a third, concurrently-submitted correctness
+control. **Headline: it is a clean negative, exactly the kind the
+question anticipated — not because PEC breaks, but because the specific
+noise-LEARNING probe used here badly under-estimates the real error on
+the actual target circuits, and CDR turns out to make things
+substantially worse than doing nothing.**
+
+**Scope, reduced from iteration 8's design and disclosed here, not
+hidden** (real network round-trips, not local computation, are now the
+bottleneck): 3 geometries (0.9/1.0/1.1 Å, bracketing iteration 8's own
+d_eq≈0.90 Å), not 7. PEC's own randomized-circuit protocol (see below) is
+run only at d=1.0, not all 3 — its difference-error/cancellation-
+factor/binding-curve fields are therefore correctly N/A, not missing
+data. CDR training used 8 seeds × 5 random-angle draws/seed (genuinely
+independent real submissions), not iteration 8's local per-slot scheme.
+PEC calibration used 1 representative CX pair + 1 qubit, not every
+distinct pair/qubit as iteration 5 verified locally — **this specific
+reduction turns out to be the main story below, not a footnote**. The
+raw/CDR "8 seeds" at the target-measurement step are bootstrap resamples
+(multinomial resampling of the real integer counts from ONE real
+10,000-shot execution per circuit) — stated once, applies throughout;
+CDR training and PEC's quasi-probability circuit draws are genuinely
+independent real executions, not resamples.
+
+**Concurrency, verified by wall-clock time, not asserted**: every phase
+submitted every job (`backend.run()`, non-blocking) before calling
+`.result()` on any of them.
+
+| phase | jobs | circuits | submit time | retrieve time |
+|---|---|---|---|---|
+| calibrate | 4 | 1,040 | 22.2s | 447.6s |
+| targets d=0.9 | 3 | 1,404 | 12.6s | 522.1s |
+| targets d=1.0 | 3 | 1,404 | 12.3s | 542.1s |
+| targets d=1.1 | 3 | 1,404 | 12.7s | 512.4s |
+| pec | 16 | 7,488 | 99.6s | 813.5s |
+
+The `pec` phase submitted 16 jobs (7,488 circuits, 5.3x the circuit count
+of one `targets` phase) but its retrieval time was only 1.5x longer
+(813.5s vs ~525s) — sub-linear scaling in circuit count is the expected
+signature of genuine concurrent server-side execution, not proof by
+itself, but consistent with it and inconsistent with the jobs having run
+one at a time.
+
+**Ideal is a correctness control, checked immediately, not glossed
+over**: raw energy on `noise_model="ideal"` must reproduce the noiseless
+numpy energy within real 10,000-shot statistical noise, or the script
+raises and stops (a pipeline bug, not a noise finding). All 3 geometries
+passed: d=0.9 err=0.056 kcal/mol, d=1.0 err=2.689 kcal/mol, d=1.1
+err=1.862 kcal/mol vs the noiseless energy — all consistent with real
+shot noise at this shot count, none indicating a bug.
+
+**Learned channels (real, Clifford-only, per noise model, never shared,
+never from the local model)**:
+
+| model | p2 (2-qubit) | p1 (1-qubit) | γ_total | fit residual (CX / ry) |
+|---|---|---|---|---|
+| aria-1 | 0.000173 | 0.000000 | 1.0036 | 0.0010 / 0.0000 |
+| forte-1 | 0.000284 | 0.000000 | 1.0059 | 0.0013 / 0.0000 |
+
+Both are **40-70x smaller** than this project's own local model
+(`P2_PER_GATE=0.01214`, γ_total=1.315) and the fit residuals are tiny —
+the exponential-decay fit itself is clean, not noisy or curved. Read
+naively, this predicts almost no correction is needed on real IonQ
+noise. **That prediction is wrong**, and the reason why is the real
+finding here.
+
+**The actual result table** (8-seed mean, `chemical_accuracy_kcal=1.0`):
+
+| model | raw abs err (kcal/mol) | CDR abs err (kcal/mol) | PEC abs err (kcal/mol) |
+|---|---|---|---|
+| ideal (control) | 1.704 | — | — |
+| aria-1 | 34.983 | **89.751** | 32.132 (d=1.0 only) |
+| forte-1 | 43.026 | **90.257** | 32.422 (d=1.0 only) |
+
+**Finding 1 — the calibration/target mismatch is the headline number**:
+raw error on real noise (35-43 kcal/mol) is **15-25x larger** than both
+the ideal-control baseline (1.7 kcal/mol, pure shot noise) and what the
+tiny learned γ_total≈1.004-1.006 would predict. The Clifford CX/ry-decay
+probe — deliberately reduced here to 1 representative pair and 1
+representative qubit, unlike iteration 5's local verification (spread
+<1e-6 across all distinct pairs, justifying a single global rate) — does
+not generalize to the real 11-CX/51-1q target circuits. Two honest
+candidate causes, not adjudicated between here: (a) the reduction itself
+was unjustified for real hardware — other qubit pairs/qubits may carry
+real error the single-pair probe never sampled, unlike the local
+synthetic model where uniformity was independently verified; (b) IonQ's
+real per-gate error is genuinely context-dependent (crosstalk, connectivity,
+coherent/non-Pauli effects) in a way an isolated two-qubit Bell-decay
+circuit cannot see, even if that one pair's own isolated error truly is
+tiny. Both are real possibilities; distinguishing them needs the
+all-pairs/all-qubits calibration iteration 5 ran locally, not done here
+for real-network-cost reasons — the honest scope limit of this run, not
+a claim resolved by it.
+
+**Finding 2 — CDR makes it WORSE, a genuine reversal from every prior
+iteration in this ledger**: CDR's abs error (89.8-90.3 kcal/mol) is
+**2.1-2.6x raw**, not an improvement. Locally, CDR helped by 36x (2.850
+vs raw's 103.99). On real IonQ noise it actively hurts. This is
+consistent with — and sharpens — iteration 2/3's own original diagnosis:
+CDR's per-basis linear scale assumes a fixed per-label attenuation, but a
+Pauli's noisy attenuation depends on how it Heisenberg-propagates
+backward through the circuit's PARAMETRIZED gates, which differs between
+CDR's random training angles and the real target angles. That mismatch
+was already known to cap CDR's local performance; on real hardware noise
+that is evidently less uniform than this project's synthetic depolarizing
+channel, the same mismatch is bad enough to overshoot in the wrong
+direction rather than merely under-correct.
+
+**Finding 3 — PEC gives a real but modest edge, consistent with
+Finding 1's diagnosis**: PEC (d=1.0 only) reaches 32.1-32.4 kcal/mol,
+beating raw by 8-25% and CDR by ~2.8x — a genuine, not cherry-picked,
+improvement, but nowhere close to iterations 4-5's near-zero local
+result. This is exactly what Finding 1 predicts: PEC is correcting for
+the LEARNED channel (tiny, from the 1-pair/1-qubit probe), and if the
+real noise affecting the full circuit is larger or differently
+structured than that channel, PEC under-corrects rather than failing
+outright — an honest partial result, not a null one.
+
+**Finding 4 — CDR's binding curve is unstable, not just biased**: local
+quadratic fit (3-point window, the reduced geometry set):
+
+| model / method | d_eq (Å) | error vs exact (0.8539 Å) |
+|---|---|---|
+| ideal / raw | 0.9025 | 0.049 |
+| aria-1 / raw | 0.8680 | 0.014 |
+| forte-1 / raw | 0.8912 | 0.037 |
+| aria-1 / CDR | 0.6394 | 0.215 |
+| forte-1 / CDR | 0.0465 | 0.807 |
+
+Raw's binding-curve shape survives reasonably (d_eq errors 0.01-0.05 Å,
+comparable to the ideal control's own 0.05 Å shot-noise floor) even
+though its absolute-energy error is large — echoing iteration 8's
+cancellation finding, now confirmed on real hardware noise for the
+UNCORRECTED signal. CDR's binding curve does NOT survive (errors 0.2-0.8
+Å) — its per-geometry correction is erratic enough, not just biased
+enough, that the 3-point quadratic fit is unstable. This is the opposite
+of iteration 8's local finding (CDR's absolute bias was large but SMOOTH
+across geometries, so it canceled in differences and gave a clean
+binding curve) — on real IonQ noise, CDR's bias is not smooth enough
+across geometries for that cancellation to hold.
+
+**A real reproducibility bug caught and fixed during this run**: the
+bootstrap-resample RNG seeds initially used Python's built-in `hash()` on
+`(model, d, seed)` tuples — `hash()` on tuples containing strings is
+randomized per-process (`PYTHONHASHSEED`) in Python 3, so re-running
+`--assemble` on the SAME real checkpointed data gave different numbers
+each time (caught by literally running `--assemble` twice and diffing).
+Fixed with a `zlib.crc32`-based deterministic seed (`stable_seed()` in
+`vqe/ionq_simulator_binding_curve.py`); confirmed identical output across
+repeated `--assemble` runs before reporting the numbers above.
+
+**Answering the task's question directly: does PEC keep its advantage on
+real IonQ noise?** Partially, and for a diagnosable reason, not a mysterious
+one. PEC still clearly beats CDR (2.8x) and modestly beats raw (8-25%),
+so its DIRECTION of advantage over CDR survives intact — CDR's collapse is the
+sharper story here. But PEC's MAGNITUDE of advantage over raw shrinks from
+"eliminates the error" (iterations 4-5, exact/near-exact locally) to "a
+modest dent" (this run) — consistent with the channel-learning probe,
+not PEC's correction logic itself, being the bottleneck: gate-by-gate PEC
+is only as good as the channel it inverts, and this run's deliberately
+reduced 1-pair/1-qubit Clifford probe evidently does not capture the real
+noise affecting the full 62-gate target circuit. **A full-coverage
+Clifford calibration (every distinct CX pair, every qubit — iteration 5's
+local protocol, not yet run for real) is the natural next real-hardware
+experiment this result points to, not a re-run of what was done here.**
+
+Code: `vqe/ionq_simulator_binding_curve.py` (phases: `--calibrate`,
+`--targets --d D`, `--pec`, `--assemble`, each independently checkpointed
+under `vqe/ionq_simulator_binding_curve_checkpoints/` since real network
+round-trips exceed the 10-minute-per-command budget this project has
+worked within since iteration 8). Full data:
+`vqe/ionq_simulator_binding_curve_results.json`.
 
 ---
