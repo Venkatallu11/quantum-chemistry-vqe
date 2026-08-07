@@ -1,0 +1,102 @@
+{
+  "xxplusyy_vs_bare_ms_match_error": 0.09452783117928204,
+  "gate_count_angle_sweep": {
+    "n_targets": 36,
+    "n2q_after_optimizer": {
+      "min": 4,
+      "max": 11,
+      "mean": 9.277777777777779,
+      "sum": 334,
+      "unique_values": [
+        4,
+        7,
+        9,
+        11
+      ],
+      "constant_across_targets": false
+    },
+    "n1q_after_optimizer": {
+      "min": 40,
+      "max": 71,
+      "mean": 61.27777777777778,
+      "sum": 2206
+    },
+    "n_ms_gates_checked": 334,
+    "all_theta_exactly_0.25": true,
+    "unique_thetas_rounded": [
+      0.25
+    ],
+    "abstract_baseline_n2q": 11
+  },
+  "partial_angle_theoretical_projection": {
+    "n_rotation_angles_sampled": 180,
+    "mean_fraction_of_full_strength": 0.7997779187501315,
+    "err_if_all_full_strength_pct": 2.5,
+    "err_at_actual_angles_mean_pct": 2.070924079881532,
+    "projected_per_gate_error_reduction_pct": 17.16303680473874,
+    "caveat": "THEORETICAL PROJECTION using IonQ's own published err(s) formula applied to this ansatz's rotation angles -- NOT a measurement. No verified partial-angle resynthesis exists (finding 3 above: a bare MS/ZZ gate is not a drop-in replacement for an XXPlusYYGate rotation). This estimates the CEILING a real resynthesis could approach, not a result achieved here."
+  },
+  "existing_native_k5_zne_data_cited": {
+    "aria-1": {
+      "folds": [
+        1,
+        3,
+        5
+      ],
+      "energies_ha": [
+        -1.877189,
+        -1.489567,
+        -1.210766
+      ],
+      "f": [
+        0.842805,
+        0.631452,
+        0.479435
+      ],
+      "effective_error_rate": [
+        0.15719499999999997,
+        0.1420800222424392,
+        0.13673139471783946
+      ],
+      "rate_spread": 0.020464,
+      "rate_consistent": false,
+      "no_mitigation_kcal": 181.4745,
+      "zne_linear_kcal": 88.3088,
+      "zne_quadratic_kcal": 34.2489,
+      "zne_exponential_kcal": null,
+      "zne_exponential_note": "energies not monotonic across folds -- exponential fit not well-posed, not faked",
+      "raw_baseline_kcal_from_abstract_gate_run": 125.07
+    },
+    "forte-1": {
+      "folds": [
+        1,
+        3,
+        5
+      ],
+      "energies_ha": [
+        -1.870253,
+        -1.463583,
+        -1.169139
+      ],
+      "f": [
+        0.839023,
+        0.617284,
+        0.456738
+      ],
+      "effective_error_rate": [
+        0.16097700000000004,
+        0.14854505241281024,
+        0.14506434597645435
+      ],
+      "rate_spread": 0.015913,
+      "rate_consistent": false,
+      "no_mitigation_kcal": 185.8269,
+      "zne_linear_kcal": 87.5751,
+      "zne_quadratic_kcal": 31.8237,
+      "zne_exponential_kcal": null,
+      "zne_exponential_note": "energies not monotonic across folds -- exponential fit not well-posed, not faked",
+      "raw_baseline_kcal_from_abstract_gate_run": 134.62
+    }
+  },
+  "conclusion": "Native remodeling via TrappedIonOptimizerPlugin verifiably reduces 2-qubit gate count (mean 9.28 vs 11 abstract, non-uniform 4-11 per target) but exploits NO partial-angle capability (all surviving MS gates at theta=0.25 exactly). Real K=5 native ZNE data (already collected) shows this recovers substantial accuracy vs the naive port (~3.6-4.3x lower error) but with its OWN honesty flag (rate_consistent=False -- fold-based ZNE not fully trustworthy by this project's own check). A genuine partial-angle resynthesis was NOT attempted (verified a bare MS/ZZ gate cannot directly replace a Givens rotation; a real KAK-based resynthesis is flagged as future work, not fabricated here) -- the theoretical projection using IonQ's own published err(s) formula estimates a ceiling, not a result."
+}
