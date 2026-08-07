@@ -1,5 +1,19 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 14, LOCAL BRANCH `local/attack-base-problem`,
+NOT pushed): does Z2 tapering fix ZNE's convergence problem? No.
+Combined iteration 13's tapered (3-qubit, mean 3.94 CX) circuit with the
+same rigorous 3-direction floor-tested ZNE sweep — raw error drops
+~2.3x (46.0 vs 104.0 kcal/mol) but NO PLATEAU is found in any direction,
+same as the untapered circuit. Caught the floor test's OWN discipline
+working correctly in real time: the quadratic/widest-range cell reports
+a tempting 0.730 kcal/mol (under chemical accuracy) but it's the tail of
+a still-decreasing sequence, not a plateau, and is explicitly flagged as
+untrustworthy rather than headlined. Per the explicit instruction this
+was run under, this result does NOT pass, so no real IonQ submission was
+made this iteration — the math was done and found wanting, reported as
+the complete, honest result. See iteration 14 below.
+
 **STATUS UPDATE (iteration 13, LOCAL BRANCH `local/attack-base-problem`,
 NOT pushed — attacking the base of the problem, not the mitigation):
 Task A (Z2 symmetry tapering) is exact, fully verified to machine
@@ -1986,5 +2000,111 @@ that those fits are not well-constrained by the data.
 Code: `vqe/zne_floor_tested.py`. Fix: `vqe/qforge/floor_test.py`
 (monotonic-tail check + regression test). Full data:
 `vqe/zne_floor_tested_results.json`.
+
+---
+
+## Iteration 14: does Z2 tapering fix ZNE's convergence problem? No — a clean, disciplined negative
+
+**The question**: iteration 13 found two independent facts that invite an
+obvious next question — Task A: the tapered (3-qubit, mean 3.94 CX)
+circuit is real and exact. Task E: ZNE shows NO PLATEAU in any direction
+for the UNTAPERED (11-gate) circuit. Does the SMALLER circuit's ZNE
+behave better — fewer gates meaning a smaller total noise range is being
+explored at any given scale, plausibly better-conditioning the
+extrapolation? A real, testable hypothesis, checked here, not assumed.
+
+**Built on already-verified math, extended and re-verified before
+trusting it for a new noisy sweep**: confirmed tapering commutes EXACTLY
+with `beta_signs()` (`max|reduced_v − signs·reduced_u| = 0.0`) — so this
+analysis needed real circuits for the alpha register only, beta derived
+for free, same efficiency as the untapered pipeline. Confirmed all 37
+alpha-register Pauli labels reduce to a genuine single 3-qubit Pauli
+string (times a real ±1 sign) by DIRECT matrix comparison against all 64
+three-qubit Paulis — not assumed from the fact that a Clifford generally
+preserves Pauli-ness. Confirmed the 3-qubit `StatePreparation` circuit
+reproduces the exact tapered target to 3.31e-14 before running anything
+noisy.
+
+**Real result — gate reduction helps the RAW number a lot, but does not
+fix ZNE's convergence**: raw (scale=1) error is **46.0 kcal/mol**, vs
+104.0 for the untapered ansatz at the same base noise rate — a genuine
+~2.3x reduction, consistent with iteration 13's own gate-count-vs-error
+table. But the SAME three floor-test directions used on the untapered
+circuit, re-run here:
+
+| sweep | verdict |
+|---|---|
+| range, fixed order=1 (ZNE-linear) | **DISQUALIFIED** — 3.1x overall, last step-ratios [1.27, 1.30] |
+| order, fixed at the widest range (1-7) | **DISQUALIFIED** — 56.5x overall, last step-ratios [2.1, 5.13] |
+| range, fixed order=2 (quadratic) | **DISQUALIFIED** — tail [0.975, 0.952, 0.730] strictly decreasing |
+
+**NO PLATEAU FOUND, in any direction, on the tapered circuit either.**
+Tapering reduces gate count and raw error substantially but does NOT
+resolve the underlying non-convergence this project's ZNE fits have now
+shown twice, on two different circuits, at two different (equivalent)
+noise levels.
+
+**The trap this floor test exists to catch, caught in real time**: the
+order=2, widest-range cell reports **0.730 ± 0.574 kcal/mol** — under
+chemical accuracy, and exactly the kind of single number a less
+disciplined report would headline. The floor test correctly flags it as
+untrustworthy: it is the LAST point of a still-decreasing sequence
+(0.975 → 0.952 → 0.730), not a converged value — extending the range
+further could plausibly keep falling, overshoot, or do anything else;
+there is no way to know from this data, and reporting 0.730 kcal/mol as
+"the answer" would repeat exactly the mistake iteration 2 made in a new
+disguise. This is reported here explicitly as the reason NOT to trust
+it, not hidden because it looks good.
+
+**Per the explicit instruction this iteration was run under ("do it if
+it passes everything"): this does not pass. No real IonQ submission was
+made.** The math was done, verified, and found wanting — that is the
+complete, honest result of this iteration, not a placeholder for a
+future positive one.
+
+### ALTERNATIVES NOT TAKEN
+
+1. **Reporting the 0.730 kcal/mol cell as a headline result anyway**,
+   since it is numerically below chemical accuracy — rejected outright:
+   this is precisely the failure mode the mandatory floor test exists to
+   prevent, and doing it here after having JUST fixed a false-positive
+   bug in `floor_test()` itself (iteration 13, Task E) would be a
+   direct, immediate contradiction of that fix. Would never revisit this
+   without a genuine plateau demonstrated first.
+2. **Hand-deriving a fixed, constant-gate-count circuit for the tapered
+   register before running ZNE** (rather than the generic, non-constant
+   2-4-gate `StatePreparation` baseline) — rejected for this iteration:
+   ZNE folds each circuit against ITSELF, so non-constant gate count
+   across targets does not affect ZNE's own validity the way it would
+   for CDR; the non-convergence problem found here is unlikely to be a
+   circuit-structure artifact specifically, since it reproduces the
+   SAME qualitative pattern (no plateau in any of 3 directions) that the
+   untapered, CONSTANT-11-gate circuit already showed. Would revisit if
+   the untapered/tapered comparison ever diverged qualitatively — it
+   does not here.
+3. **Trying Mitiq's factory/inference classes for a more sophisticated
+   extrapolation** (adaptive scale-factor choice, Bayesian model
+   selection between fit families) instead of a fixed grid of polynomial
+   orders — rejected on the same integration-cost grounds as iteration
+   13's Task E ALTERNATIVES NOT TAKEN #2. Would revisit if this
+   project's own simple polynomial/exponential sweep is confirmed (via a
+   literature comparison) to be systematically worse-conditioned than
+   what Mitiq's adaptive methods would find on the SAME data — not yet
+   checked.
+4. **Concluding that ZNE is unsalvageable for entanglement-forged H4 and
+   dropping it entirely** — rejected: two negative results (untapered,
+   tapered) at ONE noise regime (this project's own local depolarizing
+   model, scaled) is not the same as ruling out ZNE under every
+   circumstance. The real, still-open question is whether REAL IonQ
+   noise (which iteration 12 already showed differs qualitatively from
+   this local model — e.g. the native MS-gate learned rate came in ~80x
+   larger than the abstract-gate one) shows the same non-convergence
+   pattern or a different one. Would revisit by running THIS SAME
+   3-direction floor test on real IonQ fold data directly, once enough
+   real fold points exist to test more than one scale range (iteration
+   12 only has folds 1/3/5, one single range) — a concrete, well-scoped
+   next real-hardware experiment, not run pre-emptively here.
+
+Code: `vqe/z2_tapered_zne.py`. Full data: `vqe/z2_tapered_zne_results.json`.
 
 ---
