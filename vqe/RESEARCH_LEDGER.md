@@ -1,5 +1,24 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 12 — does the native gate-count reduction
+actually help for real, combined with ZNE/CDR/PEC? Tested, not just
+verified locally): the TrappedIonOptimizerPlugin-optimized fixed K=6
+ansatz (mean 9.28 vs 11 two-qubit gates) run for real, concurrently, on
+ideal/aria-1/forte-1. Key calibration finding: the native MS gate's
+learned error rate (p_ms~0.014, both models) is ~80x LARGER than
+iteration 9's abstract-gate calibration -- explaining why RAW error here
+(93.7/91.4 kcal/mol) is ~2.2x WORSE than the abstract ansatz's raw
+(35-43), despite fewer gates: each surviving native gate runs at full
+strength with a much higher per-gate error rate. ZNE-linear is the one
+method that pulls its weight (~30 kcal/mol both models, back in the
+abstract ansatz's ballpark). CDR REVERSES direction from iteration 9 (was
+2.1-2.6x worse than raw there; roughly HALVES raw here, though noisy).
+PEC is a genuine catastrophic failure (170-400+ kcal/mol) -- diagnosed,
+not mysterious: gamma_total scales with the (now much larger) learned
+channel, and 4 real seeds is nowhere near enough shot budget for the
+resulting sampling overhead. No method reaches chemical accuracy. See
+iteration 12 below for the full real-data table.
+
 **STATUS UPDATE (iteration 11 — the classic 0.57 kcal/mol EF+ZNE result,
 fully re-examined): reproduced exactly (Task 1: 20.20 -> 0.57). Its EXACT
 original circuits, run for real on IonQ (Task 2), give 123-135 kcal/mol —
@@ -1498,5 +1517,116 @@ Code: `vqe/entanglement_forging_zne.py` (Task 1, unchanged),
 `vqe/qforge_ef_zne.py` (Task 4), `vqe/fidelity_threshold_curve.py`
 (Task 5). Consolidated results:
 `vqe/ionq_original_circuit_replication_results.json`.
+
+---
+
+## Iteration 12: does the TrappedIonOptimizerPlugin gate-count reduction actually help, combined with real ZNE/CDR/PEC, on IonQ's free simulators?
+
+**The gap this closes**: iteration 11's Task 3 verified the gate-count
+reduction (mean 9.28 vs 11 two-qubit gates, K=6) LOCALLY ONLY, and cited
+OLDER real data using a DIFFERENT circuit (native_stateprep.py's K=5
+hand-derived tree). This iteration is the missing real test: the ACTUAL
+TrappedIonOptimizerPlugin-optimized fixed K=6 ansatz, submitted for real,
+concurrently, to ideal/aria-1/forte-1, combined with native ZNE
+(fold-after-optimize, verified order, never re-optimizing a folded
+circuit), CDR (training draws each individually optimized, honestly
+carrying the same non-uniform-gate-count structural mismatch a target
+would have), and PEC (native MS-gate Clifford calibration + real
+randomized quasi-probability circuits, 4 seeds).
+
+**Verified before any real submission, to machine precision**: the
+optimized-circuit measurement chain against the exact abstract-ansatz
+reference (1.3e-14), the PEC-variant builder reducing to raw exactly at
+p→0 (1e-14), `fold_native_2q` preserving the ideal unitary on the
+optimized circuit at every fold (<1e-15), and — a real bug caught before
+it could reach a real submission — an initial guessed native Z-gate
+decomposition (`GPI2(0.5)·GPI(0)·GPI2(0.5)`) that direct matrix
+comparison showed does NOT equal Z (it equals a global phase times
+identity); replaced with the verified `GPI(0.25)` then `GPI(0)`
+(X·Y = i·Z, phase-irrelevant for expectation values).
+
+**Real, verified single-fact finding from `--calibrate`**: the native
+MS-gate learned error rate is **p_ms ≈ 0.014 for BOTH aria-1 and
+forte-1** — roughly **80x larger** than iteration 9's abstract-gate
+Clifford calibration (p2 ≈ 0.0002-0.0003), and much closer to this
+project's own local synthetic depolarizing model (0.01214). This single
+number turns out to explain nearly everything that follows.
+
+**Real results, 8-seed mean ± std (4 seeds for PEC), single geometry
+d=1.0**:
+
+| method | ideal (control) | aria-1 | forte-1 |
+|---|---|---|---|
+| raw | 2.39 ± 0.54 | **93.73 ± 3.56** | **91.43 ± 3.29** |
+| ZNE-linear | 2.06 ± 0.63 | 31.23 ± 3.63 | 29.90 ± 3.57 |
+| ZNE-quadratic | 5.36 ± 2.16 | 42.95 ± 8.82 | 18.06 ± 6.23 |
+| CDR | — | 47.90 ± 19.96 | 42.32 ± 21.04 |
+| PEC (4 seeds) | — | 406.51 ± 348.56 | 172.56 ± 76.08 |
+
+**Answering the question directly: gate-count reduction alone does NOT
+help — raw error on the native-optimized circuit is ~2.2x WORSE than
+iteration 9's abstract-ansatz raw (93.7/91.4 vs 35-43 kcal/mol), despite
+having FEWER two-qubit gates (mean 9.28 vs 11).** The mechanism is not
+mysterious, it is the calibration finding above: each surviving native
+gate runs at FULL STRENGTH (θ=0.25, confirmed zero-variance in iteration
+11) with an ~80x larger per-gate error rate than the abstract "cx" gate
+this project's other real-hardware results are calibrated against.
+Fewer, individually-noisier gates costs more than more, individually-
+quieter ones here — a genuine, disclosed reversal of the naive
+"fewer gates = better" intuition, evidenced by a directly-measured
+calibration number, not asserted.
+
+**ZNE genuinely helps, and is the one method that recovers real ground
+here**: ZNE-linear brings both models down to ~30 kcal/mol — back in the
+same ballpark as iteration 9's abstract-ansatz raw and iteration 11's
+cited native K=5 ZNE-quadratic (31.8-34.3). ZNE-quadratic is inconsistent
+between the two models (worse than linear on aria-1, better on forte-1,
+both with large std) — consistent with iteration 11's own established
+finding that this ansatz's noise-scale-range/fit-order is not robustly
+converged; not re-litigated here, just not ignored either. Even the
+IDEAL control's own ZNE-quadratic (5.36 ± 2.16) is worse than its raw
+(2.39 ± 0.54) — expected: extrapolating a quadratic through 3
+near-identical low-noise points amplifies shot noise, not evidence of a
+bug.
+
+**CDR reverses direction from iteration 9** — a genuine, notable
+finding: on the ABSTRACT ansatz, CDR made things 2.1-2.6x WORSE than raw
+(iteration 9). Here, on the NATIVE-optimized ansatz, CDR roughly HALVES
+the raw error (93.7→47.9 aria-1, 91.4→42.3 forte-1) — though with large
+uncertainty (±20-21, roughly 40-50% relative). This is not attributed to
+any specific mechanism here (a real, open question for a future
+iteration — plausibly the larger, more uniform native-gate error rate
+gives per-basis scale fitting a stronger, cleaner signal than the
+abstract ansatz's much smaller, possibly differently-structured
+residual), reported as measured, not explained away.
+
+**PEC is a genuine catastrophic failure here, and the reason is
+diagnosable, not mysterious**: 406.5 ± 348.6 (aria-1), 172.6 ± 76.1
+(forte-1) — WORSE than raw, with enormous variance. PEC's sampling
+overhead scales as γ_total², and γ_total grows with BOTH the per-gate
+error rate and the gate count; with p_ms≈0.014 (80x the abstract
+channel iteration 9's PEC was built on) over a ~9-gate circuit, γ_total
+here is far larger than iteration 9's γ_total≈1.004-1.006 — meaning the
+REAL shot budget PEC needs to converge is far larger too, and 4 real
+seeds at 10,000 shots each is nowhere near enough. This is the same
+"channel under-characterization/shot-budget" bottleneck iteration 9
+first diagnosed, now seen from the opposite direction: there, the
+learned channel was too SMALL to explain the real error; here, the
+learned channel is large enough to be structurally believable, but the
+REQUIRED shot budget that comes with a larger honestly-learned channel
+was not provisioned for.
+
+**Standing conclusion, updated**: no method tested on the native-
+optimized circuit reaches chemical accuracy (best here: ZNE-linear at
+~30 kcal/mol, comparable to — not better than — PEC's abstract-ansatz
+32.1-32.4 kcal/mol from iteration 9). Gate-count reduction by itself is
+not a lever worth pursuing further on its own; ZNE combined with native
+gates is the one piece of this iteration that pulls its weight, and CDR's
+reversal is a real, open thread for a future iteration to explain rather
+than assume.
+
+Code: `vqe/ionq_native_optimized_mitigation.py` (`--calibrate`,
+`--targets`, `--pec`, `--assemble`). Full data:
+`vqe/ionq_native_optimized_mitigation_results.json`.
 
 ---
