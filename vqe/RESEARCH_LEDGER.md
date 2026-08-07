@@ -1,5 +1,23 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 10, QSE — third real-hardware negative, plus a
+new vqe/qforge/ library): validated code from iterations 1-9 is now a
+clean, importable package (vqe/qforge/, invariants enforced as
+assertions, floor_test() reusable). Quantum subspace expansion (QSE,
+McClean et al.) was implemented as a mitigation method needing NO channel
+model — H_eff is built from the SAME alpha/beta matrices entanglement
+forging already measures, so QSE-ordinary needed ZERO new real circuits
+(reused iteration 9's checkpointed target data directly), and its
+regularized variant needed only 135 small new "compute-uncompute" overlap
+circuits. Verified to machine precision locally (7e-12 and 9e-16 kcal/mol)
+before any real submission. Real result on ideal/aria-1/forte-1: QSE-
+ordinary gives a small, real, zero-free-parameter improvement over raw
+(34.0 vs 35.0 kcal/mol aria-1; 41.7 vs 43.0 forte-1) but does NOT beat
+PEC (32.1-32.4). QSE-regularized is unstable (helps on forte-1, hurts on
+aria-1; its "best" threshold varies wildly across geometries within the
+same model). PEC remains the best real-hardware method found across three
+independent attempts. See iteration 10 and the retrospective below.
+
 **STATUS UPDATE (iteration 9, real hardware): every finding below iteration
 9 used this project's OWN synthetic depolarizing noise model. Iteration 9
 ran the same raw/CDR/PEC comparison for real, on IonQ's free
@@ -937,5 +955,302 @@ under `vqe/ionq_simulator_binding_curve_checkpoints/` since real network
 round-trips exceed the 10-minute-per-command budget this project has
 worked within since iteration 8). Full data:
 `vqe/ionq_simulator_binding_curve_results.json`.
+
+---
+
+## Task 1 (this session, no separate iteration number): `vqe/qforge/` — a clean, importable library
+
+Everything worth keeping through iteration 9 was scattered across
+`vqe/*.py` scripts. Extracted into `vqe/qforge/` (no `qforge` package
+existed before this): `ansatz.py` (fixed 11-gate ansatz + `fit_angles`),
+`forging.py` (fragment Hamiltonian, real gauge, `beta_signs()`,
+qubit-wise-commuting/`frame="h"` measurement grouping, `setup_fragment()`
+one-call entry point), `mitigation.py` (`RawStrategy`/`CDRStrategy`/
+`PECStrategy` sharing one `correct()` interface), `shot_noise.py`
+(shot-sampling model + shots-vs-accuracy harness), `floor_test.py` (the
+mandatory floor test as a reusable function). Every invariant is now an
+assertion, not a comment: `combine_matrices()` hardcodes the identity
+Pauli's diagonal to 1.0 regardless of any scale passed in (tested against
+a deliberately absurd scale); `filtered_pairs()` unconditionally drops
+`|exact|<0.05` training rows; `transpile_fixed()` has no
+`optimization_level` parameter at all — hardcoded to 0, tested via
+signature inspection so the parameter cannot even be passed, not just
+defaulted. `vqe/qforge/tests/test_qforge.py` passes end to end against
+known values (K=6 exactness, 36/36 targets converged at 11 CX gates each,
+CDR recovering a known injected scale).
+
+**`floor_test()` caught a real bug in itself while being built**: a first
+draft used a trailing-window min/max-ratio heuristic and wrongly called
+iteration 2's own historical disqualifying sweep (0.60→0.439,
+0.30→0.132, 0.15→0.028, 0.05→0.008, 0.01→0.007 kcal/mol) a *pass* —
+because the LAST two values (0.008, 0.007) have a small ratio (1.14x)
+purely from both being tiny numbers, not from genuinely plateauing;
+every OTHER consecutive step in that same sweep is still a 3-5x jump.
+Fixed with a "last N consecutive step-ratios must ALL be small" check
+instead of a trailing-window aggregate, and `floor_test.py`'s own
+`_self_test()` now asserts it disqualifies that exact historical sweep —
+a permanent regression test for the bug that motivated writing this
+function in the first place.
+
+## Iteration 10: quantum subspace expansion (QSE) — a method that needs no channel model
+
+**Motivation, directly from iteration 9's diagnosis**: CDR and PEC both
+run into the SAME wall on real IonQ noise — they each need some model of
+how noise degrades a measurement (a fitted scale, a learned Pauli
+channel) and iteration 9 found that model badly mismatched the real
+target-circuit error (a Clifford probe learned γ_total≈1.004-1.006 while
+the real raw error was 15-25x larger than that predicts). QSE (McClean,
+Romero, Babbush, Aspuru-Guzik, PRA 95, 042308 (2017)) needs no such
+model: noise resilience is STRUCTURAL, from re-solving a generalized
+eigenvalue problem, not from correcting a measured value against an
+assumed channel.
+
+**How this maps onto entanglement forging, derived not assumed** (full
+derivation in `vqe/qse_mitigation.py`'s docstring): the standard forged-
+energy formula is exactly the Rayleigh quotient λᵀH_effλ/(λᵀλ) + enuc for
+a symmetric K×K matrix H_eff built from the SAME alpha/beta Pauli
+matrices entanglement forging already measures. Every result through
+iteration 9 evaluated that quotient at the CLASSICALLY KNOWN Schmidt
+coefficients λ — i.e. trusted that the exact-diagonalization-derived
+weights stay optimal even when the matrices are noisy. QSE removes that
+assumption: measure H_eff (and, in the regularized variant, an overlap
+matrix S) from the SAME noisy circuits, then let a classical eigensolve
+find the best combination. **This means QSE-ordinary needs ZERO new
+circuits — it is computed entirely from iteration 9's already-collected
+real target data.** Only the regularized variant needs anything new: 15
+"compute-uncompute" fidelity circuits per geometry (prepare uₙ, apply the
+INVERSE of uₘ's ansatz, measure P(|0000⟩)=|⟨uₘ|uₙ⟩|², the standard
+ancilla-free way to get a state-overlap MAGNITUDE from two circuits
+sharing one parametrized family) — 135 circuits total (15 pairs × 3
+geometries × 3 models), a small addition.
+
+**A dead end caught by derivation before it was built, recorded so it is
+not retried**: the first idea for measuring the overlap matrix S was to
+reuse the identity Pauli's already-computed "cross term" from the
+(uₙ±uₘ)/√2 phase circuits already built for entanglement forging (free,
+no new circuits at all). This does NOT work: ⟨ψ|I|ψ⟩=1 is a
+normalization tautology for ANY properly normalized measured probability
+distribution — true whether or not the circuit is noisy — so it carries
+exactly zero information about state overlap, regardless of noise. Caught
+by direct algebraic derivation (not by running a failed experiment),
+before any code was written that depended on it.
+
+**Verification before any real submission** (`vqe/qse_mitigation.py`,
+local only): (1) H_eff's noiseless ground eigenvalue matches the standard
+forging-formula energy to **7e-12 kcal/mol** — confirms the H_eff
+construction is correct, and confirms a real prediction (not an
+assumption): since this fragment's Schmidt rank is exactly 6 (not a
+truncation), λ_known MUST already be H_eff's own ground-state
+eigenvector. (2) The compute-uncompute overlap circuit matches the exact
+statevector overlap to **9e-16** locally, then **1e-17** specifically
+with the IonQ abstract gateset (checked again before spending any real
+API calls on it, since the local check used a different gateset).
+
+**Local floor test, on this project's own (larger) synthetic noise
+model**: QSE-ordinary gives a small, real, deterministic improvement over
+the standard forging formula on the identical noisy matrices (103.17 vs
+103.995 kcal/mol, 1.01x — modest, but genuine, with zero free
+parameters). Regularized QSE's threshold sweep initially came back
+vacuous — every threshold up to 0.5 gave an IDENTICAL result, because the
+actually-measured S eigenvalues span [0.84, 1.58], never crossed by that
+range — fixed by extending the sweep past the measured spectrum. Once
+meaningful, the real finding is that aggressive regularization makes
+things dramatically WORSE here, not better (n_kept=6/6: 33.1 kcal/mol;
+n_kept=1/6: 1497.8 kcal/mol) — on this problem, at this noise level,
+ordinary (unregularized) QSE is the more robust choice, a real, disclosed
+consequence of the overlap circuit's magnitude-only sign limitation (it
+cannot resolve whether an off-diagonal deviation from orthonormality is
+constructive or destructive, so it can't reliably tell "safe to discard"
+apart from "important to keep").
+
+**Real result, run concurrently on ideal/aria-1/forte-1** (8-seed
+mean, same bootstrap/real-execution conventions as iteration 9):
+
+| model | raw (iter.9) | CDR (iter.9) | PEC (iter.9) | QSE-ordinary | QSE-regularized |
+|---|---|---|---|---|---|
+| ideal (control) | 1.704 | — | — | 1.833 | 1.833 |
+| aria-1 | 34.983 | 89.751 | **32.132** | 34.026 | 43.278 |
+| forte-1 | 43.026 | 90.257 | **32.422** | 41.742 | 36.647 |
+
+**A third clean negative, exactly as anticipated**: QSE-ordinary gives a
+marginal (2-3%) improvement over raw — consistent in direction and rough
+magnitude with the local synthetic-noise finding — but does NOT beat PEC,
+and needed zero new real circuits to find that out. QSE-regularized is
+actively unstable: WORSE than QSE-ordinary on aria-1 (43.28 vs 34.03) but
+BETTER on forte-1 (36.65 vs 41.74), still short of PEC either way. The
+instability is diagnosable, not mysterious: the "best" regularization
+threshold varies wildly ACROSS GEOMETRIES within the same model (aria-1:
+best threshold ≈1e-6 at d=0.9/1.0, jumps to 0.83 at d=1.1) — there is no
+single threshold choice that would generalize across a real binding-curve
+scan, exactly the instability the mandatory floor test exists to surface.
+Difference-error cancellation is consistent with this picture: QSE-
+ordinary's bias cancels comparably to raw (9.37x aria-1, 7.10x forte-1),
+while QSE-regularized's cancellation is much weaker (1.21x, 2.01x) —
+its per-geometry behavior is less smooth, not just less accurate. On the
+ideal control, QSE (1.833 kcal/mol) is even slightly WORSE than plain raw
+(1.704 kcal/mol) — the nonlinear re-diagonalization has a small real cost
+when there is no bias to correct in the first place, reported plainly
+rather than only reporting the cases where it helps.
+
+**Standing conclusion after three independent real-hardware attempts**:
+PEC remains the best-performing method on real IonQ noise (32.1-32.4
+kcal/mol) of everything tried in this project — not because its
+correction logic is uniquely good, but because CDR's angle-mismatch
+problem gets WORSE (not better) on real hardware noise, and QSE's
+structural noise-resilience, while real and directionally helpful, is too
+small here to close the gap. The bottleneck iteration 9 diagnosed — a
+reduced, 1-pair/1-qubit Clifford calibration probe under-characterizing
+the real noise on the full 62-gate target circuit — still stands as the
+most likely lever for improvement, unresolved by any method tried since.
+
+Code: `vqe/qse_mitigation.py` (local implementation + verification +
+floor test), `vqe/ionq_qse_binding_curve.py` (`--overlap`, `--assemble` —
+reuses iteration 9's `ionq_simulator_binding_curve_checkpoints/
+targets_d*.json` directly, needs no re-collection). Full data:
+`vqe/qse_mitigation_results.json`, `vqe/ionq_qse_binding_curve_results.json`.
+
+## Retrospective: root cause of every disqualification/real bug in this project, in one place
+
+Collected here so the failure modes stay visible as a group, not just
+scattered across individual iteration write-ups above.
+
+1. **Iteration 2 (locally-perturbed CDR), disqualified**: the method's
+   free parameter (training-perturbation radius) had no floor — as the
+   radius shrinks toward 0, the training circuit converges to the TARGET
+   circuit itself, so the method degenerates into classically
+   re-evaluating the answer it was supposed to be measuring. **Root
+   cause**: this whole simulator-only testbed can always cheat this way,
+   because "exact" is one `Statevector` call away for every circuit,
+   including circuits placed arbitrarily close to a target. The fix
+   was procedural, not a patched parameter: the mandatory floor test,
+   applied to every free parameter of every method from that point on.
+
+2. **CDR global/per-circuit scale, negative results (iterations
+   pre-dating this ledger's numbering)**: a single scalar correction
+   (one global scale, or one scale per target circuit) cannot capture
+   noise attenuation that depends on WHICH Pauli label is being
+   corrected — per-basis scale (fit separately per label) was the fix,
+   and remains this project's best noiseless-estimator result locally
+   (2.850±0.490 kcal/mol) even though iteration 9 found it collapses on
+   real hardware noise (root cause below, item 8).
+
+3. **ZNE gate folding, negative result**: abstract-gate folding got
+   compiler-cancelled (the inserted G·G⁻¹ pairs were optimized back out
+   before submission); native-gate folding worked structurally but its
+   extrapolated result (10.15 kcal/mol) was still beaten by CDR (2.850).
+   **Root cause**: folding only helps if the folded gates survive to
+   execution — verifying that the SUBMITTED circuit, not just the
+   locally-constructed one, retains the extra gates is a real, separate
+   check this project learned to make explicitly afterward (fold AFTER
+   transpilation, submit without further transpiler passes).
+
+4. **`optimization_level>=1` silently collapsing gate counts**
+   (`fixed_ansatz.py`, discovered while building `zne_vs_cdr.py`): for
+   specific fitted angles landing near periodic special values, higher
+   optimization levels' adaptive 2-qubit synthesis found a cheaper
+   circuit for SOME targets but not others — silently breaking CDR's
+   core assumption that training and target circuits are structurally
+   identical. **Root cause**: "optimize the circuit" and "keep the
+   circuit structurally comparable across many different parameter
+   values" are different goals that `optimization_level` conflates: a
+   transpiler pass that is locally optimal per-circuit is not obligated
+   to be STRUCTURALLY CONSISTENT across a family of related circuits.
+   Fixed by hardcoding `optimization_level=0` everywhere in this
+   pipeline — as of Task 1 (this session), enforced in code
+   (`qforge.ansatz.transpile_fixed` has no such parameter at all) rather
+   than left as a convention every new script had to remember.
+
+5. **Bash tool's ~10-minute hard cap, even on `run_in_background: true`
+   commands** (first hit in iteration 8): a background job for a long
+   local sweep was silently killed near the 10-minute mark with buffered
+   stdout lost. **Root cause**: the cap applies regardless of
+   backgrounding. Fixed procedurally, not by fighting the cap: every
+   long-running experiment from iteration 8 onward is split into
+   independent, checkpointed CLI phases (`--shots N`, `--config X`,
+   `--targets --d D`, `--overlap`, ...) that each complete well within
+   the budget, with a separate `--assemble` phase doing analysis from
+   already-saved checkpoints, no network calls.
+
+6. **`IonQBackend`'s `qiskit_circ_to_ionq_circ` doesn't re-transpile
+   submitted circuits** (verified directly, iteration 9): confirmed by
+   reading `qiskit_ionq`'s own source (`ionq_backend.py`,
+   `IonQBackend.run()`) that circuits are submitted exactly as built —
+   the `IonQTranspileLevelWarning` printed on every real run is a global
+   qiskit user-config nag about a DIFFERENT default setting, not evidence
+   that this project's own `optimization_level=0` circuits get silently
+   re-optimized by IonQ's SDK. Checked directly rather than assumed
+   either way, since getting this wrong would have invalidated every
+   real-hardware invariant this project depends on.
+
+7. **A real bug in `ionq_simulator_binding_curve.py`'s `phase_calibrate()`
+   (iteration 9)**: `KeyError: 'IIII'` — qubit-wise measurement groups
+   include the identity label, which was correctly never computed in the
+   CDR training's exact-value cache (since ⟨I⟩=1 always, it needs no
+   training). **Root cause**: iterating "every label in a group" and
+   "every label with a cached exact value" look interchangeable until a
+   group contains a label that was deliberately excluded elsewhere for a
+   good reason — fixed by skipping labels absent from the exact-value
+   cache rather than assuming group membership implies cache membership.
+
+8. **Python's `hash()` non-determinism (iteration 9)**: bootstrap-resample
+   RNG seeds built from `hash((model, d, seed))` gave DIFFERENT numbers
+   on every rerun of `--assemble` against the SAME real checkpointed
+   data, because `hash()` on tuples containing strings is randomized
+   per-process (`PYTHONHASHSEED`) in Python 3. Caught by literally
+   re-running `--assemble` twice and diffing the output — not something
+   a single run could ever reveal on its own. Fixed with a
+   `zlib.crc32`-based deterministic seed (`stable_seed()`), and
+   confirmed identical output across reruns before trusting any number
+   built on it.
+
+9. **`floor_test()`'s own trailing-window bug (Task 1, this session)**:
+   see the qforge writeup above — a heuristic that correctly flags a
+   genuine plateau also incorrectly flagged a sequence still heading to
+   zero, because both look "flat in ratio terms" once the numbers
+   involved are small. **Root cause**: a RATIO-based flatness check
+   cannot distinguish "genuinely converged" from "still shrinking but
+   already small" without looking at more than the last two points —
+   fixed by requiring several CONSECUTIVE small steps, not just the
+   final one, and locking in the fix with a regression test built from
+   the exact historical data it needs to keep catching.
+
+10. **The identity-Pauli-overlap dead end (Task 2, this session, QSE
+    design)**: see the QSE writeup above — measuring ⟨I⟩ on a superposed
+    target-circuit state cannot reveal state overlap, since it is a
+    normalization tautology independent of noise. **Root cause**: a
+    circuit-level measurement trick that works correctly for one class
+    of operators (Hermitian, non-identity Paulis, via the E0/E2
+    phase-circuit reconstruction already verified in `ef_fragment.py`)
+    does not automatically generalize to a degenerate special case
+    (the identity) just because the SAME circuits and SAME formula are
+    reused — checked by direct algebra before writing dependent code,
+    the same discipline that caught bug 4 (opt_level) and bug 7
+    (KeyError) after the fact, applied here before any code existed to
+    debug.
+
+11. **QSE's own vacuous regularization-threshold sweep (Task 2, this
+    session)**: see the QSE writeup above — an initial threshold range
+    never crossed the actual measured S eigenvalue spectrum, so every
+    tested value gave an identical (meaningless) result, which the floor
+    test technically "passed" without the pass meaning anything.
+    **Root cause**: a free parameter's sweep RANGE has to be chosen from
+    the actual data the parameter operates on, not guessed in advance —
+    fixed by computing the real S eigenvalue spectrum FIRST, then
+    building the threshold sweep to span past it.
+
+**The pattern across all eleven**: this project's real bugs cluster into
+three kinds — (a) a classical/exact shortcut available in this specific
+simulator-only or verification context that would not survive contact
+with a register too large to classically check (1, 10); (b) a convention
+assumed to hold across a whole family of circuits/measurements that
+actually only holds pointwise, not structurally (4, 7); and (c) a
+free parameter or heuristic whose validity was asserted instead of
+checked against the actual range of the data or the actual historical
+counterexample it needed to handle (9, 11, and the floor test itself as
+the general antidote to 1). Every one of these was caught by direct
+verification — reading the SDK source, re-running to check determinism,
+deriving the math before trusting a shortcut, extending a sweep to
+actually cover the measured range — not by assuming correctness and
+finding out later from a bad real-hardware result.
 
 ---
