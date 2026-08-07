@@ -698,4 +698,47 @@ the pattern (CDR cancellation growing with shots, PEC staying near 1) is
 consistent and monotonic-in-shots for CDR, which is itself evidence this
 is a real effect and not noise in a single measurement.
 
+## Iteration 9, Task 1: real IonQ QPU pricing — is the $25.79 floor per-circuit or per-job?
+
+**THE ANSWER FIRST, per the request that prompted this task: real QPU
+hardware is not an option at any bundling strategy, and this makes the
+per-job-vs-per-circuit question moot rather than decisive.** Queried
+IonQ's own real, free, read-only `GET /jobs/estimate` endpoint (no
+hardware touched or reserved) for `qpu.forte-1` — the only backend name
+of the ones tried (`qpu.forte-1`, `qpu.aria-1`, `aria-1`, `qpu.aria-2`,
+`qpu.harmony`) that returned a quote; aria-1 pricing was simply
+unavailable through this account/endpoint, not fabricated.
+
+Real rate card: `job_cost_minimum=$25.7899`, `cost_1q_gate=$0.000164`,
+`cost_2q_gate=$0.001121` (unit: gates). Three real quotes:
+
+| job | gates (1q/2q) | shots | real quoted price |
+|---|---|---|---|
+| 1 circuit | 51/11 | 1 | $25.79 (floor dominates) |
+| 1 circuit | 51/11 | 10,000 | **$206.95** (8.02x above the floor) |
+| 125 circuits' worth of gates, merged into 1 job | 6375/1375 | 10,000 | $25,868.75 (**exactly 125.0x** the 1-circuit price) |
+
+The 125x scaling test is exact and decisive on its own narrow question:
+**the floor is charged once per JOB**, confirmed by direct measurement,
+not assumed. But that finding is secondary here, because gate-execution
+cost already exceeds the floor by 8x for a SINGLE circuit at this
+project's actual 10,000-shots/setting — bundling more circuits into one
+job never brings the floor back into play; it was never binding to begin
+with at this shot count.
+
+**The real number that matters**: this project's actual planned
+real-hardware workload (36 K=6 targets x 13 qubit-wise-commuting groups x
+7 geometries = 3,276 circuits/noise-model, at $206.95/circuit) costs
+**$677,968 for ONE noise model, $1,355,936 for aria-1+forte-1 together**
+— **452x the $3,000 award** — and that is a LOWER bound (excludes CDR
+training and PEC calibration circuits entirely). No bundling strategy
+changes this conclusion; gate-execution cost, not the per-job floor, is
+what makes real hardware unaffordable here. Confirms the free
+`ionq_simulator` (real submission, zero cost, per IonQ's own docs) is
+the only viable path for Task 2 below — exactly what was already
+specified, now backed by a real, queried number rather than an assumption.
+
+Full data: `vqe/ionq_resource_estimate_results.json` (`real_pricing_check` key).
+Code: `vqe/ionq_resource_estimate.py::real_pricing_check()`.
+
 ---

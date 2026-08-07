@@ -23,6 +23,32 @@
       "total_2q_gates_this_fold": 22750
     }
   ],
+  "real_pricing_check": {
+    "backend_queried": "qpu.forte-1",
+    "rate_card": {
+      "sku": "forte_on_demand",
+      "unit": "gates",
+      "cost_1q_gate": 0.000164,
+      "cost_2q_gate": 0.001121,
+      "job_cost_minimum": 25.7899
+    },
+    "estimate_shots1": 25.79,
+    "estimate_1circuit_10000shots": 206.95,
+    "estimate_125circuits_merged_10000shots": 25868.75,
+    "scaling_ratio_125x_gates": 125.0,
+    "floor_is_per_job": true,
+    "gate_cost_exceeds_floor_by": 8.02445918751139,
+    "actual_workload": {
+      "n_targets_k6": 36,
+      "n_groups": 13,
+      "n_geometries": 7,
+      "n_circuits_per_noise_model": 3276,
+      "cost_per_circuit_10000shots": 206.95,
+      "total_cost_one_noise_model": 677968.2,
+      "total_cost_two_noise_models": 1355936.4,
+      "note": "target-measurement circuits only, excludes CDR training / PEC calibration circuits, so this is a LOWER bound on the real total"
+    }
+  },
   "real_total_2q_gates_one_register_one_model": 40950,
   "old_cancelled_assumption_total": 13650,
   "real_vs_old_ratio": 3.0,
