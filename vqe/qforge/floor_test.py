@@ -69,19 +69,45 @@ def floor_test(param_values, errors, floor_ratio_threshold=3.0, plateau_ratio_th
         step_ratios.append((max(a, b) / min(a, b)) if min(a, b) > 0 else float("inf"))
 
     n_flat = min_consecutive_flat_steps
+    # A SEPARATE, MANDATORY check on top of the step-ratio test, added after a real false
+    # positive: a MONOTONICALLY changing tail (e.g. linearly increasing/decreasing) can have
+    # consecutive-step RATIOS that drift toward 1 purely because the values themselves are
+    # growing (or shrinking) roughly additively -- (a+(n+1)d)/(a+nd) -> 1 as n grows, for ANY
+    # constant step d, convergent or not. Caught on iteration 13's ZNE range sweep: errors
+    # [15.967, 22.809, 29.893, 37.847, 46.403] are STRICTLY, MONOTONICALLY INCREASING (getting
+    # WORSE at every step) yet the last-2 step-ratios (1.27, 1.23) were both under the 1.5x
+    # threshold, so the ratio-only check called it a "PASS" -- clearly wrong, this is a
+    # diverging/drifting sequence, not a plateau. A genuine plateau's tail should NOT be
+    # perfectly monotonic across n_flat+1 consecutive points (real measurement noise breaks
+    # monotonicity; a systematic, still-changing trend preserves it) -- checked here and
+    # required, not optional, for has_floor to be True.
+    tail_window = errors[-(n_flat + 1):] if len(errors) >= n_flat + 1 else errors
+    strictly_increasing = all(b > a for a, b in zip(tail_window[:-1], tail_window[1:]))
+    strictly_decreasing = all(b < a for a, b in zip(tail_window[:-1], tail_window[1:]))
+    tail_is_monotonic = (strictly_increasing or strictly_decreasing) and len(tail_window) >= 3
+
     has_floor = (len(step_ratios) >= n_flat and
-                 all(r < plateau_ratio_threshold for r in step_ratios[-n_flat:]))
+                 all(r < plateau_ratio_threshold for r in step_ratios[-n_flat:]) and
+                 not tail_is_monotonic)
     tail_ratio = max(step_ratios[-n_flat:]) if len(step_ratios) >= n_flat else max(step_ratios)
 
-    no_floor_at_all = overall_ratio > floor_ratio_threshold and not has_floor
+    no_floor_at_all = (overall_ratio > floor_ratio_threshold or tail_is_monotonic) and not has_floor
 
     if no_floor_at_all:
-        verdict = ("DISQUALIFIED -- error falls with no plateau across the full sweep "
-                    f"({overall_ratio:.1f}x overall; the last {n_flat} consecutive step-ratios "
-                    f"are {[round(r, 2) for r in step_ratios[-n_flat:]]}, not all below "
-                    f"{plateau_ratio_threshold}x). This is the signature of interpolating toward "
-                    "a classically-known answer, not measuring real device noise -- see "
-                    "RESEARCH_LEDGER.md iteration 2.")
+        if tail_is_monotonic and overall_ratio <= floor_ratio_threshold:
+            verdict = (f"DISQUALIFIED -- the tail ({[round(v, 3) for v in tail_window]}) is strictly "
+                       f"{'increasing' if strictly_increasing else 'decreasing'} across all "
+                       f"{len(tail_window)} most-aggressive points; small step-ratios alone "
+                       "(consecutive-ratio -> 1 as values grow/shrink roughly additively) do NOT "
+                       "make this a plateau -- it is still drifting, just slowly. See "
+                       "RESEARCH_LEDGER.md iteration 13 for the case that motivated this check.")
+        else:
+            verdict = ("DISQUALIFIED -- error falls with no plateau across the full sweep "
+                        f"({overall_ratio:.1f}x overall; the last {n_flat} consecutive step-ratios "
+                        f"are {[round(r, 2) for r in step_ratios[-n_flat:]]}, not all below "
+                        f"{plateau_ratio_threshold}x). This is the signature of interpolating toward "
+                        "a classically-known answer, not measuring real device noise -- see "
+                        "RESEARCH_LEDGER.md iteration 2.")
         disqualified = True
     elif has_floor:
         verdict = (f"PASS -- the last {n_flat} consecutive step-ratios "
@@ -100,6 +126,7 @@ def floor_test(param_values, errors, floor_ratio_threshold=3.0, plateau_ratio_th
         "param_values": list(param_values), "errors": errors,
         "overall_ratio": overall_ratio, "step_ratios": step_ratios, "tail_ratio": tail_ratio,
         "still_falling_at_most_aggressive_point": bool(errors[-1] < errors[-2]),
+        "tail_is_monotonic": bool(tail_is_monotonic),
         "has_floor": bool(has_floor), "disqualified": bool(disqualified),
         "verdict": verdict,
     }
@@ -121,6 +148,18 @@ def _self_test():
     errs = [10.0, 5.0, 2.6, 2.1, 2.0, 2.0]
     result2 = floor_test(param, errs)
     assert result2["has_floor"] and not result2["disqualified"], f"floor_test wrongly flagged a real floor: {result2}"
+
+    # iteration 13's real false positive: ZNE-linear extrapolated error monotonically
+    # INCREASING as the noise-scale range widens (15.967 -> 22.809 -> 29.893 -> 37.847 ->
+    # 46.403 kcal/mol) -- an earlier version of this function called this a "PASS" because
+    # consecutive-step ratios (1.27, 1.23) were both under the 1.5x threshold, purely an
+    # artifact of the values growing roughly additively. Must be DISQUALIFIED, not passed.
+    range_sizes = [3, 4, 5, 6, 7]
+    zne_linear_errs = [15.967, 22.809, 29.893, 37.847, 46.403]
+    result3 = floor_test(range_sizes, zne_linear_errs)
+    assert result3["disqualified"], f"floor_test failed to catch the monotonically-diverging ZNE-linear range sweep: {result3}"
+    assert result3["tail_is_monotonic"], "expected tail_is_monotonic=True for a strictly increasing sequence"
+
     return True
 
 

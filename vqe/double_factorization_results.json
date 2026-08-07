@@ -1,0 +1,47 @@
+{
+  "n_spatial_orbitals": 4,
+  "max_possible_factors_untruncated": 10,
+  "eigenvalues": [
+    1.9251052107164566,
+    0.7813664106071837,
+    0.4558797474100164,
+    0.30806314396905776,
+    0.026741362687980608,
+    0.0189192264447492,
+    0.016458751993290367,
+    0.00013228750097044558,
+    4.8698778708041104e-05,
+    2.0773404267594068e-07,
+    -2.3459575603442594e-16,
+    2.2816826855319487e-16,
+    -1.533485157904999e-16,
+    7.602468086813149e-17,
+    -3.932436825679831e-17,
+    2.868170255712503e-17
+  ],
+  "factor_counts_by_tolerance": {
+    "1e-10": {
+      "n_factors_kept": 10,
+      "reconstruction_max_err": 9.43689570931383e-16
+    },
+    "1e-06": {
+      "n_factors_kept": 9,
+      "reconstruction_max_err": 7.060998391539286e-08
+    },
+    "0.0001": {
+      "n_factors_kept": 8,
+      "reconstruction_max_err": 1.0496880914756535e-05
+    },
+    "0.001": {
+      "n_factors_kept": 7,
+      "reconstruction_max_err": 4.0770424015512674e-05
+    },
+    "0.01": {
+      "n_factors_kept": 7,
+      "reconstruction_max_err": 4.0770424015512674e-05
+    }
+  },
+  "existing_scheme_qubit_wise_bases": 13,
+  "existing_scheme_general_commuting_bases": 5,
+  "caveat": "DF factor count here is for the two-body SPATIAL-ORBITAL integral tensor, not yet translated into a verified qubit-circuit Pauli-measurement-group count -- see ALTERNATIVES NOT TAKEN for why that further step was not completed this iteration."
+}

@@ -1,5 +1,27 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 13, LOCAL BRANCH `local/attack-base-problem`,
+NOT pushed — attacking the base of the problem, not the mitigation):
+Task A (Z2 symmetry tapering) is exact, fully verified to machine
+precision, and real: both forged registers drop from 4 to 3 qubits for
+free (every physical state already sits in the symmetry's +1 sector), a
+generic circuit on the reduced register needs a mean of 3.94 CX gates
+vs 11 (range 2-4, not yet constant, not yet hand-optimized). Task C
+(double factorization) gives a partial, honestly-bounded result: 7
+rotated one-body bases suffice for the two-body integral tensor at a
+reasonable truncation, fewer than the current 13 qubit-wise groups — but
+NOT yet translated into a verified qubit-circuit measurement-group count.
+Task E (rigorous ZNE) is the most important negative result of this
+iteration: NO PLATEAU FOUND in any of three independent (scale-range,
+fit-order) sweep directions — ZNE-linear's real-hardware ~30 kcal/mol
+result (iteration 12) should be held with real skepticism until a
+plateau can actually be demonstrated. Caught and fixed a genuine false
+positive in `qforge.floor_test()` itself along the way (a monotonically
+diverging sequence was passing the old ratio-only check). Tasks B
+(contextual subspace VQE) and D (spin projection) not yet started.
+Nothing here has touched real IonQ hardware yet — local verification
+only, per this branch's explicit review-before-push instruction.
+
 **STATUS UPDATE (iteration 12 — does the native gate-count reduction
 actually help for real, combined with ZNE/CDR/PEC? Tested, not just
 verified locally): the TrappedIonOptimizerPlugin-optimized fixed K=6
@@ -1790,5 +1812,179 @@ tapering + generic-circuit gate count). Full data:
 `vqe/z2_tapering_results.json`, `vqe/z2_tapered_ansatz_results.json`.
 **Not yet run on real IonQ hardware — local verification only, per this
 branch's own review-before-push discipline.**
+
+---
+
+## Iteration 13 (Task C): double factorization — measurement basis reduction, partial
+
+**Method** (Motta et al., npj Quantum Inf 7, 83 (2021); Huggins et al.,
+npj QI 7, 23 (2021)): rewrite the two-body Hamiltonian as a sum of
+SQUARED one-body operators, each diagonal in its own rotated orbital
+basis. Implemented directly on this project's own already-built MO-basis
+two-electron integral tensor (`chem.integrals` + the same einsum
+`entanglement_forging_h4.py` already uses) — reshaped to the symmetric
+16×16 matrix `V[(p,q),(r,s)] = h2[p,q,r,s]` (verified symmetric,
+`||V-V^T||=8.05e-16`), eigendecomposed, factors sorted by `|eigenvalue|`.
+
+**Real, measured result**: the untruncated decomposition needs at most
+`N(N+1)/2 = 10` factors for N=4 spatial orbitals (H4's RHF basis) — and
+the ACTUAL eigenvalue spectrum drops off fast (1.93, 0.78, 0.46, 0.31,
+0.027, 0.019, 0.016, 0.0001, 0.00005, then six that are exactly/
+numerically zero), so truncation buys real savings:
+
+| truncation tol | factors kept | reconstruction max error |
+|---|---|---|
+| 1e-10 | 10 | 9.44e-16 |
+| 1e-6 | 9 | 7.06e-08 |
+| 1e-4 | 8 | 1.05e-05 |
+| 1e-3 | **7** | 4.08e-05 |
+| 1e-2 | 7 | 4.08e-05 |
+
+At a reasonable truncation (1e-3, reconstruction error still 4e-5 Ha,
+far below chemical accuracy), **7 rotated one-body bases** suffice for
+the two-body integral tensor — fewer than this project's current 13
+qubit-wise-commuting groups, though not as few as the 5 general-commuting
+bases the task cited as a reference point.
+
+**Honest limitation, stated plainly, not glossed over**: this result is
+for the two-body integral tensor's OWN basis count, at the SPATIAL-
+ORBITAL level — it has NOT been translated into a verified QUBIT-CIRCUIT
+Pauli-measurement-group count (the level this project's existing 13/5
+figures actually operate at). That translation (working out which
+qubit-level Pauli measurement groups each rotated-orbital-basis factor
+corresponds to, and confirming the resulting circuit-level group count)
+is a real, well-defined next step, not completed this iteration — see
+ALTERNATIVES NOT TAKEN. Reporting "7 factors" as if it were already a
+verified "7 qubit measurement bases" would be exactly the kind of
+unearned equivalence this project's honesty rules exist to prevent.
+
+### ALTERNATIVES NOT TAKEN
+
+1. **Completing the qubit-level translation this same iteration** —
+   rejected on time budget: mapping each of the 7 kept one-body-rotated
+   bases into an actual qubit basis-change circuit and re-deriving the
+   resulting Pauli measurement groups is itself a full sub-task (roughly
+   the same order of work as the qubit-wise-commuting grouping this
+   project already built once). Would revisit as the immediate next step
+   before this number is used to justify any real circuit change.
+2. **Cholesky decomposition instead of full eigendecomposition** — the
+   standard DF literature often uses a pivoted Cholesky factorization of
+   V rather than a full eigendecomposition (cheaper for larger systems,
+   same mathematical content for a positive-semidefinite V). Rejected
+   here because N=4 is small enough that a full eigendecomposition is
+   free computationally and gives the SAME factor count with less
+   implementation risk (no pivoting-order subtlety to get wrong). Would
+   revisit for a larger fragment where the O(N^6) cost of a full
+   eigendecomposition of the N^2 x N^2 matrix actually matters.
+3. **Applying DF to the qubit-level Pauli operators directly** (rather
+   than the classical MO integral tensor) — rejected: DF's whole
+   leverage comes from operating on the STRUCTURED two-body integral
+   tensor before Jordan-Wigner mapping scrambles that structure across
+   many Pauli strings: doing it after mapping to qubits would require
+   re-deriving the same factorization from a much less structured
+   object. Would revisit only if a compelling reason emerged to avoid
+   touching the classical integral tensor at all.
+
+Code: `vqe/double_factorization.py`. Full data:
+`vqe/double_factorization_results.json`.
+
+---
+
+## Iteration 13 (Task E): rigorous ZNE — no plateau found, full stop
+
+**Why this matters more than a single number**: iteration 11 found the
+classic 0.57 kcal/mol result fails its own noise-scale-range floor test.
+This iteration asks the honest follow-up properly: is there ANY (scale
+range, fit order) combination that plateaus for this ansatz, or does ZNE
+simply not converge here at all? Swept 5 scale ranges (widths 3 through
+7, all starting at 1), every polynomial fit order from 1 up to
+`len(range)-1` (order = full range width − 1 is exact polynomial
+interpolation — what "Richardson extrapolation" means for ZNE
+mathematically), plus an exponential fit `E(s)=A·exp(−k·s)+E_inf`
+(unavailable — not faked — whenever the shot-noisy energies are not
+monotonic in scale, which was every range tested here). 8 real seeds,
+100,000 shots/setting, shot noise in every headline number, on this
+project's own local depolarizing model (`P2_PER_GATE=0.01214`) so the
+methodology could be floor-tested without spending real IonQ time before
+validating it — per this branch's explicit instruction.
+
+**A real false positive caught and fixed in `qforge.floor_test()`
+itself, before trusting any verdict from it**: the FIRST run reported
+"PASS" for the order=1 (ZNE-linear) range sweep — but the actual values
+are **15.97 → 22.81 → 29.89 → 37.85 → 46.40 kcal/mol**, strictly,
+monotonically INCREASING across the entire sweep, not plateauing at all.
+`floor_test()`'s consecutive-step-ratio check was fooled: for a linearly
+growing sequence `(a, a+d, a+2d, ...)`, the ratio of consecutive terms
+approaches 1 purely because the values themselves are growing —
+`(a+(n+1)d)/(a+nd) → 1` as `n` grows, regardless of whether the sequence
+is converging or diverging. **Fixed** by adding a mandatory
+non-monotonicity requirement on the tail (a genuine plateau should NOT
+be strictly increasing or decreasing across 3+ consecutive most-
+aggressive points — real measurement noise breaks monotonicity; a
+still-changing systematic trend preserves it), locked in with a new
+`_self_test()` case built from this exact data so the failure mode stays
+caught. This is the kind of bug the mandatory floor-test discipline
+exists to surface — including, this time, IN the floor-test function
+itself, not just in the methods it checks.
+
+**Corrected result, all three independent sweep directions**:
+
+| sweep | verdict |
+|---|---|
+| range, fixed order=1 (ZNE-linear) | **DISQUALIFIED** — tail [29.88, 37.66, 46.19] strictly increasing |
+| order, fixed at the widest range (1-7) | **DISQUALIFIED** — 27.9x overall, last step-ratios [1.7, 8.38] |
+| range, fixed order=2 (quadratic, reproducing iteration 11's own check) | **DISQUALIFIED** — tail [4.11, 5.33, 6.38] strictly increasing |
+
+**NO PLATEAU FOUND in any of the three directions tested.** Per this
+project's own disqualification rule, stated as the task required: ZNE is
+NOT demonstrated to be converged for this circuit at this (local,
+synthetic) noise level, full stop. This is consistent with — and now
+independently confirms, at a DIFFERENT noise rate and with a properly
+corrected floor test — iteration 11's original finding on the classic
+Quantinuum-rate model. **The honest implication for iteration 12's real-
+hardware ~30 kcal/mol ZNE-linear result**: that number should be held
+with real skepticism, not treated as a converged answer, until a plateau
+can actually be demonstrated (a wider real-hardware scale-range sweep,
+not yet run — real IonQ time, deliberately not spent on this local-only
+branch before the methodology itself was trustworthy).
+
+**Uncertainty reported throughout, not just central values**: every row
+in the full sweep table carries an 8-seed std alongside its mean (e.g.
+order=2 at range 1-7: 6.375 ± 1.388 kcal/mol) — several combinations
+show std comparable to or larger than the mean itself (order≥4 at wide
+ranges), a second, independent signal (beyond the monotonicity check)
+that those fits are not well-constrained by the data.
+
+### ALTERNATIVES NOT TAKEN
+
+1. **Extending the scale range past 7** — rejected for this iteration on
+   compute-time budget (each additional scale point needs a fresh noisy
+   density-matrix pass over all 36 targets); the monotonic-increase
+   pattern is already unambiguous at width 5-7, so extending further was
+   judged unlikely to change the qualitative verdict. Would revisit if a
+   genuine inflection (the tail starting to curve back down) appeared
+   near the current boundary — it does not.
+2. **Mitiq's own ZNE implementation** (the standard open-source library
+   for exactly this) instead of a from-scratch polyfit/exponential
+   sweep — rejected to keep this project's own verified circuit/energy
+   pipeline as the single source of truth for what "the energy at scale
+   s" means (Mitiq would need its own adapter into this project's
+   forged-energy bilinear reconstruction, a real integration cost for a
+   library whose core extrapolation math is the same handful of
+   `numpy.polyfit` calls already used here). Would revisit if Mitiq's own
+   more sophisticated fit-quality diagnostics (e.g. confidence-interval-
+   aware extrapolation) turn out to catch something this project's
+   simpler floor-test approach misses.
+3. **Testing wider ranges on REAL IonQ hardware immediately**, since
+   that is the number that actually matters — rejected deliberately per
+   this branch's own instruction (validate locally first, real hardware
+   only after a result survives its floor test). The honest outcome here
+   is that ZNE-linear did NOT survive its floor test even locally, so a
+   real-hardware wide-range sweep is the natural next step ONCE this
+   local finding is reviewed, not run pre-emptively.
+
+Code: `vqe/zne_floor_tested.py`. Fix: `vqe/qforge/floor_test.py`
+(monotonic-tail check + regression test). Full data:
+`vqe/zne_floor_tested_results.json`.
 
 ---
