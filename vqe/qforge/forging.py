@@ -196,11 +196,20 @@ def target_states(u_vecs, K):
     return targets
 
 
-def setup_fragment(atoms, nelec, d, K):
+def setup_fragment(atoms, nelec, d, K, strict=True):
     """One-call setup: fragment Hamiltonian -> exact ground state -> real
     gauge -> Schmidt decomposition -> Pauli terms -> beta_signs -> target
     states -- everything needed before angle-fitting and measurement.
-    Verifies (not assumes) the Schmidt rank is <=K before returning."""
+
+    strict=True (default, matches every use of this function elsewhere in
+    this project) verifies (not assumes) the Schmidt rank is <=K -- i.e.
+    K is exact, not a truncation. strict=False allows a DELIBERATE
+    truncation below the true Schmidt rank (e.g. K=5 for a fragment whose
+    true rank is 6): the max_schmidt_tail is still computed and returned
+    so the caller can report the resulting classical truncation floor
+    explicitly, rather than silently ignoring it -- never call strict=False
+    without reporting max_schmidt_tail/the resulting energy gap somewhere
+    in the result."""
     qop_bare, qop_pen, enuc = build_fragment_qop(atoms, nelec, d=d)
     n_qubits = qop_bare.num_qubits
     e_elec, psi = exact_ground_state(qop_pen)
@@ -209,7 +218,8 @@ def setup_fragment(atoms, nelec, d, K):
     lambdas, u_vecs, v_vecs = schmidt_decompose_real(psi_real, n_qubits)
 
     max_tail = float(np.max(np.abs(lambdas[K:])))
-    assert max_tail < 1e-9, f"Schmidt rank > K={K}: tail={max_tail:.3e} -- K is not exact here"
+    if strict:
+        assert max_tail < 1e-9, f"Schmidt rank > K={K}: tail={max_tail:.3e} -- K is not exact here"
 
     terms = decompose_pauli_terms(qop_bare, n_qubits)
     alpha_labels = sorted(set(a for a, _, _ in terms))

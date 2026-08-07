@@ -1,0 +1,158 @@
+{
+  "5": {
+    "K": 5,
+    "n_targets_converged": "25/25",
+    "gate_count": [
+      11
+    ],
+    "exact_energy_ha": -2.1663874486275367,
+    "noiseless_energy_ha": -2.1654863088210727,
+    "truncation_floor_kcal": 0.5654737660115496,
+    "shots": 100000,
+    "n_seeds": 8,
+    "scales": [
+      1.0,
+      2.0,
+      3.0
+    ],
+    "summary": {
+      "raw": {
+        "err_vs_exact_mean_kcal": 18.35179566320143,
+        "err_vs_exact_std_kcal": 0.40221492381542245,
+        "err_vs_noiseless_mean_kcal": 17.78632189718988,
+        "err_vs_noiseless_std_kcal": 0.40221492381542245
+      },
+      "zne_linear": {
+        "err_vs_exact_mean_kcal": 0.9617398030374595,
+        "err_vs_exact_std_kcal": 0.689740109139786,
+        "err_vs_noiseless_mean_kcal": 0.6420906780198934,
+        "err_vs_noiseless_std_kcal": 0.5122684174248043
+      },
+      "zne_quadratic": {
+        "err_vs_exact_mean_kcal": 0.7116051857823535,
+        "err_vs_exact_std_kcal": 0.4341323348210796,
+        "err_vs_noiseless_mean_kcal": 0.5361946509678408,
+        "err_vs_noiseless_std_kcal": 0.43874758040431694
+      }
+    },
+    "floor_test_zne_fit_order": {
+      "param_values": [
+        1,
+        2
+      ],
+      "errors": [
+        0.9617398030374595,
+        0.7116051857823535
+      ],
+      "overall_ratio": 1.35150758068198,
+      "step_ratios": [
+        1.35150758068198
+      ],
+      "tail_ratio": 1.35150758068198,
+      "still_falling_at_most_aggressive_point": true,
+      "has_floor": false,
+      "disqualified": false,
+      "verdict": "INCONCLUSIVE -- 1.4x overall change, step-ratios [1.35] have not yet plateaued for 2 consecutive steps, but overall change is below the 3.0x disqualification threshold. Extend the sweep before recording a result; do not report this as a pass."
+    },
+    "floor_test_noise_scale_range": {
+      "param_values": [
+        3,
+        4,
+        5
+      ],
+      "errors": [
+        0.07173742625533844,
+        2.461950812403667,
+        2.066092915815058
+      ],
+      "overall_ratio": 34.31891748723641,
+      "step_ratios": [
+        34.31891748723641,
+        1.1915973350271356
+      ],
+      "tail_ratio": 34.31891748723641,
+      "still_falling_at_most_aggressive_point": true,
+      "has_floor": false,
+      "disqualified": true,
+      "verdict": "DISQUALIFIED -- error falls with no plateau across the full sweep (34.3x overall; the last 2 consecutive step-ratios are [34.32, 1.19], not all below 1.5x). This is the signature of interpolating toward a classically-known answer, not measuring real device noise -- see RESEARCH_LEDGER.md iteration 2."
+    }
+  },
+  "6": {
+    "K": 6,
+    "n_targets_converged": "36/36",
+    "gate_count": [
+      11
+    ],
+    "exact_energy_ha": -2.166387448627525,
+    "noiseless_energy_ha": -2.1663874486275323,
+    "truncation_floor_kcal": 4.458722984161767e-12,
+    "shots": 100000,
+    "n_seeds": 8,
+    "scales": [
+      1.0,
+      2.0,
+      3.0
+    ],
+    "summary": {
+      "raw": {
+        "err_vs_exact_mean_kcal": 17.876233003069174,
+        "err_vs_exact_std_kcal": 0.3812944018227441,
+        "err_vs_noiseless_mean_kcal": 17.876233003073636,
+        "err_vs_noiseless_std_kcal": 0.38129440182274416
+      },
+      "zne_linear": {
+        "err_vs_exact_mean_kcal": 0.6261652588182761,
+        "err_vs_exact_std_kcal": 0.6061148378229726,
+        "err_vs_noiseless_mean_kcal": 0.6261652588216201,
+        "err_vs_noiseless_std_kcal": 0.6061148378238904
+      },
+      "zne_quadratic": {
+        "err_vs_exact_mean_kcal": 1.1954896879091517,
+        "err_vs_exact_std_kcal": 1.1595396023674789,
+        "err_vs_noiseless_mean_kcal": 1.1954896879058075,
+        "err_vs_noiseless_std_kcal": 1.1595396023671645
+      }
+    },
+    "floor_test_zne_fit_order": {
+      "param_values": [
+        1,
+        2
+      ],
+      "errors": [
+        0.6261652588182761,
+        1.1954896879091517
+      ],
+      "overall_ratio": 1.9092239166467446,
+      "step_ratios": [
+        1.9092239166467446
+      ],
+      "tail_ratio": 1.9092239166467446,
+      "still_falling_at_most_aggressive_point": false,
+      "has_floor": false,
+      "disqualified": false,
+      "verdict": "INCONCLUSIVE -- 1.9x overall change, step-ratios [1.91] have not yet plateaued for 2 consecutive steps, but overall change is below the 3.0x disqualification threshold. Extend the sweep before recording a result; do not report this as a pass."
+    },
+    "floor_test_noise_scale_range": {
+      "param_values": [
+        3,
+        4,
+        5
+      ],
+      "errors": [
+        0.6561392510145441,
+        1.4139843513947847,
+        0.26048850892096054
+      ],
+      "overall_ratio": 5.428202408052583,
+      "step_ratios": [
+        2.1550065008432826,
+        5.428202408052583
+      ],
+      "tail_ratio": 5.428202408052583,
+      "still_falling_at_most_aggressive_point": true,
+      "has_floor": false,
+      "disqualified": true,
+      "verdict": "DISQUALIFIED -- error falls with no plateau across the full sweep (5.4x overall; the last 2 consecutive step-ratios are [2.16, 5.43], not all below 1.5x). This is the signature of interpolating toward a classically-known answer, not measuring real device noise -- see RESEARCH_LEDGER.md iteration 2."
+    }
+  }
+}
