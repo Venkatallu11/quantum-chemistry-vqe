@@ -1630,3 +1630,165 @@ Code: `vqe/ionq_native_optimized_mitigation.py` (`--calibrate`,
 `vqe/ionq_native_optimized_mitigation_results.json`.
 
 ---
+
+## LOCAL BRANCH `local/attack-base-problem` — NOT pushed, pending review
+
+**Correction, flagged before any new work cites the old numbers**: the
+previously-stored `quantinuum_h1`/`quantinuum_h2` reference fidelities
+(0.9782/0.9891) in `fidelity_threshold_curve.py` are WRONG — those are
+11-gate CIRCUIT fidelities (i.e. survival probability of the whole
+circuit), not PER-GATE fidelities. The correct per-gate reference values
+are ~99.8% (H1) and ~99.9% (H2). Not yet fixed in the committed file
+(this is a note for the next edit that touches it) — flagged here so it
+is not propagated into new work first.
+
+## Iteration 13 (Task A): Z2 symmetry tapering — attacking the base of the problem, not the mitigation
+
+**Why this iteration exists**: every mitigation method tried on real IonQ
+noise so far (CDR, PEC, QSE, native optimization) tops out around ~30
+kcal/mol (ZNE-linear, iteration 12). The gate count is the lever that
+actually moves the needle at IonQ's real fidelity — shrinking the
+PROBLEM before building any circuit, rather than correcting a fixed
+circuit's noise after the fact.
+
+**Method** (Bravyi, Gambetta, Mezzacapo, Temme, arXiv:1701.08213), tool:
+qiskit's own `Z2Symmetries.find_z2_symmetries` / `.cliffords` /
+`.sq_paulis` (not hand-derived from scratch, matching this project's
+established preference for tested library implementations over
+re-deriving solved sub-problems).
+
+**Verified, not assumed**: built a proxy `SparsePauliOp` from just the
+alpha register's 37 unique Pauli labels (symmetry-finding depends only
+on which Pauli strings are present, not their coefficients, so this
+correctly isolates the alpha register's OWN measurement-relevant
+symmetry structure) and found exactly **one** independent Z2 symmetry:
+`ZZZZ` (alpha-electron-number parity). The beta register, checked
+independently, gives the identical result. The full 8-qubit Hamiltonian
+has **three** independent generators (`ZZZZIIII`, `ZIZIIZIZ`,
+`ZIZIZIZI`) — each verified to commute with H exactly (`max ||[P,H]||
+= 0.00e+00`). Decoding block-locality against this project's qubit
+convention (0-3=alpha, 4-7=beta): `ZZZZIIII` is beta-only (embeds the
+per-register symmetry found above); the other two have support spanning
+BOTH registers — a genuine point-group-type symmetry of the symmetric H4
+chain, real but not exploitable per-register (see ALTERNATIVES NOT
+TAKEN).
+
+**A real bug caught mid-derivation, not assumed away**: `Z2Symmetries`
+maps the alpha symmetry to `sq_paulis=[IIIX]` — an **X**, not a Z. The
+tapered qubit is fixed in the X-eigenbasis after the Clifford, not
+automatically the computational (Z) basis — naively reading off a
+computational-basis bit after the Clifford alone gave a
+non-uniform-value assertion failure (a real, caught, fixed bug, not a
+hypothetical caveat). Fixed by adding the correct single-qubit basis
+rotation (H for X, `H·Sdg` for Y — verified this specific matrix by
+direct computation rather than trusted from memory, since a hand-derived
+attempt at the Y-basis rotation was ALSO checked and found wrong before
+being corrected) before treating the qubit's value as a definite bit.
+The Hamiltonian's Pauli terms are tapered by DIRECT MATRIX conjugation
+with the identical combined transform used for the state vectors
+(`taper_pauli_matrix`), rather than a separately-tracked symbolic
+Pauli-string transform — deliberately avoiding the exact class of
+states-vs-operators inconsistency the X-vs-Z bug above came from.
+
+**Verified end to end, to machine precision**:
+- Tapered qubit value is **uniform (=0) across all 6 diagonal Schmidt
+  vectors AND all 36 K=6 target slots** — confirms the predicted
+  mechanism exactly: every physical state here lives in the alpha
+  register's weight-2 sector (2 particles among 4 orbitals), Hamming
+  weight 2 is even, so the ZZZZ parity eigenvalue is +1 for every
+  physical state tested, uniformly. Tapering costs nothing because no
+  physical state this project ever prepares sits outside the sector this
+  symmetry selects.
+- Round-trip reconstruction (rotate → taper → un-taper → un-rotate)
+  matches the original Schmidt vectors to **1.99e-14 / 2.15e-14** (6
+  diagonal / all 36 targets).
+- Energy recomputed from the TAPERED (3-qubit alpha, 3-qubit beta)
+  matrix elements matches the exact H4 energy to **2.29e-11 kcal/mol**
+  — the tapering is exact, not merely gate-count-reducing.
+
+**Gate count on the reduced register**: the reduced 3-qubit target
+states occupy exactly 6 of 8 possible basis states — indices {1..6},
+excluding 000 and 111 — i.e. Hamming weight ∈ {1,2} on 3 qubits, a
+direct structural echo of the ORIGINAL problem (weight=2 on 4 qubits).
+Generic `StatePreparation` (abstract u3/cx, `optimization_level=0`,
+this project's mandatory invariant), verified correct to <1e-9 on all 36
+targets:
+
+| | untapered (4-qubit) | tapered (3-qubit) |
+|---|---|---|
+| CX gates | constant 11 | min 2, max 4, **mean 3.94** |
+
+Not constant across targets (2-4) — the same CDR-compatibility caveat
+already found for the TrappedIonOptimizerPlugin-optimized native circuit
+(iteration 12) applies here too, disclosed not hidden. This is the
+GENERIC baseline, not yet hand-optimized (see ALTERNATIVES NOT TAKEN) —
+still a real, verified, ~2.8x reduction in mean 2-qubit gate count for
+zero approximation.
+
+**No free parameter to floor-test here**: unlike CDR's training radius
+or ZNE's noise-scale range, Z2 tapering is a discrete, exact operation
+once the symmetry generators are found — there is no continuous
+"aggressiveness" knob. The verification chain above (round-trip
+exactness, energy exactness) plays the role a floor test would for a
+continuous-parameter method, matching how loop_pec.py handled its own
+parameter-free (exact-channel) case.
+
+**What this is worth, read against the task's own cited table** (11
+gates → 4.13 kcal/mol after 35x ZNE at IonQ's real fidelity; 7 gates →
+2.69; 5 gates → 1.95; 3 gates → 1.18): mean 3.94 gates sits between the
+5-gate and 3-gate rows — a real, concrete, honest reason to expect this
+reduction to matter on real hardware, NOT YET TESTED on real IonQ
+noise (that real-hardware test is the natural next step, deliberately
+not run yet on this local branch per the instruction to validate before
+anything gets pushed).
+
+### ALTERNATIVES NOT TAKEN
+
+1. **Tapering the two cross-register point-group symmetries too**
+   (`ZIZIIZIZ`, `ZIZIZIZI`) — rejected: their support spans both alpha
+   and beta qubits, so exploiting them would correlate the two
+   registers' tapered-qubit values, conflicting with entanglement
+   forging's core premise of measuring alpha and beta as fully
+   independent circuits. Would revisit if a reformulation of forging
+   that shares a single classical bit between the two registers'
+   measurements is developed — a real, larger restructuring, not
+   attempted here.
+2. **Bravyi-Kitaev mapping instead of Jordan-Wigner** — BK sometimes
+   exposes symmetries with different locality properties and might
+   reveal additional per-register-exploitable Z2 symmetries beyond what
+   JW gives here. Rejected for this iteration: switching the mapping
+   convention touches every downstream piece of this project (labels,
+   CDR training, PEC calibration, real-hardware measurement code), a
+   much larger and riskier change than tapering on top of the existing
+   convention. Would revisit if the JW-based reduction found here turns
+   out to be at its ceiling and further qubit reduction is still needed.
+3. **Hand-deriving a constant-gate-count fixed-structure ansatz for the
+   reduced weight-{1,2}-on-3-qubits sector immediately**, mirroring
+   `fixed_ansatz.py`'s own derivation for the original weight-2-on-4-qubit
+   problem — rejected for THIS iteration on time budget alone, not
+   because it looks hard: the structural echo (same weight-sector
+   pattern, one dimension down) makes it plausible the same derivation
+   technique transfers directly. Would revisit immediately if the
+   generic-StatePreparation gate count (mean 3.94, non-constant) turns
+   out to be the real-hardware bottleneck once tested for real.
+4. **Using `qiskit_nature`'s `TaperedQubitMapper` with its standard
+   Hartree-Fock-based sector selection**, instead of directly checking
+   the ACTUAL target states' symmetry eigenvalues — rejected: HF-sector
+   selection is a good heuristic when the exact ground state is not
+   available, but this project already has the exact ground state and
+   its full Schmidt decomposition in hand, so checking the real target
+   states directly is more direct and avoids trusting a heuristic that
+   could silently pick the wrong sector for a state HF approximates
+   poorly. Would revisit for a larger fragment where computing the exact
+   ground state directly becomes intractable — exactly the regime this
+   project has repeatedly flagged as the one that matters, since "exact"
+   being one function call away is a testbed-only luxury.
+
+Code: `vqe/z2_tapering.py` (symmetry finding + per-register tapering +
+exactness verification), `vqe/z2_tapered_ansatz.py` (all-36-target
+tapering + generic-circuit gate count). Full data:
+`vqe/z2_tapering_results.json`, `vqe/z2_tapered_ansatz_results.json`.
+**Not yet run on real IonQ hardware — local verification only, per this
+branch's own review-before-push discipline.**
+
+---

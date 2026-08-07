@@ -1,0 +1,25 @@
+{
+  "exact_energy_ha": -2.166387448627493,
+  "K": 6,
+  "alpha_symmetry_generators": [
+    "ZZZZ"
+  ],
+  "beta_symmetry_generators": [
+    "ZZZZ"
+  ],
+  "full_hamiltonian_symmetry_generators": [
+    "ZIZIIZIZ",
+    "ZIZIZIZI",
+    "ZZZZIIII"
+  ],
+  "alpha_tapered_qubit": 0,
+  "alpha_tapered_value": 0,
+  "beta_tapered_qubit": 0,
+  "beta_tapered_value": 0,
+  "alpha_round_trip_err": 1.9904573740194785e-14,
+  "beta_round_trip_err": 2.1470746358254223e-14,
+  "energy_after_tapering_err_kcal": 2.2850955293829058e-11,
+  "tapering_is_exact": true,
+  "qubits_per_register_before": 4,
+  "qubits_per_register_after": 3
+}
