@@ -1,5 +1,20 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 15, LOCAL BRANCH `local/attack-base-problem`,
+NOT pushed): the Z2-tapered circuit (3 qubits/register, mean 3.94 CX),
+run RAW (no ZNE) for real, concurrently, on IonQ's free ionq_simulator.
+Verified exact (1.28e-11 kcal/mol) before submission; ideal control
+passed. Real result: aria-1=47.78±2.20, forte-1=51.25±1.77 kcal/mol —
+better than the native-optimized circuit (iteration 12: 93.73/91.43,
+~1.9x worse) but WORSE than the original abstract 11-gate ansatz
+(iteration 9: 34.98/43.03, ~1.2-1.4x better), despite having roughly a
+third as many two-qubit gates. Third circuit variant in a row (after
+iteration 12's native-optimized case) confirming gate count alone does
+not predict real-hardware ranking — the local synthetic-noise model
+(iteration 14) correctly predicted tapering would beat the
+native-optimized circuit but did not predict it would still trail the
+abstract ansatz. See iteration 15 below.
+
 **STATUS UPDATE (iteration 14, LOCAL BRANCH `local/attack-base-problem`,
 NOT pushed): does Z2 tapering fix ZNE's convergence problem? No.
 Combined iteration 13's tapered (3-qubit, mean 3.94 CX) circuit with the
@@ -2106,5 +2121,75 @@ future positive one.
    next real-hardware experiment, not run pre-emptively here.
 
 Code: `vqe/z2_tapered_zne.py`. Full data: `vqe/z2_tapered_zne_results.json`.
+
+---
+
+## Iteration 15: the Z2-tapered circuit, RAW, for real on IonQ — fewer gates is not automatically better, again
+
+**Why this iteration**: iteration 14 found ZNE does not converge on the
+tapered circuit either, so a real-hardware ZNE submission was correctly
+withheld. But the tapered circuit's RAW (no-mitigation) behavior is a
+separate, still-open question the user asked directly: does the smaller
+circuit (mean 3.94 CX vs 11, 9 measurement groups vs 13) measure better
+on REAL IonQ noise, with no mitigation involved at all?
+
+**Verified exactly before any real submission** (matching this
+project's own established discipline): the full circuit-build +
+qubit-wise-grouped-measurement + tapered-label reconstruction pipeline,
+checked against the exact statevector locally, gives
+**1.28e-11 kcal/mol** — correct to machine precision before spending any
+real API time.
+
+**Real result, concurrent submission (ideal/aria-1/forte-1, one job
+each, 972 circuits total), 8-seed bootstrap mean ± std**:
+
+| | ideal (control) | aria-1 | forte-1 |
+|---|---|---|---|
+| raw | 1.53 ± 0.89 | **47.78 ± 2.20** | **51.25 ± 1.77** |
+
+Ideal correctness control passed (1.53 kcal/mol, consistent with real
+shot noise).
+
+**Placed against the other two real-hardware circuit variants tested in
+this project**:
+
+| circuit | 2-qubit gates | aria-1 raw | forte-1 raw |
+|---|---|---|---|
+| abstract fixed ansatz (iteration 9) | constant 11 | **34.98** | **43.03** |
+| native-optimized, TrappedIonOptimizerPlugin (iteration 12) | mean 9.28, range 4-11 | 93.73 | 91.43 |
+| **Z2-tapered (this iteration)** | **mean 3.94, range 2-4** | 47.78 | 51.25 |
+
+**Honest reading, not the one the local synthetic-noise test (iteration
+14) predicted**: tapering's real-hardware raw error sits BETWEEN the
+other two — genuinely better than the native-optimized attempt (~1.9x),
+but WORSE than the original abstract 11-gate ansatz (~1.2-1.4x), despite
+having barely a third as many two-qubit gates. This directly echoes
+iteration 12's own finding (native optimization also had fewer gates yet
+worse real error) rather than overturning it: **gate COUNT alone is not
+the dominant factor in this project's real IonQ results, for the third
+circuit variant in a row.** The specific gate STRUCTURE and its
+interaction with IonQ's actual (not naively gate-count-modeled) noise
+matters more than the raw tally — plausible contributors, not yet
+individually isolated: the tapered register's circuit is generic
+`StatePreparation` (never hand-optimized the way the 11-gate ansatz was,
+see iteration 13's own ALTERNATIVES NOT TAKEN #3), and its gate count is
+non-uniform across targets (2-4), so some targets carry disproportionate
+noise exposure in the aggregated bilinear energy sum.
+
+**What this does NOT change**: the local-noise-model prediction from
+iteration 14 (raw error should drop ~2.3x under tapering) was directionally
+consistent with a real improvement over the native-optimized circuit, but
+NOT sufficient to predict the ranking against the abstract ansatz — a
+concrete, disclosed instance of this project's recurring lesson that
+local synthetic-noise conclusions do not automatically transfer to real
+IonQ behavior (iteration 9's own founding finding, now confirmed a third
+time on a third circuit).
+
+Per the standing branch discipline: this is a real result, reported
+honestly including where it falls short of the best number already
+known, not spun as a win. No push.
+
+Code: `vqe/z2_tapered_ionq.py` (`--targets`, `--assemble`). Full data:
+`vqe/z2_tapered_ionq_results.json`.
 
 ---
