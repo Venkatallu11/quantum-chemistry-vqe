@@ -1,0 +1,48 @@
+{
+  "n_qubits": 8,
+  "n_terms": 185,
+  "enuc": 2.2931012472463332,
+  "exact_energy_ha": -2.166387448627536,
+  "symmer_energy_ha": -2.1663874486275527,
+  "verify_err_kcal": 1.0589467087384197e-11,
+  "full_hamiltonian_is_noncontextual": false,
+  "contextual_subspace_sweep": {
+    "0": {
+      "quantum_qubits": 0,
+      "error": "'numpy.float64' object has no attribute 'n_qubits'"
+    },
+    "1": {
+      "quantum_qubits": 1,
+      "cs_energy_ha": -2.098545936986658,
+      "err_vs_exact_kcal": 42.571191289412845
+    },
+    "2": {
+      "quantum_qubits": 2,
+      "cs_energy_ha": -2.104387521198707,
+      "err_vs_exact_kcal": 38.90554185281484
+    },
+    "3": {
+      "quantum_qubits": 3,
+      "cs_energy_ha": -2.112595372882995,
+      "err_vs_exact_kcal": 33.75503715921931
+    },
+    "4": {
+      "quantum_qubits": 4,
+      "cs_energy_ha": -2.1306634804598823,
+      "err_vs_exact_kcal": 22.417128476331207
+    },
+    "5": {
+      "quantum_qubits": 5,
+      "cs_energy_ha": -2.166387448627536,
+      "err_vs_exact_kcal": 0.0
+    },
+    "6": {
+      "quantum_qubits": 6,
+      "error": "Search region collapsed without identifying any stabilizers"
+    },
+    "7": {
+      "quantum_qubits": 7,
+      "error": "Search region collapsed without identifying any stabilizers"
+    }
+  }
+}

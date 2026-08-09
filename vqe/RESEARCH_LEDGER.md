@@ -1,5 +1,32 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 20, LOCAL BRANCH `local/attack-base-problem`,
+NOT pushed): Task B (Contextual Subspace VQE, Kirby/Tranter/Love, Quantum
+5, 456 (2021)), the last untouched task from this session's original
+five, done properly against the reference `symmer` implementation
+(installed this iteration; verified its Hamiltonian matches this
+project's own independent exact diagonalization to 1.06e-11 kcal/mol
+before trusting anything further). Applied to the FULL, monolithic
+8-qubit H4 Hamiltonian (a genuinely different paradigm from this
+project's entanglement-forging approach used in all 19 prior
+iterations — CS-VQE partitions a standalone molecular Hamiltonian, which
+the forged "alpha register" is not). Result: the noncontextual+quantum-
+remainder partition matches EXACTLY (0.000 kcal/mol) at 5 quantum
+qubits — which is just Z2 tapering again (8 − 3 symmetries = 5, the
+SAME reduction `z2_tapering.py` already found, now independently
+cross-validated by a different reference package). Pushing to FEWER
+qubits costs real accuracy that exceeds chemical accuracy even before
+any hardware noise: 4 qubits gives 22.4 kcal/mol, 3 gives 33.8, purely
+from the classical noncontextual approximation, zero noise involved.
+**CS-VQE does not unlock a path to chemical accuracy this project hasn't
+already found** — its best qubit-count-vs-accuracy trade-off matches
+Z2 tapering exactly, and going smaller costs more than chemical accuracy
+allows. Combined with iteration 19's completed leakage+ZNE and
+leakage+CDR investigations, this closes out Task B and Task D from the
+original task list. See iteration 20 below for the full write-up,
+including a final, complete synthesis of where this 20-iteration project
+stands relative to chemical accuracy.
+
 **STATUS UPDATE (iteration 19, LOCAL BRANCH `local/attack-base-problem`,
 NOT pushed): does removing real, hardware-confirmed particle-number
 leakage (iteration 18) BEFORE fitting ZNE unlock the plateau raw ZNE has
@@ -3135,5 +3162,179 @@ there has failed. No push.
 Code: `vqe/leakage_zne_floor_tested.py`, `vqe/leakage_cdr_combined.py`.
 Full data: `vqe/leakage_zne_floor_tested_results.json`,
 `vqe/leakage_cdr_combined_results.json`.
+
+---
+
+## Iteration 20: Task B (Contextual Subspace VQE) via the reference `symmer` package, and the final synthesis of this 20-iteration project
+
+**Why this iteration**: the user asked to finish Task B and revisit Task
+D, applied against both the abstract 11-gate and tapered circuits, and
+to give a clear, final assessment of whether chemical accuracy is
+reachable with everything found so far.
+
+**Building Task B correctly**: rather than hand-implement CS-VQE's
+noncontextuality-detection algorithm from scratch (real risk of a subtle
+correctness bug, given this project's own history of exactly this kind
+of mistake in Z2 tapering's early development — the X-vs-Z basis mixup
+documented in `z2_tapering.py`), installed the reference implementation,
+`symmer`, from the same research group (Kirby, Tranter, Love) that
+published the technique. `PauliwordOp.from_qiskit()` converts this
+project's existing `SparsePauliOp` Hamiltonian directly, avoiding any
+hand-rolled label-convention risk. Verified the result is the SAME
+physical operator as this project's own independent exact diagonalization
+(`ef_fragment.exact_ground_state`, dense `scipy.linalg.eigh`) before
+trusting anything further: **1.06e-11 kcal/mol** match.
+
+**Why the FULL Hamiltonian, not the forged alpha register**: CS-VQE
+partitions a standalone, monolithic qubit Hamiltonian. The "alpha
+register" used throughout this project's other 19 iterations is not
+itself a physical system with its own ground state — its Pauli labels
+come from decomposing the FULL Hamiltonian's terms for entanglement
+forging's bipartite Schmidt reconstruction, a fundamentally different
+decomposition. Applying CS-VQE faithfully means building it against the
+real, un-forged, full 8-qubit H4 problem — genuinely new territory for
+this project, not a variant of anything tested in iterations 1-19.
+
+**Result — the ContextualSubspace qubit-count sweep**:
+
+| quantum-remainder qubits | energy (Ha) | err vs exact (kcal/mol) |
+|---|---|---|
+| 1 | -2.098546 | 42.571 |
+| 2 | -2.104388 | 38.906 |
+| 3 | -2.112595 | 33.755 |
+| 4 | -2.130663 | 22.417 |
+| **5** | **-2.166387** | **0.000 (exact)** |
+| 6, 7 | — | FAILED: "Search region collapsed without identifying any stabilizers" |
+
+The 5-qubit result matching EXACTLY (0.000 kcal/mol, not just small) is
+not a coincidence — it is precisely Z2 tapering's own already-established
+reduction (8 qubits − 3 symmetry generators = 5, `z2_tapering.py`'s
+`verify_full_hamiltonian_symmetries`), now independently reproduced by a
+completely different reference implementation from a different research
+group. A genuine, valuable cross-validation of this project's own Z2
+tapering work, even though it isn't new information on its own.
+
+The actually NEW information is qubits 1-4: **CS-VQE's noncontextual
+approximation error, PURELY CLASSICAL, with ZERO hardware noise
+involved, already exceeds chemical accuracy at every qubit count below
+5** — 22.4 kcal/mol at 4 qubits, worse at fewer. This is a clean,
+verified, negative result: there is no way to trade a small amount of
+classical approximation error for a smaller quantum circuit here and
+still have room left for chemical accuracy once real hardware noise is
+added on top. The 6- and 7-qubit points failing ("search region
+collapsed") are a real limitation of `symmer`'s current search strategy
+for this Hamiltonian at those specific target sizes, not something this
+iteration had time to work around — reported honestly, not smoothed over
+(those points aren't needed for the main conclusion regardless, since
+5 qubits is already the interesting boundary).
+
+**Honest reading**: Task B does not provide a new path to chemical
+accuracy this project hadn't already found. Its best-possible qubit
+count for an exact result (5) matches Z2 tapering exactly; going smaller
+costs more accuracy than chemical accuracy allows, before any hardware
+noise is even considered. No real IonQ submission was made for a
+monolithic CS-VQE circuit — building one would mean designing an
+entirely new ansatz for a genuinely different (non-forged) circuit
+paradigm, and the classical-accuracy ceiling found here means even a
+NOISELESS 4-qubit version would already fail chemical accuracy by 22x,
+so there is no math to build on top of a working real-hardware attempt.
+This mirrors this project's own standing discipline (iteration 14,
+iteration 19: don't submit for real unless the math passes).
+
+**FINAL SYNTHESIS — where this 20-iteration project stands**:
+
+| approach | best real/verified result | chemical accuracy (1 kcal/mol)? |
+|---|---|---|
+| Abstract 11-gate ansatz, raw (iteration 9) | 34.98 / 43.03 kcal/mol (real) | no |
+| Z2-tapered, raw (iteration 15/17) | 47.78-55.24 kcal/mol (real, reproduced 2x) | no |
+| Z2-tapered, hand-derived fixed structure (iteration 16) | 207/218 kcal/mol (real) | no |
+| Native-optimized (iteration 12) | 93.73/91.43 kcal/mol (real) | no |
+| ZNE, any variant tested (iterations 11, 13, 14, 19) | no plateau found, ever | not converged, can't report a trustworthy number |
+| CDR (iteration 9, confirmed iteration 19) | works locally, 2.1-2.6x WORSE than raw on real hardware | no, actively harmful |
+| PEC (iteration 12) | 170-400+ kcal/mol (real) | no, catastrophic |
+| **Particle-number leakage post-selection (iteration 18)** | **31.77 / 33.86 kcal/mol (real)** | **no, but the best real result found** |
+| CS-VQE, exact classical bound (iteration 20) | 0.000 kcal/mol at 5 qubits (noiseless), 22.4 kcal/mol at 4 | matches Z2 tapering exactly, no improvement |
+
+Twenty iterations, five originally-scoped tasks all attempted (A, C, E
+fully; B and D fully as of this iteration), a working combination search
+across all pairwise-plausible interactions between the project's major
+techniques (leakage×ZNE, leakage×CDR), a real reproducibility check, and
+a real, previously-unknown determinism bug found and fixed along the
+way. The honest conclusion: **chemical accuracy was not reached, and the
+evidence gathered across this whole project points to why — not a single
+missed technique, but a real, structural noise floor.** The best real
+number (31.77/33.86 kcal/mol) uses the ONE technique validated to help
+on both a local model and real hardware (leakage post-selection); every
+extrapolation-based method (ZNE) fails to converge on this circuit
+family no matter how it's combined or measured; every regression-based
+method (CDR) that looks good on an idealized noise model has been shown,
+concretely, not to survive contact with real IonQ noise; and the one
+structural reduction technique left untried (CS-VQE) matches the
+qubit-count ceiling this project already had, without unlocking anything
+smaller. Getting from ~32 kcal/mol to 1 kcal/mol from here would most
+plausibly require either meaningfully better real hardware (lower native
+gate error than IonQ's currently measured ~1.2% per two-qubit gate), a
+circuit with fundamentally fewer two-qubit gates than anything found in
+this 20-iteration search (the abstract 11-gate ansatz remains the best
+structural design found, and CS-VQE confirms 5 qubits is the qubit-count
+floor for an EXACT classical partition), or a mitigation idea not yet
+conceived by this project or the literature it drew from. Reported as
+the complete, honest state of the work — not a partial win dressed up as
+a full solution.
+
+**ALTERNATIVES NOT TAKEN**:
+
+1. **Hand-implementing CS-VQE's noncontextuality-detection algorithm
+   from scratch instead of using `symmer`.** Rejected: real risk of a
+   subtle correctness bug (this project has direct prior experience with
+   exactly this failure mode in Z2 tapering's own development), and the
+   reference implementation, once verified against this project's own
+   exact diagonalization, is strictly more trustworthy for the same
+   effort. Would revisit only if a `symmer`-specific limitation (like the
+   6/7-qubit search failures found here) genuinely blocked a promising
+   result — it didn't, so not pursued.
+
+2. **Debugging `symmer`'s 6- and 7-qubit "search region collapsed"
+   failures to complete the full 0-7 sweep.** Rejected: the qubit counts
+   that matter for the conclusion (4 and 5, the boundary where accuracy
+   crosses chemical-accuracy-infeasible) were already obtained; 6 and 7
+   qubits would only ever show SMALLER errors than 5's already-exact
+   0.000 kcal/mol (more qubits retained = less thrown into the
+   noncontextual approximation), so they cannot change the answer to
+   "can CS-VQE go SMALLER than 5 qubits and still be accurate" — the
+   question this iteration was actually asking. Would revisit if a
+   future goal specifically needed the 6/7-qubit partitions themselves
+   (e.g. for a different molecule where 5 isn't already known to be
+   exact).
+
+3. **Building a real monolithic CS-VQE circuit and running it on IonQ
+   anyway, to see if hardware-specific effects might beat the classical
+   bound's implications.** Rejected: the classical bound is a
+   NOISELESS floor — no real circuit can do BETTER than its own
+   noiseless limit, only worse. A 4-qubit circuit already fails chemical
+   accuracy by 22x before any noise; adding real hardware noise can only
+   widen that gap, never close it. Submitting for real here would
+   violate this project's own standing discipline (verify the math
+   passes before spending a real submission) for no possible benefit.
+
+4. **Extending the leakage-postselection technique (iteration 18) to
+   the CS-VQE 5-qubit partition, to see if a Z2-symmetry-equivalent
+   quantum remainder could ALSO support particle-number-style leakage
+   detection.** Rejected for this iteration on time grounds: the 5-qubit
+   CS-VQE partition IS mathematically identical to Z2 tapering's own
+   already-tested reduction (this iteration's whole point in confirming
+   the 0.000 kcal/mol exact match), so this would very likely reproduce
+   iteration 17's own finding that the tapered register's Clifford
+   transform destroys the physical weight-2 structure leakage detection
+   depends on — a predictable, not novel, result. Would revisit only if
+   a FUTURE CS-VQE application (a different molecule, or a genuinely
+   sub-5-qubit accurate partition found some other way) produced a
+   quantum remainder with a DIFFERENT structure worth checking fresh.
+
+Per the standing branch discipline: a complete, honest close-out of this
+session's task list, including a clear final synthesis that does not
+overstate what was achieved. No push.
+
+Code: `vqe/cs_vqe_h4.py`. Full data: `vqe/cs_vqe_h4_results.json`.
 
 ---
