@@ -1,5 +1,64 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 16, LOCAL BRANCH `local/attack-base-problem`,
+NOT pushed): does the abstract 11-gate ansatz's real-hardware edge over
+the Z2-tapered circuit come from gate STRUCTURE rather than gate count,
+and if so, can it be ported? Diagnosed first (`gate_structure_compare.py`):
+the abstract ansatz has MORE gates of both types (11 CX, 51 u3) than the
+generic-StatePreparation tapered circuit (mean 3.94 CX, mean 6.72 u3) yet
+still wins on real hardware (34.98/43.03 vs 47.78/51.25 kcal/mol) — direct
+gate-list inspection found ~83% of the abstract ansatz's u3 gates are
+FIXED, special-angle (0, ±π/2, ±π) structural gates from its Givens-
+rotation recipe, vs 0% for generic StatePreparation's arbitrary output.
+Hand-derived the same recipe (reference prep + discriminator-qubit bridge
++ XXPlusYYGate Givens hops, `fixed_ansatz.py`'s own construction) for the
+tapered 3-qubit register. First attempt (matching the original's 5-angle
+budget 1:1) converged for only 4/36 targets, worst error 0.42-0.51 — NOT
+a parameter-count problem but a genuine structural fact, measured
+directly: the original 4-qubit ansatz's 25 targets ALL share ONE
+bit-complement pair (physical fact — 2 electrons confined to a single
+Hamming-weight-2 sector), while the tapered register's 36 targets spread
+across 1, 2, or 3 of its 3 available bit-complement pairs depending on
+target (tapering's Clifford transform does not preserve Hamming-weight
+structure). Repeating the Givens hops to 8 angles total DID converge
+36/36 to machine precision (worst 1.26e-15) with a CONSTANT gate count
+(16 CX, 86 u3, 71/86 = 83% special-angle on u_0) — genuinely closer to
+the abstract ansatz's structure than generic StatePreparation. Verified
+exact, then run for real, concurrently, on IonQ's free ionq_simulator.
+Ideal correctness control PASSED (2.165 kcal/mol). Real result:
+aria-1=207.08±2.93, forte-1=218.69±2.65 kcal/mol — WORSE than every
+other variant tried in this project, including the previous worst
+(native-optimized, 93.73/91.43). CONCLUSION: the special-angle structural
+trick is real (verified, 83% special-angle) but porting it to the
+tapered register costs 16 CX — 45% more than the abstract ansatz's 11
+and >4x generic StatePreparation's mean 3.94 — because the tapered
+register's targets need all 3 bit-complement pairs' worth of Givens
+coverage where the original problem only ever needed 1. The extra gate
+count dominates; the structural trick does not come close to
+compensating. A clean negative, reported plainly. See iteration 16 below
+for the ALTERNATIVES NOT TAKEN.
+
+BONUS FINDING, independent of the above: while cross-checking this
+circuit's fitted angles (computed in one process) against freshly
+recomputed targets (in a separate process), found `build_reduced_problem()`
+was NOT deterministic across process invocations — `u_4`'s sign flipped
+(dot product exactly -1.0, not floating noise) between calls. Root cause:
+`ef_fragment.py`'s `exact_ground_state()` used `scipy.sparse.linalg.eigsh`
+(ARPACK's iterative Lanczos solver); pinning its `v0` to a fixed seed did
+NOT fix it (cross-process diff got WORSE, 1.999, not better) — pointing to
+non-associative floating-point rounding inside ARPACK's multi-threaded
+sparse matrix-vector products, not just the random start. FIXED by
+switching to dense `scipy.linalg.eigh` (the fragment's Hamiltonian is
+only 256-dimensional for 8 qubits — dense diagonalization is trivially
+fast and has no iterative-convergence non-determinism). Verified 0.0 diff
+across 3 separate process invocations after the fix. This bug was
+invisible in every PRIOR iteration of this project because every script
+called `build_reduced_problem()` exactly once per process and reused the
+result — self-consistent within any single run. It would only ever have
+surfaced when comparing results computed across separate runs, exactly as
+happened here. Independent, durable correctness fix — not specific to
+Task A-E.
+
 **STATUS UPDATE (iteration 15, LOCAL BRANCH `local/attack-base-problem`,
 NOT pushed): the Z2-tapered circuit (3 qubits/register, mean 3.94 CX),
 run RAW (no ZNE) for real, concurrently, on IonQ's free ionq_simulator.
@@ -2191,5 +2250,215 @@ known, not spun as a win. No push.
 
 Code: `vqe/z2_tapered_ionq.py` (`--targets`, `--assemble`). Full data:
 `vqe/z2_tapered_ionq_results.json`.
+
+---
+
+## Iteration 16: porting the abstract ansatz's structural gate-efficiency trick to the tapered register — a clean, bigger loss, plus a real determinism bug found along the way
+
+**Why this iteration**: the user asked directly — what's the structural
+difference between the abstract 11-gate ansatz and the Z2-tapered
+circuit, and does trying to reproduce whatever made the abstract ansatz
+good on the tapered register actually help?
+
+**Diagnosis (`gate_structure_compare.py`)**: transpiled both circuit
+families to `u3`/`cx` at `optimization_level=0` and inspected the full
+gate lists, not just counts. The abstract ansatz has MORE gates of BOTH
+types (constant 11 CX, constant 51 u3) than the generic-StatePreparation
+tapered circuit (mean 3.94 CX, mean 6.72 u3) yet still wins on real
+hardware (34.98/43.03 vs 47.78/51.25 kcal/mol, iteration 15). Direct
+inspection of `u_0`'s full instruction list found the abstract ansatz's
+51 u3 gates are overwhelmingly FIXED, special-angle (0, ±π/2, ±π
+combinations) — decomposed Hadamard/S/Sdg-equivalent structural gates
+from its Givens-rotation recipe — with only ~6-8 carrying the actual
+fitted target angles. The tapered circuit's 7 u3 gates are essentially
+ALL generic, arbitrary-angle `StatePreparation` synthesis output.
+Hypothesis: gate-angle "specialness," not raw count, may explain the
+real-hardware gap (special angles are plausibly cheaper on real trapped-
+ion native gates — closer to identity or a Clifford operation than a
+generic arbitrary rotation).
+
+**Attempt 1 — port the recipe 1:1 (`z2_tapered_fixed_ansatz.py`,
+`build_candidate`, 4-5 angles)**: mirrored `fixed_ansatz.py`'s own
+construction exactly — reference prep (X gate) + a discriminator-qubit
+RY + CX fan-out bridge (bit-complement pair) + `XXPlusYYGate` Givens hops
+across the register's qubit pairs. Two real bugs caught and fixed before
+this even ran correctly:
+  1. `ValueError: Residuals are not finite in the initial point` from
+     `scipy.optimize.least_squares` — the phase-alignment convention
+     divides by the fitted statevector's leading component, which can
+     land near-zero at an unlucky random initial guess. Fixed by
+     wrapping each fit attempt in try/except, skipping to the next
+     random seed rather than crashing the whole multi-attempt loop.
+  2. After that fix, BOTH candidates gave 0/36 converged for EVERY
+     target — a systematic, not random, failure. Diagnosed via direct
+     `Statevector` inspection: the circuit only ever reached basis
+     states 0 (`|000>`) and 7 (`|111>`) — exactly the two states
+     EXCLUDED from the required subspace. Root cause: the RY
+     discriminator gate had been applied to the SAME qubit the
+     reference `X` gate had just set to 1, conflating the "reference"
+     and "discriminator" roles `fixed_ansatz.py`'s own derivation
+     deliberately keeps separate (discriminator must start untouched at
+     |0>). Fixed by moving RY to an untouched qubit and fanning out CX
+     from there instead. Verified via direct Statevector inspection at
+     several angle sets before re-fitting.
+
+**After the fix**: 4/36 converged, worst error 0.42-0.51 — still a real,
+large failure, not force-fitted into "close enough." This is NOT a
+parameter-count problem: measured directly (not assumed) that the
+original 4-qubit ansatz's 25 targets ALL share exactly ONE bit-complement
+pair (a physical fact — 2 electrons confined to a single Hamming-weight-2
+sector, `fixed_ansatz.py`'s own verified premise), while the tapered
+register's 36 targets are measured to spread across 1, 2, or 3 of its 3
+available bit-complement pairs depending on target:
+
+| pattern | example targets | count |
+|---|---|---|
+| 1 pair active | u_0, u_1, u_2, u_3, (u1±u3) | several |
+| 2 pairs active | most combination targets | majority |
+| 3 pairs active | (u1±u4), (u3±u4), (u1±u5), (u3±u5) | 8 |
+
+Z2 tapering's Clifford transform does not preserve Hamming-weight
+structure, so the single-reference/single-bridge topology that worked
+for the untapered problem has no equivalent shared anchor here.
+
+**Attempt 2 — same topology, more Givens repetitions (8 angles)**:
+repeating the 3 available Givens pairs to 7 hops (1 bridge angle + 7
+Givens angles = 8 total) converged 36/36 to machine precision (worst
+1.26e-15, later reproduced at 2.22e-16 and 1.26e-15 across independent
+fits) — confirming the topology itself was right, just
+under-parameterized at 4-5 angles. Resulting circuit: CONSTANT 16 CX,
+CONSTANT 86 u3, 71/86 (83%) special-angle on `u_0` — genuinely closer to
+the abstract ansatz's structural character than generic
+`StatePreparation` (0% special-angle).
+
+**Honest caveat stated before any real submission**: 16 CX is MORE than
+both baselines (abstract's 11, `StatePreparation`'s mean 3.94). The
+naive fidelity model `f=(1-p2)^n2q * (1-p1)^n1q` (aria-1's measured
+p2=0.01214) predicts this LOSES to both: f_new=0.801 vs
+f_tapered_generic=0.954 vs f_abstract=0.861. But that SAME naive model
+already mispredicted the abstract-vs-tapered_generic ranking in
+iteration 15 (predicted tapered_generic should win; it didn't) — so it
+could not be trusted to rule this out in advance. Running for real (free
+`ionq_simulator`, no real credits spent) was the only honest way to find
+out.
+
+**Real result, concurrent submission (ideal/aria-1/forte-1, 324
+circuits/model, 972 total), 8-seed bootstrap mean ± std**:
+
+| | ideal (control) | aria-1 | forte-1 |
+|---|---|---|---|
+| raw | 2.165 ± 0.956 | **207.08 ± 2.93** | **218.69 ± 2.65** |
+
+Ideal correctness control passed (2.165 kcal/mol — confirms this is a
+real noise effect, not a pipeline bug).
+
+**Placed against every circuit variant tested in this project**:
+
+| circuit | 2-qubit gates | special-angle % | aria-1 raw | forte-1 raw |
+|---|---|---|---|---|
+| abstract fixed ansatz (iteration 9) | constant 11 | ~83% (6-8/51 fitted) | **34.98** | **43.03** |
+| Z2-tapered, generic StatePreparation (iteration 15) | mean 3.94 | 0% | 47.78 | 51.25 |
+| native-optimized, TrappedIonOptimizerPlugin (iteration 12) | mean 9.28 | n/a | 93.73 | 91.43 |
+| **Z2-tapered, 8-angle FIXED structure (this iteration)** | **constant 16** | **83%** | **207.08** | **218.69** |
+
+**Honest conclusion**: the special-angle structural trick is real and
+was successfully reproduced (83% special-angle, matching the abstract
+ansatz's own character almost exactly) — but porting it to the tapered
+register required 16 CX gates (45% more than the abstract ansatz's 11,
+>4x generic StatePreparation's mean 3.94), because the tapered register's
+36 targets collectively need Givens coverage across all 3 available
+bit-complement pairs where the original 4-qubit problem only ever needed
+1. The extra gate count overwhelms whatever benefit the special-angle
+structure provides — this is by a wide margin the WORST real-hardware
+result of any variant tried in this project, including the previous
+worst (native-optimized). **Gate structure matters, but it cannot be
+ported independently of the gate count it costs to achieve it on a
+register that has lost the physical symmetry (single Hamming-weight
+sector) the original recipe depended on.** Reported plainly, not spun.
+
+**Bonus finding, independent of the above**: cross-checking the fitted
+8-angle solutions (computed by `build_final_candidate.py`, one process)
+against freshly recomputed targets (`z2_tapered_fixed_ansatz_ionq.py`'s
+own exactness check, a separate process) failed with error 3.44 — not a
+phase mismatch, a genuinely different vector (verified: `u_4` in the two
+calls had dot product exactly -1.0, not +1.0; other Schmidt vectors
+matched). Root cause: `ef_fragment.py`'s `exact_ground_state()` used
+`scipy.sparse.linalg.eigsh` (ARPACK's iterative Lanczos solver) with no
+fixed `v0` — scipy draws a new random starting vector every call.
+Pinning `v0` to a fixed seed was tried first and made it WORSE (cross-
+process diff went from 1.335 to 1.999), pointing to non-associative
+floating-point rounding inside ARPACK's multi-threaded sparse
+matrix-vector products, not just the random start, as the real source.
+**Fixed** by switching to dense `scipy.linalg.eigh` — this fragment's
+Hamiltonian is only 256-dimensional (8 qubits), trivially fast to
+diagonalize exactly, with no iterative-convergence non-determinism.
+Verified 0.0 diff across 3 separate process invocations after the fix
+(was up to 1.999 before). This bug was invisible in every prior
+iteration of this project because every script called
+`build_reduced_problem()` exactly once per process and reused the
+result — self-consistent within any single run, but silently wrong the
+moment two separate runs' outputs were compared, exactly as happened
+here. An independent, durable correctness fix, not specific to any of
+Tasks A-E.
+
+**ALTERNATIVES NOT TAKEN**:
+
+1. **A fully general, per-target-optimal ansatz search (e.g. a
+   variational circuit-structure search or genetic algorithm over gate
+   sequences) instead of hand-porting one fixed recipe.** Rejected: the
+   entire point of a FIXED structure is that all 36 targets share the
+   same gate sequence (only angles differ) — a per-target-optimal search
+   would very likely find smaller per-target circuits (closer to
+   StatePreparation's own mean 3.94) but lose the fixed-structure
+   property this whole exercise was testing, and reintroduce the
+   target-dependent-circuit problem CDR-style methods need to avoid.
+   Would revisit if a future goal explicitly drops the "fixed structure"
+   requirement and just wants the smallest correct circuit per target.
+
+2. **Accepting a partial-coverage circuit (the 4-angle version, 4/36
+   exact) plus a fallback (e.g. generic StatePreparation) for the other
+   32 targets, rather than insisting on one 8-angle circuit for all
+   36.** Rejected: mixing two circuit families defeats the fixed-
+   structure premise just as much as a per-target search would, and
+   would make the real-hardware comparison ambiguous (is the result
+   coming from the special-angle circuit or the fallback?). Would
+   revisit only if a specific downstream method (like CDR) turns out to
+   only need fixed structure on a SUBSET of targets, not all 36.
+
+3. **Reducing the 16-CX circuit's gate count post-hoc via
+   `TrappedIonOptimizerPlugin` or `optimization_level>=1`, the way
+   iteration 12 did for the abstract ansatz's native form.** Rejected
+   for this write-up: iteration 12 already found `optimization_level>=1`
+   can silently make transpiled 2-qubit gate counts non-constant across
+   targets for fitted-angle solutions landing near periodic special
+   values — exactly the kind of instability this circuit's fitted
+   angles (many near 0/π/2 by construction) would be especially prone
+   to, which would need its own verification pass before trusting any
+   resulting number. Would revisit as a genuine next step given the
+   16-CX raw result is now known to be far too large to be worth
+   ZNE/CDR on directly — a real gate-count reduction pass (verified
+   constant across all 36 targets before any real submission) is the
+   most promising concrete next step if this circuit family is revisited
+   at all.
+
+4. **Leaving the eigsh non-determinism bug unfixed and just re-fitting
+   within a single process each time (a workaround, not a fix).**
+   Rejected: this would have "solved" the immediate blocker but left a
+   silent correctness trap in `ef_fragment.py` for any future cross-
+   process comparison in this codebase — exactly the kind of bug the
+   "no fake or hardcoded values, every result must be a real
+   computation" standing rule exists to catch. Fixed at the source
+   instead (dense `eigh`), verified with a genuine before/after
+   determinism test (0.0 diff after, up to 1.999 before), not merely
+   asserted.
+
+Per the standing branch discipline: this is a real, honestly-reported
+loss — the biggest one recorded in this project so far — not spun as a
+partial win. No push.
+
+Code: `vqe/gate_structure_compare.py`, `vqe/z2_tapered_fixed_ansatz.py`,
+`vqe/z2_tapered_fixed_ansatz_ionq.py` (`--targets`, `--assemble`), fix in
+`vqe/ef_fragment.py`. Full data: `vqe/z2_tapered_fixed_ansatz_results.json`,
+`vqe/z2_tapered_fixed_ansatz_ionq_results.json`.
 
 ---

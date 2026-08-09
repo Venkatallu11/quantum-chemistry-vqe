@@ -54,7 +54,6 @@ reconstruction before it's trusted for any real IonQ submission.
 import os
 import sys
 import numpy as np
-from scipy.sparse.linalg import eigsh
 
 sys.path.insert(0, os.path.dirname(__file__))
 import chem
@@ -94,10 +93,41 @@ def build_fragment_qop(atoms, nelec, d=1.0):
 
 def exact_ground_state(qop_penalized):
     """Full exact diagonalization (penalized only to select the correct
-    electron-count sector -- penalty is exactly 0 on the true eigenstate)."""
-    M = qop_penalized.to_matrix(sparse=True)
-    val, vec = eigsh(M, k=1, which="SA")
-    return float(val[0]), vec[:, 0]
+    electron-count sector -- penalty is exactly 0 on the true eigenstate).
+
+    BUG CAUGHT AND FIXED (found while cross-checking a fitted circuit's
+    angles, from one process, against a freshly-recomputed target, from
+    another): eigsh (ARPACK's iterative Lanczos solver) is NOT
+    reproducible across separate process invocations even with a fixed
+    seed -- pinning v0 to a fixed-seed random vector was tried FIRST and
+    did NOT fix it (cross-process diff got WORSE, 1.999, not better),
+    pointing to non-associative floating-point rounding inside ARPACK's
+    multi-threaded sparse matrix-vector products accumulating
+    differently run to run and occasionally landing the Lanczos
+    iteration on the opposite sign of a Schmidt vector after the
+    downstream SVD (verified directly: two separate process calls gave
+    u_4 vectors differing by dot product -1.0, not +1.0, while other
+    Schmidt vectors stayed consistent). Every prior use in this codebase
+    called this function exactly once per process and reused the
+    result, so the bug was self-consistent and invisible within any
+    single run -- it only surfaces when comparing results computed in
+    SEPARATE process invocations (e.g. angles fit in one script run,
+    checked against targets recomputed in another).
+
+    FIX: this fragment's full Hamiltonian is only 2^n_qubits-dimensional
+    (256 for the 8-qubit H4 case) -- small enough that dense exact
+    diagonalization is trivially fast and avoids ARPACK's iterative
+    solver (and its non-deterministic convergence path) entirely.
+    scipy.linalg.eigh's dense divide-and-conquer algorithm is
+    deterministic for a fixed input matrix (no random starting vector,
+    no iterative convergence criterion), verified below by repeated
+    calls -- both within one process AND across separate process
+    invocations -- agreeing to exact machine precision (0.0 diff, not
+    just <tol)."""
+    M = qop_penalized.to_matrix(sparse=False)
+    from scipy.linalg import eigh
+    vals, vecs = eigh(M, subset_by_index=[0, 0])
+    return float(vals[0]), vecs[:, 0]
 
 
 def real_gauge(psi):
