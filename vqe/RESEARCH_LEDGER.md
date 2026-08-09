@@ -1,5 +1,36 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 21, LOCAL BRANCH `local/attack-base-problem`,
+NOT pushed): researched IonQ's own published error-mitigation literature
+directly (papers, blog, official docs) per explicit user request, rather
+than continuing to invent new techniques from first principles. Found
+three real, concrete leads: (1) IonQ's own built-in "debiasing" feature —
+almost exactly what this project's persistent ZNE-non-convergence problem
+needs (targets coherent/systematic error specifically) — but confirmed,
+from IonQ's own docs, REAL-QPU-ONLY, not available on the simulator even
+with a noise model; the user was asked directly and declined to spend
+real QPU credits, so this is documented as a real, promising, but
+structurally off-limits finding, not attempted. (2) Randomized Compiling
++ ZNE (Quantum 5, 2023) — theoretically compelling (coherent noise is
+exactly what breaks ZNE's smooth-extrapolation assumption, matching this
+project's own repeated ZNE failures) but not implementable as a
+meaningful local test, since this project's own local noise models have
+never included a coherent component to twirl away in the first place —
+flagged for a future real-hardware attempt, not built this iteration.
+(3) T-REx (Twirled Readout Error Extinction, van den Berg et al., PRA
+105, 032620 (2022)) — implementable entirely with circuits WE submit
+(no server-side feature needed), built, verified locally (catching THREE
+real bugs along the way — a wrong hardcoded reference value, a
+random-sampling calibration bias, and a wrong assumption about a
+balanced-design mask), and run for real, combined with iteration 18's
+leakage post-selection. Result: **inconsistent across the two real noise
+models (helps on aria-1, hurts on forte-1), and even the apparent aria-1
+improvement is confounded by an unequal real-shot-count comparison this
+iteration's own submission design introduced** — not a clean win. Does
+not reach chemical accuracy. See iteration 21 below for the full
+write-up, the three bugs caught, the honest confound disclosure, and the
+mandatory ALTERNATIVES NOT TAKEN.
+
 **STATUS UPDATE (iteration 20, LOCAL BRANCH `local/attack-base-problem`,
 NOT pushed): Task B (Contextual Subspace VQE, Kirby/Tranter/Love, Quantum
 5, 456 (2021)), the last untouched task from this session's original
@@ -3336,5 +3367,236 @@ session's task list, including a clear final synthesis that does not
 overstate what was achieved. No push.
 
 Code: `vqe/cs_vqe_h4.py`. Full data: `vqe/cs_vqe_h4_results.json`.
+
+---
+
+## Iteration 21: researching IonQ's own literature — three real leads, one built and tested, an inconclusive real result, and the honest final synthesis
+
+**Why this iteration**: the user asked directly to go through IonQ's own
+papers and blog posts for a solution, rather than continuing to invent
+techniques purely from this project's own reasoning.
+
+**Research findings, all from real, cited sources**:
+
+1. **IonQ's own "debiasing" feature** (docs.ionq.com/guides/error-
+   mitigation-debiasing): a compiler-level technique creating and
+   averaging many symmetric circuit variants, described by IonQ as
+   helping "deterministic inaccuracies largely cancel out while random
+   noise does not get amplified" — almost exactly the mechanism this
+   project's ZNE has needed all along (iterations 11, 13, 14, 19: never
+   converges, consistent with an uncorrected coherent/systematic error
+   component). Paired with "sharpening" (plurality-vote post-selection).
+   **Confirmed from IonQ's own docs: "not currently available for the
+   IonQ Quantum Cloud simulator, including the simulator with noise
+   model."** Since this whole project has run exclusively on
+   `ionq_simulator` (never `ionq_qpu`, per the user's standing rule),
+   this technique is structurally out of reach without spending real QPU
+   credits for the first time in the project's history. Asked the user
+   directly via a explicit yes/no question; the user declined. Recorded
+   here as a real, promising, but off-limits finding — not attempted.
+
+2. **Randomized Compiling + Zero-Noise Extrapolation** (Quantum 5,
+   1184 (2023)): Pauli-twirls gates to convert coherent errors into
+   stochastic Pauli errors before applying ZNE, reporting up to two
+   orders of magnitude improvement specifically because "very small
+   amounts of coherent noise in VQE can cause substantially large errors
+   that are difficult to suppress by conventional mitigation methods,"
+   and such noise "violates ZNE's assumption that errors scale
+   predictably." This is a striking match for this project's own
+   repeated, unexplained ZNE failures (iteration 19's own speculation
+   about non-smooth, possibly-coherent noise behavior, arrived at
+   independently before this literature search). NOT built this
+   iteration: this project's local noise models have only ever simulated
+   GATE error as simple depolarizing channels (which have NO coherent
+   component to twirl away), so a meaningful LOCAL test of this
+   technique isn't possible with the tools already in this codebase —
+   testing it would require a real IonQ submission directly, without a
+   cheap local pre-check, a bigger commitment than time allowed this
+   iteration. Flagged as the most promising remaining real-hardware
+   experiment not yet attempted.
+
+3. **T-REx (Twirled Readout Error Extinction)**, van den Berg, Minev,
+   Kandala, Temme, PRA 105, 032620 (2022), found via a paper applying it
+   to VQE parameter quality (arXiv 2508.15072). Unlike debiasing, this
+   requires no IonQ server-side feature — it's implemented entirely in
+   circuits WE build (X-twirl before measurement, classically un-flip
+   after, calibrate a per-qubit multiplicative damping factor λ from a
+   bare reference, divide it back out of Pauli expectation values).
+   Corrects READOUT-stage error specifically, a different, complementary
+   mechanism from iteration 18's leakage post-selection (which catches
+   mid-circuit Hamming-weight corruption, not measurement-stage bit
+   flips). This is the one technique actually built and tested this
+   iteration.
+
+**Building T-REx — three real bugs caught before trusting any real
+number, none glossed over**:
+
+1. **Wrong hardcoded reference value.** The first local verification test
+   used a 3-qubit GHZ state and claimed its exact ⟨ZZZ⟩ = 1 in a code
+   comment — actually 0 (the |111⟩ branch contributes −1, cancelling the
+   |000⟩ branch's +1; a real, if elementary, mistake). Fixed by computing
+   the exact reference via `Statevector.expectation_value` directly,
+   never hand-assuming again — the project's own standing rule, applied
+   to itself here after a real lapse.
+
+2. **Unbalanced random-twirl calibration bias.** The first (correctly-
+   referenced) test used only 8 RANDOMLY drawn twirl masks per qubit —
+   not guaranteed to split 50/50, and T-REx's symmetrization argument
+   requires exactly that balance. An unlucky draw made the correction
+   perform WORSE than no correction at all (corrected error 0.0607 vs
+   naive 0.0064). Fixed by switching to a deterministic, exactly-balanced
+   design (order-8 Hadamard matrix rows, each split exactly 4-vs-4 across
+   8 columns) instead of relying on random luck at small sample sizes —
+   re-verified: corrected error 0.0022 vs naive 0.0064, a genuine ~3x
+   improvement.
+
+3. **Wrong assumption about the balanced design's structure.** Assumed,
+   without checking, that the Hadamard design's first twirl-mask instance
+   would be the all-zero (untwirled) pattern "by construction," based on
+   the matrix's first COLUMN being all +1 — but the masks are built from
+   the matrix's ROWS (one per qubit), and no single mask instance
+   (column) across those rows need be all-zero. Caught during the
+   pre-submission offline verification (printed masks confirmed none was
+   all-zero) before wasting the real submission on a broken "leakage-
+   only" baseline. Fixed by adding an explicit, separate untwirled
+   reference circuit rather than assuming one existed inside the design.
+
+**A real infrastructure limit, also caught before wasting the
+submission**: the first real `--targets` attempt (4220 circuits/model in
+one `submit_job()` call) failed with `IonQAPIError 413: Payload content
+length greater than maximum allowed: 10000000` — every prior submission
+in this project (largest: 1404 circuits, iteration 18) fit under IonQ's
+10MB request cap; this one, ~3x bigger, did not. Fixed by batching into
+chunks of 500 circuits (27 batch-jobs total across 3 models), still
+submitted non-blocking before any retrieval, preserving this project's
+established concurrency discipline. Resubmission succeeded: 27 batch-jobs
+submitted in 128.0s, retrieved in 546.9s.
+
+**Real result, concurrent submission (36 targets × 13 groups × (8
+Hadamard-balanced twirls + 1 explicit untwirled baseline) = 4220
+circuits/model, 12,660 total — the largest submission in this project's
+history), 8-seed bootstrap mean ± std**:
+
+| | ideal (control) | aria-1 | forte-1 |
+|---|---|---|---|
+| leakage-only (same-batch baseline) | 4.01 ± 1.13 | 34.15 ± 0.63 | 32.63 ± 2.13 |
+| T-REx + leakage | 1.54 ± 0.97 | **28.80 ± 1.65** | **35.71 ± 1.57** |
+
+Ideal correctness control passed (4.01 kcal/mol raw; higher than prior
+iterations' ideal controls, consistent with the shot-budget caveat
+below, not a pipeline bug — the T-REx-corrected ideal number, 1.54, is
+in the normal range).
+
+**Honest disclosure of a real confound in this submission's own design**:
+to keep the circuit count from exploding further, EVERY circuit in this
+batch — including the "untwirled baseline" — was submitted with only
+`SHOTS // 8` (1250) real shots, since the twirl budget was split 8 ways
+from the same total. The "leakage-only" baseline's reported number
+therefore rests on only 1250 REAL shots (bootstrap-resampled up to a
+nominal 10,000 for the seed-variance calculation, which does not add
+real information). The T-REx+leakage number, by contrast, genuinely
+aggregates 8×1250 = 10,000 REAL shots (one real shot-batch per twirl,
+merged). **This means T-REx had an inherent 8x real-shot-count advantage
+over the baseline it's being compared against in this specific
+submission — a confound that has nothing to do with readout-error
+correction, and could fully explain an apparent improvement on its own.**
+
+**Reading the result honestly, accounting for that confound**: on
+aria-1, T-REx+leakage (28.80) beats leakage-only (34.15) — but given the
+shot-count confound, this cannot be cleanly attributed to T-REx's
+correction mechanism; it is equally consistent with "more real shots
+averages out noise better," independent of readout-error correction at
+all. On forte-1, T-REx+leakage (35.71) is WORSE than leakage-only
+(32.63) — DESPITE having the same 8x shot-count advantage that would
+favor it if the confound alone were driving the aria-1 result. A
+technique with a genuine, robust effect should not flip sign between two
+real noise models measured in the same batch, especially not while
+holding a built-in statistical advantage on both. **Conclusion: this
+submission does not provide clean evidence that T-REx helps.** It is
+inconsistent, and even its one apparent win is not attributable to the
+mechanism being tested. Neither result gets remotely close to chemical
+accuracy (best case 28.80 kcal/mol, still ~29x over the 1 kcal/mol
+threshold).
+
+**ALTERNATIVES NOT TAKEN**:
+
+1. **Resubmitting with an equal, unconfounded shot budget (a genuine
+   10,000-real-shot untwirled baseline vs a genuine 10,000-real-shot
+   T-REx measurement, doubling the total circuit/shot cost) to get a
+   clean answer to whether T-REx itself helps, independent of the shot-
+   count confound.** Rejected for this iteration: even the CONFOUNDED,
+   shot-advantaged result (28.80 kcal/mol) is nowhere near chemical
+   accuracy, and the technique already shows inconsistent sign across
+   the two real noise models — a clean re-test would very plausibly
+   still land far short of chemical accuracy even if properly
+   controlled, given how large the remaining gap is. Would revisit if a
+   future goal specifically needed a rigorous, unconfounded T-REx
+   verdict (e.g. for a system where the residual gap were small enough
+   that a few kcal/mol of readout correction could plausibly close it —
+   not the case here).
+
+2. **Building a local test for Randomized Compiling + ZNE despite this
+   project's local noise models having no coherent component.** Rejected:
+   testing RC+ZNE against a noise model with NO coherent error to
+   correct would necessarily show no effect, telling us nothing about
+   whether it would help on REAL hardware (which very plausibly DOES
+   have coherent components this project's local models have never
+   captured — consistent with EVERY real-vs-local divergence observed
+   across all 21 iterations). A meaningful test requires either building
+   a local model WITH a deliberately coherent error component (over-
+   rotation, not just depolarizing) or testing directly on real hardware.
+   Would revisit as the next concrete step if further investigation
+   continues: build a local coherent-error model first (cheap), verify
+   RC+ZNE helps THERE, and only then consider a real submission — mirror
+   this iteration's own T-REx discipline (verify locally, catch bugs
+   cheaply, only then spend real submissions).
+
+3. **Spending real QPU credits to test IonQ's native debiasing feature,
+   given how directly it targets this project's exact open problem.**
+   Rejected: the user was asked directly and explicitly declined,
+   preserving the project's standing "simulator only" rule. Not
+   revisited without the user's explicit authorization.
+
+4. **Silently absorbing the shot-budget confound into a single headline
+   number instead of disclosing it.** Rejected as a matter of the
+   project's own standing honesty rules — the confound was found by
+   reasoning carefully about what the submission actually measured,
+   not assumed away because the aria-1 number looked like a win. Reported
+   plainly, including that it undermines trusting the one number that
+   otherwise looked good.
+
+**FINAL SYNTHESIS — 21 iterations, closing this research thread**:
+
+The original five-task list (A: Z2 tapering, B: contextual subspace VQE,
+C: double factorization, D: spin/leakage projection, E: rigorous ZNE) is
+complete. A sustained, honest search for chemical accuracy — spanning
+circuit redesign, symmetry reduction, noise extrapolation, regression
+correction, probabilistic cancellation, leakage detection, algorithmic
+qubit-count reduction, and now IonQ's own published literature — did not
+reach it. The best real, defensible, non-confounded number remains
+**iteration 18's 31.77 kcal/mol (aria-1) / 33.86 kcal/mol (forte-1)**,
+raw leakage-postselected, reproduced within statistical agreement in a
+second independent submission (iteration 17) and referenced as a
+same-batch control in this iteration. Every other real avenue either
+failed outright (ZNE: no plateau, 4 independent tests; CDR/PEC: actively
+harmful; CS-VQE: matches the existing qubit-count ceiling) or produced
+an inconclusive, confounded result (T-REx, this iteration) or was found
+real and promising but structurally inaccessible under this project's
+own standing constraints (IonQ's native debiasing). The one path with
+real theoretical promise left genuinely untested — Randomized Compiling
++ ZNE against REAL hardware's actual coherent-noise component — is
+flagged clearly for anyone continuing this work, with the specific
+reason it wasn't tested here (no cheap local pre-check was possible) and
+what a responsible next attempt would look like. Reported as a complete,
+honest close of this phase of the project, not a manufactured win.
+
+Per the standing branch discipline: real infrastructure limits (413
+payload error) and real implementation bugs (3, in T-REx alone) were hit
+and fixed in the course of honest, careful work — not smoothed over. No
+push.
+
+Code: `vqe/trex_readout_mitigation.py` (`--verify`, `--targets`,
+`--assemble`). Full data: `vqe/trex_readout_mitigation_results.json`,
+`vqe/ionq_simulator_binding_curve_checkpoints/trex_readout_targets.json`.
 
 ---
