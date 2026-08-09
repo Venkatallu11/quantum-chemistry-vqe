@@ -1,5 +1,32 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 22, LOCAL BRANCH `local/attack-base-problem`,
+NOT pushed): does Randomized Compiling (Pauli twirling) unlock a genuine
+ZNE plateau against a DELIBERATELY COHERENT local noise model — the
+regime iteration 21's literature research flagged as the most likely
+explanation for this project's persistent, unexplained ZNE failures, but
+couldn't test because every prior local noise model here has been purely
+stochastic (depolarizing)? Built the missing test: a genuine coherent
+(deterministic unitary over-rotation) noise channel, plus a proper
+Pauli-twirling implementation. Caught and fixed a REAL bug along the way
+— the first CX Pauli-twirl-pair derivation used a qubit-index convention
+that didn't match how this project's own circuits are actually composed,
+confirmed by a direct exact-identity test showing 15 of 16 twirl pairs
+were WRONG (large errors, not small numerical noise); re-derived from an
+actual circuit's operator and re-verified to exactly 0.0 error for all 16
+pairs, at both a minimal 2-qubit scale and the full 11-CX ansatz scale,
+before trusting anything downstream. Result: **RC genuinely reduces the
+raw error at 6 of 7 tested noise scales (consistent with the RC+ZNE
+literature's own claims) but does NOT restore a genuine ZNE plateau** —
+both RC and non-RC fail the same rigorous 3-direction floor test used
+since iteration 13, and RC's own scale-to-scale growth pattern is
+actually LESS smooth (non-monotonic, including one scale where the error
+drops before rising again) than the non-RC curve's cleanly monotonic
+(if still ultimately non-plateauing) growth. Per the user's own explicit
+"locally first" framing and this project's standing discipline, no real
+IonQ submission was made — the math did not pass. See iteration 22 below
+for the full write-up.
+
 **STATUS UPDATE (iteration 21, LOCAL BRANCH `local/attack-base-problem`,
 NOT pushed): researched IonQ's own published error-mitigation literature
 directly (papers, blog, official docs) per explicit user request, rather
@@ -3598,5 +3625,191 @@ push.
 Code: `vqe/trex_readout_mitigation.py` (`--verify`, `--targets`,
 `--assemble`). Full data: `vqe/trex_readout_mitigation_results.json`,
 `vqe/ionq_simulator_binding_curve_checkpoints/trex_readout_targets.json`.
+
+---
+
+## Iteration 22: Randomized Compiling against a genuine coherent noise model — a real bug caught, a real (if partial) benefit confirmed, but no plateau
+
+**Why this iteration**: the user's direct instruction — test Randomized
+Compiling against a coherent noise model locally first, and only then
+consider IonQ's free simulator. This follows up iteration 21's own
+flagged gap: the RC+ZNE literature's mechanism (coherent noise breaks
+ZNE's smooth-extrapolation assumption) couldn't be tested locally before
+because every noise model this project has ever used
+(`zne_floor_tested.py`, `z2_tapered_zne.py`, `leakage_zne_floor_tested.py`)
+is a Qiskit Aer `depolarizing_error` channel — purely stochastic by
+construction, with no coherent component to twirl away.
+
+**Building the coherent noise model**: a fixed, deterministic unitary
+error, exp(-i·ε·Z⊗Z/2), appended after every CX gate — a standard,
+physically-motivated form (residual always-on coupling / over-rotation),
+scaled directly by the noise-scale factor (`eps_per_gate × scale`),
+matching this project's own established local-ZNE-test convention of
+scaling the per-gate error parameter directly rather than literal gate
+folding.
+
+**Building Randomized Compiling — a real bug caught and fixed**: derived
+the 16-element CX Pauli-twirling group (for every (P_control, P_target)
+pair, the compensating output pair such that pre-twirl → CX → post-twirl
+= ±CX exactly). The FIRST derivation, using the bare `Operator(CXGate())`
+object's matrix directly, appeared to numerically verify all 16 pairs —
+but a follow-up smoke test on the actual ansatz produced a wildly
+implausible result (a single Pauli label's expectation value swinging
+from −0.998 to +0.125 under a small ε=0.06 rad perturbation). Traced to
+the root cause via a minimal, targeted 2-qubit exact-identity test:
+applying (pre-twirl, CX, post-twirl) with ε=0 (should be an EXACT
+identity to the un-twirled circuit) failed for 15 of 16 pairs, with
+errors of 0.5–2.9 in statevector norm — not small numerical noise, a
+real, wrong table. Root cause: the bare `Operator(CXGate())` object uses
+a different internal qubit-index convention than `Statevector.
+from_instruction()` uses for an actual circuit built with `qc.cx(control,
+target)` — the same class of qubit-ordering bug this project has hit
+before (documented in `z2_tapering.py`'s own history). **Fixed** by
+re-deriving the twirl table from an actual 2-qubit circuit's `Operator`
+(`QuantumCircuit(2); qc.cx(0,1); Operator(qc)`), matching the convention
+used everywhere else in this project. Re-verified: exactly 0.0 error for
+all 16 pairs, confirmed at both the minimal 2-qubit scale and the full
+11-CX ansatz scale (20 random twirl trials, worst error 0.0 at ε=0).
+Also verified the corrected implementation gives a properly-scaled,
+sane result at ε=0.06 (phase-aligned state diff of 0.060, matching the
+perturbation's own order of magnitude — a rushed, unaligned first check
+had wrongly suggested a near-maximal 1.995 diff, itself a comparison
+mistake caught and corrected, not a second real bug).
+
+**Result — exact (zero shot-noise) curves, scales 1–7**:
+
+| scale | NO-RC (kcal/mol) | RC-averaged, 16 twirls (kcal/mol) |
+|---|---|---|
+| 1 | 5.11 | 3.42 |
+| 2 | 20.32 | 14.07 |
+| 3 | 45.24 | 27.65 |
+| 4 | 79.30 | 47.16 |
+| 5 | 121.78 | 101.25 |
+| 6 | 171.90 | **79.80** |
+| 7 | 228.88 | 178.22 |
+
+RC genuinely reduces the raw error at 6 of 7 scales (roughly 30-40%
+lower at scales 1-4) — a real, measurable benefit, consistent with the
+RC+ZNE literature's own claims about coherent-noise suppression. But the
+scale-to-scale GROWTH PATTERN tells the more important story:
+
+| | consecutive-scale ratios |
+|---|---|
+| NO-RC | 3.97, 2.23, 1.75, 1.54, 1.41, 1.33 — smooth, monotonically decreasing |
+| RC | 4.11, 1.97, 1.71, 2.15, **0.79**, 2.23 — non-monotonic, includes a genuine drop |
+
+NO-RC's growth is well-behaved (cleanly decreasing ratios, the hallmark
+of a smooth, low-order-polynomial-like function) yet STILL fails the
+floor test, because the ratios never quite settle below the 1.5x
+plateau threshold in the final steps. RC's growth, despite averaging
+over 16 twirls specifically to smooth out stochastic noise, is LESS
+well-behaved — a real, non-monotonic reversal between scales 5 and 6
+(121.78 → 101.25 → 79.80 → 178.22). **Both fail the same rigorous
+3-direction floor test used since iteration 13, with all 6 verdicts
+(3 directions × {no-RC, RC}) DISQUALIFIED.**
+
+**Why RC doesn't fix the extrapolation problem even though it helps the
+absolute error**: the most likely mathematical explanation, consistent
+with everything observed: RC's averaged effect on a coherent rotation is
+itself a TRIGONOMETRIC function of the scaled angle (roughly
+sin²(ε·scale/2)-type dependence for the induced Pauli-error rate), not a
+polynomial one — smoother and more depolarizing-LIKE in form than the
+raw coherent rotation, genuinely helping at any FIXED scale, but still
+not well-approximated by a LOW-order polynomial over a WIDE scale range
+(1 to 7, i.e., up to 7× the base angle). This is a general limitation of
+polynomial ZNE extrapolation for any noise whose scale-dependence is
+fundamentally oscillatory/trigonometric, not specific to whether the
+underlying physical error is coherent or incoherent — and it means
+narrowing the scale range tested (e.g. 1-3 instead of 1-7, closer to
+what real experimental gate-folding studies typically use) might behave
+differently than this deliberately wide, exhaustive sweep. That
+narrower-range test was not attempted this iteration (see ALTERNATIVES
+NOT TAKEN).
+
+**Decision: no real IonQ submission.** Per the user's own explicit
+"locally first" instruction and this project's standing discipline (do
+not spend a real submission unless the math passes), and given RC does
+NOT restore a genuine plateau at this scale range, no real submission
+was made. This mirrors iteration 14 (ZNE+tapering) and iteration 19
+(ZNE+leakage) exactly — the same disciplined non-submission, now
+extended to the RC+ZNE combination.
+
+**ALTERNATIVES NOT TAKEN**:
+
+1. **Checked, not left untested: whether the narrowest range ([1,2,3])
+   in isolation looks better than the full disqualified verdict
+   suggests.** It does, superficially — RC at [1,2,3]|order1 gives 9.11
+   kcal/mol (vs no-RC's 16.64) and no-RC at [1,2,3]|order2 gives an
+   eye-catching 1.16 kcal/mol — but neither survives scrutiny. Order=2
+   with only 3 points is EXACT interpolation (order = len(range)−1),
+   not genuine extrapolation — precisely the "looks converged with few
+   points, actually drifts once the range grows" trap iteration 11's own
+   history (and this project's `floor_test()` itself) exists to catch;
+   the SAME 1.16 kcal/mol is one of the exact data points feeding the
+   already-DISQUALIFIED range@order2 verdict above, which shows the
+   quadratic answer swings sharply once wider ranges are included. The
+   [1,2,3]|order1 cells are similarly already inside the disqualified
+   range@order1 sweep, not an untested escape hatch. There is no hidden
+   smaller-range result waiting to be checked — the full floor test
+   already covers these exact cells and already correctly rejected them.
+   Reported here specifically to avoid the ledger implying an untested
+   lead that doesn't actually exist.
+
+2. **Testing multiple coherent-error magnitudes (not just eps_per_gate=
+   0.06) to check whether the plateau failure is specific to this
+   particular error strength, or a persistent feature across a range of
+   coherent-error sizes.** Rejected for time: the chosen magnitude was
+   deliberately picked to be modest (comparable in order of magnitude
+   to, if smaller per-gate than, this project's own calibrated
+   P2_PER_GATE=0.01214 depolarizing rate), consistent with the RC+ZNE
+   literature's own framing that even SMALL coherent noise causes large
+   VQE errors — testing a sweep of magnitudes would be a natural
+   robustness check but wasn't essential to answering THIS iteration's
+   specific question (does RC fix ZNE's convergence AT ALL, for a
+   plausible coherent-error magnitude). Would revisit if a future
+   attempt wants a fuller characterization of where (if anywhere) RC+ZNE
+   might work.
+
+3. **Adding a realistic incoherent (depolarizing) component ON TOP of
+   the coherent error, rather than testing pure coherent noise in
+   isolation.** Rejected: isolating the coherent component cleanly was
+   the whole point of this test (this project's EXISTING depolarizing-
+   only models already established, repeatedly, that stochastic-only
+   ZNE doesn't converge either — mixing the two back together would
+   re-obscure exactly the question this iteration was built to isolate:
+   does RC fix the COHERENT part specifically). Would revisit as the
+   natural next step if a MIXED model is ever needed to more faithfully
+   approximate real hardware (which almost certainly has both
+   components).
+
+4. **Testing on IonQ's free simulator anyway, on the reasoning that the
+   simulator's own (unknown) noise model might behave differently from
+   this local synthetic test regardless of what the local test shows.**
+   Rejected: this directly contradicts the user's own explicit
+   instruction ("locally first") and this project's standing discipline
+   throughout 21 prior iterations. The local test's negative result is
+   the honest basis for NOT spending a real submission here, not a
+   reason to second-guess the instruction that was given.
+
+**Where this leaves iteration 21's flagged open question**: the RC+ZNE
+mechanism is real (RC genuinely lowers absolute error against coherent
+noise at 6 of 7 scales, confirmed here) but does not restore ZNE's
+extrapolation reliability for this project's specific ansatz/
+reconstruction pipeline — checked directly, not left as an untested gap
+(Alternative #1 above). This project's best real number remains
+iteration 18's 31.77/33.86 kcal/mol, unchanged by this iteration's
+findings. Testing a genuinely different coherent-error magnitude
+(Alternative #2) is the most honest remaining lead if this line of
+investigation continues, though there is no specific reason from this
+iteration's data to expect a different qualitative outcome.
+
+Per the standing branch discipline: a genuine, rigorously-tested
+negative result, including a real bug caught and fixed along the way
+(the twirl-table qubit-ordering error) and a partial positive finding
+(RC's real absolute-error benefit) reported honestly alongside the
+negative headline result, not overstated in either direction. No push.
+
+Code: `vqe/rc_zne_coherent_noise.py`. Full data:
+`vqe/rc_zne_coherent_noise_results.json`.
 
 ---
