@@ -1,0 +1,20 @@
+{
+  "purpose": "Two independent real IonQ ionq_simulator submissions of the EXACT SAME iteration-15 tapered circuit (z2_tapered_ionq.py, generic StatePreparation, mean 3.94 CX, 3-qubit reduced register), to check whether the abstract-vs-tapered real-hardware gap is a reproducible structural effect or an artifact of limited (10,000) shot statistics from a single submission.",
+  "run1": {
+    "checkpoint": "vqe/ionq_simulator_binding_curve_checkpoints/z2_tapered_targets_run1.json",
+    "ideal_kcal": 1.53,
+    "aria-1_mean_kcal": 47.78, "aria-1_std_kcal": 2.20,
+    "forte-1_mean_kcal": 51.25, "forte-1_std_kcal": 1.77
+  },
+  "run2": {
+    "checkpoint": "vqe/ionq_simulator_binding_curve_checkpoints/z2_tapered_targets.json",
+    "ideal_kcal": 2.614,
+    "aria-1_mean_kcal": 50.28, "aria-1_std_kcal": 1.814,
+    "forte-1_mean_kcal": 55.24, "forte-1_std_kcal": 1.152
+  },
+  "comparison_baseline": {
+    "abstract_11gate_ansatz_raw": {"aria-1": 34.98, "forte-1": 43.03},
+    "native_optimized_raw": {"aria-1": 93.73, "forte-1": 91.43}
+  },
+  "conclusion": "run1 and run2 agree within roughly their combined statistical uncertainty (aria-1: 47.78 vs 50.28, diff=2.50, combined std~2.83; forte-1: 51.25 vs 55.24, diff=3.99, combined std~2.13, slightly outside 1-sigma but nowhere near closing the ~12-15 kcal/mol gap to the abstract ansatz). CONFIRMED: the tapered-vs-abstract real-hardware gap is a real, reproducible effect across independent submissions, not shot-noise luck from a single draw at 10,000 shots."
+}

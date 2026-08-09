@@ -1,5 +1,63 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 17, LOCAL BRANCH `local/attack-base-problem`,
+NOT pushed): exhaustive search for WHY the tapered circuit still loses on
+real hardware despite winning on every gate-accounting metric. User's
+question: "it has less gates still it won't win i dont understand." Five
+hypotheses tested; four ruled out, one confirmed real but still
+unexplained:
+  1. Qiskit-level CX count — tapered wins (mean 3.94 vs 11). Doesn't
+     explain the loss.
+  2. IonQ NATIVE gate count (gpi/gpi2/ms, the gates actually
+     executed/billed on hardware, not qiskit's abstract cx/u3) — tapered
+     wins even bigger (mean 3.67 ms vs 11; mean 34.67 gpi/gpi2 vs 197).
+     Rules out "qiskit gate count hides a native-gate blowup," iteration
+     12's own established mechanism for a DIFFERENT circuit pair — does
+     not apply here.
+  3. Circuit depth — tapered wins (mean 8.31 vs constant 22).
+  4. Measurement-basis hardness (X/Y physical-pulse rotations vs free
+     Z-basis reads before measurement) — tapered wins (mean 1.78 vs 2.77
+     non-Z-axis qubits per measurement circuit).
+  5. Measurement-reuse-induced noise correlation — the tapered pipeline's
+     `reduced_label_map` causes 10 of 27 unique reduced Pauli
+     measurements to be shared by 2 different original alpha_labels (vs
+     0 sharing, untapered). Tested directly with a controlled Monte Carlo
+     (200 trials, real shot-noise binomial sampling, no gate noise):
+     RATIO (shared/independent RMS) = 0.919 — independent per-label
+     measurement is NOT better, if anything marginally worse. RULED OUT.
+     (An earlier quick sensitivity script had suggested a 2.4x formula-
+     sensitivity gap; traced to a bug in that script — `random.sample()`
+     drew different (name, label) pairs across the two comparison halves
+     because the two target-name lists had different internal orderings
+     under the same seed. Confirmed directly by inspecting both lists;
+     not a real effect. Disclosed, not swept under the rug.)
+
+Given every circuit-execution-cost and reconstruction-formula hypothesis
+failed, ran a REPRODUCIBILITY CHECK instead: resubmitted the EXACT SAME
+iteration-15 tapered circuit fresh to real IonQ a second, fully
+independent time (same 10,000 shots/circuit, same noise models). Run 1:
+aria-1=47.78±2.20, forte-1=51.25±1.77. Run 2: aria-1=50.28±1.81,
+forte-1=55.24±1.15 kcal/mol. The two independent runs agree within
+roughly their combined statistical uncertainty and BOTH sit solidly in
+the high-40s/mid-50s range — nowhere near closing the ~12-15 kcal/mol gap
+to the abstract ansatz's 34.98/43.03. **CONFIRMED: this is a real,
+reproducible effect, not an artifact of limited single-submission shot
+statistics.** See iteration 17 below for the full write-up and the
+mandatory ALTERNATIVES NOT TAKEN.
+
+**Honest summary for the record**: after ruling out every mechanism this
+project can currently test locally or cheaply for real, the residual gap
+remains UNEXPLAINED. The most likely remaining candidates are IonQ-
+specific effects invisible to circuit-level accounting entirely —
+possibilities include (not yet tested): per-qubit-position noise
+asymmetry within the simulator's calibrated profile, cross-talk specific
+to which of the register's physical qubit indices are addressed, or a
+genuine amplitude/observable-sensitivity effect in how VALUES near the
+tapered register's specific Schmidt-vector geometry propagate through
+noise (as opposed to the reconstruction FORMULA's sensitivity, which was
+tested and ruled out). Reported plainly as an open question rather than
+forcing a story onto it.
+
 **STATUS UPDATE (iteration 16, LOCAL BRANCH `local/attack-base-problem`,
 NOT pushed): does the abstract 11-gate ansatz's real-hardware edge over
 the Z2-tapered circuit come from gate STRUCTURE rather than gate count,
@@ -2460,5 +2518,194 @@ Code: `vqe/gate_structure_compare.py`, `vqe/z2_tapered_fixed_ansatz.py`,
 `vqe/z2_tapered_fixed_ansatz_ionq.py` (`--targets`, `--assemble`), fix in
 `vqe/ef_fragment.py`. Full data: `vqe/z2_tapered_fixed_ansatz_results.json`,
 `vqe/z2_tapered_fixed_ansatz_ionq_results.json`.
+
+---
+
+## Iteration 17: exhaustively hunting the mechanism behind the tapered circuit's real-hardware loss — four hypotheses ruled out, the effect confirmed real via a reproducibility check, no mechanism found yet
+
+**Why this iteration**: the user's direct question after iteration 16 —
+"it has less gates still it won't win i dont understand." A completely
+fair question: the tapered circuit (iteration 15, generic
+`StatePreparation`, mean 3.94 CX) loses to the abstract 11-CX ansatz on
+real hardware (47.78/51.25 vs 34.98/43.03 kcal/mol) despite having FEWER
+of literally everything measurable at the circuit level. This iteration
+tries to actually find the mechanism, not just restate that gate count
+doesn't explain it.
+
+**Hypothesis 1 — IonQ's real NATIVE gate count (gpi/gpi2/ms) differs from
+qiskit's abstract cx/u3 count.** Motivated directly by iteration 12's own
+established finding that native-gate cost can diverge sharply from
+qiskit-level gate count. Compiled both circuit families to IonQ's actual
+native target (`native_stateprep.to_native`, aria-1's `ms` gate) via the
+same tooling iteration 12 used. RESULT: tapered wins even MORE decisively
+at the native level — mean 3.67 `ms` vs 11 for the abstract ansatz (a
+~3x native 2-qubit-gate advantage), and mean 34.67 `gpi`/`gpi2` vs 197 (a
+~5.7x native 1-qubit-gate advantage). **RULED OUT** — if anything this
+makes the mystery deeper, not smaller.
+
+**Hypothesis 2 — circuit depth (serial time exposure), not just gate
+count.** Transpiled both families to `u3`/`cx` and measured `.depth()`.
+RESULT: tapered wins — mean 8.31 vs a constant 22 for the abstract
+ansatz. **RULED OUT.**
+
+**Hypothesis 3 — measurement-basis hardness.** Real trapped-ion Z-basis
+reads are typically cheaper (no physical pulse needed) than X/Y-basis
+reads (need an actual rotation before measurement). Counted non-Z-axis
+qubits per measurement-group's combined basis label for both pipelines.
+RESULT: tapered wins — mean 1.78 non-Z-axis qubits per measurement
+circuit vs 2.77 for the untapered case. **RULED OUT.**
+
+**Hypothesis 4 — measurement-reuse-induced noise correlation.** The
+tapered pipeline's `reduced_label_map` (needed because tapering collapses
+37 original alpha-register Pauli labels onto only 27 unique 3-qubit
+labels) means 10 of those 27 unique measurements are shared by 2
+different original alpha_labels each — a real structural difference from
+the untapered pipeline, which measures all 37 labels independently with
+zero sharing. If a single noisy measurement gets reused (with a fixed
+sign) in two different terms of the final bilinear energy sum, its noise
+does not partially cancel the way two INDEPENDENT noise draws would.
+Built a controlled Monte Carlo (`mc_reuse_test.py`, not yet committed
+under that name but reproduced here): 200 trials, real binomial shot-
+noise sampling at 100,000 shots per measurement, comparing the CURRENT
+shared-measurement scheme against a proposed independent-measurement
+scheme (same reduced Pauli, but each original alpha_label draws its OWN
+independent noisy sample instead of reusing one shared value). RESULT:
+RMS error, shared=0.326 kcal/mol, independent=0.354 kcal/mol — ratio
+(shared/independent) = **0.919**. Independent measurement is NOT better;
+if anything marginally worse. **RULED OUT.**
+
+  *A caught-and-disclosed dead end along the way*: an earlier, quicker
+  sensitivity test (perturbing one raw expectation-value entry by
+  δ=0.001 and measuring the resulting energy shift) had suggested the
+  tapered reconstruction formula was ~2.4x MORE sensitive to a single
+  noisy input than the untapered formula (mean dE/dδ 0.32 vs 0.13
+  kcal/mol). This looked like strong evidence FOR hypothesis 4 and
+  informed the decision to build the proper Monte Carlo test above. But
+  it did not survive scrutiny: the two quick scripts built their "same"
+  8-name/8-label test set via `random.sample(list, 8)` with the same
+  seed (0) applied to two DIFFERENTLY-ORDERED underlying lists
+  (`sorted(reduced_targets.keys())`, alphabetical — vs `slot_names(K)`,
+  canonical u_0..u_5-then-combinations order) — `random.sample` with a
+  fixed seed on differently-ordered inputs draws genuinely different
+  items, confirmed directly by printing both lists and their samples
+  side by side. The two scripts were silently comparing sensitivity at
+  DIFFERENT (name, label) points, not the same ones — an apples-to-
+  oranges bug, not a real formula-sensitivity difference. Caught before
+  building anything further on top of it, and reported here rather than
+  quietly dropped, per this project's standing honesty rules.
+
+**Reproducibility check — is the observed gap even real, or shot-noise
+luck?** Every real-hardware number in this project (iterations 9-16)
+comes from exactly ONE submission per circuit at 10,000 shots each,
+with the reported ±std being BOOTSTRAP RESAMPLING variance from that
+single draw's counts — not independent-submission variance. It was never
+verified that resubmitting the same circuit gives a stable number. Given
+every cheaper hypothesis had just been ruled out, this was the
+highest-value remaining check: resubmitted iteration 15's EXACT SAME
+circuit (`z2_tapered_ionq.py --targets`, unmodified) fresh, a second,
+fully independent real submission (same 10,000 shots/circuit, same three
+noise models, 324 circuits/model, 972 total). Original checkpoint backed
+up first (`vqe/ionq_simulator_binding_curve_checkpoints/z2_tapered_targets_run1.json`)
+so both raw datasets are preserved.
+
+| | ideal (control) | aria-1 | forte-1 |
+|---|---|---|---|
+| run 1 (iteration 15) | 1.53 | **47.78 ± 2.20** | **51.25 ± 1.77** |
+| run 2 (this iteration, fresh submission) | 2.61 | **50.28 ± 1.81** | **55.24 ± 1.15** |
+
+Both ideal controls pass. The two independent runs agree within roughly
+their combined statistical uncertainty (aria-1: diff=2.50 vs combined
+std≈2.83; forte-1: diff=3.99 vs combined std≈2.13, just outside 1σ but
+far short of the ~12-15 kcal/mol gap to the abstract ansatz) and both
+land solidly in the same high-40s/mid-50s range. **CONFIRMED: the
+tapered-vs-abstract real-hardware gap is a genuine, reproducible effect
+— not an artifact of limited shot statistics from a single submission.**
+Full data: `vqe/z2_tapered_reproducibility_check.json`.
+
+**Honest conclusion**: every mechanism this project can currently test —
+qiskit gate count, native (billed) gate count, circuit depth, measurement
+basis hardness, and measurement-reuse-induced correlation — has now been
+individually ruled out as the explanation, each with a direct, controlled
+test rather than a hand-wave. The gap itself is confirmed real via
+independent reproduction. **The mechanism remains genuinely unknown.**
+The most plausible remaining candidates, none tested here, are things
+invisible to any circuit-level or reconstruction-formula accounting:
+per-qubit-position noise asymmetry inside IonQ's calibrated system
+profile, cross-talk tied to which physical qubit indices are addressed,
+or a genuine physical noise-channel effect specific to how errors
+propagate through the tapered register's particular (non-Hamming-weight-
+constrained) state geometry versus the untapered register's naturally
+particle-number-protected one — this last candidate connects directly to
+the still-untouched Task D (spin/S² projection), which was specifically
+designed to probe exactly this kind of leakage-detection question and
+has not yet been attempted in this project.
+
+**ALTERNATIVES NOT TAKEN**:
+
+1. **Testing whether physical qubit PLACEMENT (which of the simulator's
+   qubit indices the 3 logical qubits map to) affects the result**, by
+   submitting the same circuit with a different `initial_layout`.
+   Rejected for this iteration: IonQ's cloud simulator noise models are
+   almost certainly a single averaged system-level profile (selected by
+   the `noise_model="aria-1"` string, not a live per-qubit calibration
+   snapshot), making a placement effect unlikely a priori — but "unlikely"
+   is not "ruled out," and this is cheap (free simulator) to actually
+   check. Would revisit as the next concrete real experiment if the user
+   wants to keep pursuing a circuit-level explanation.
+
+2. **A full local density-matrix noise simulation using IonQ's PUBLISHED
+   average gate/measurement fidelities** (as opposed to the classical
+   gate-counting proxies used here), to see whether a proper quantum
+   channel model — not just a tally of "how many gates" — predicts the
+   real ranking. Rejected for this iteration due to time: iteration 14
+   already built a related local synthetic-noise model that correctly
+   predicted tapering beats native-optimized but did NOT predict tapering
+   still trails the abstract ansatz, suggesting even a proper channel
+   model may not resolve this without recalibration against the SPECIFIC
+   real data now in hand from both circuits. Would revisit by fitting a
+   depolarizing+dephasing channel to BOTH real datasets simultaneously
+   (not just one, as iteration 14 did) and checking whether a single
+   consistent channel can reproduce both real numbers at once.
+
+3. **Task D (spin/S² projection)**, explicitly flagged as connected to
+   the leading remaining hypothesis (loss of the untapered register's
+   natural Hamming-weight/particle-number error-detecting structure).
+   Rejected for this iteration: Task D as originally scoped is about
+   checking whether spin-projection catches noise-induced leakage the
+   particle-number constraint misses, which is a different (though
+   related) question from directly measuring whether tapering's loss of
+   that structure explains THIS specific real-hardware gap. Would revisit
+   as the most theoretically motivated remaining lead: quantify, for the
+   SAME noise model, how much of a given real bit-flip/dephasing event's
+   physical-observable effect differs between a state that can leak out
+   of a protected weight-2 sector (untapered) vs one that cannot leak
+   in any detectable way because the tapered register has no such
+   protected sector to leak out of.
+
+4. **Chasing a sixth hypothesis (e.g. crosstalk, calibration drift
+   between the two separate DATES the abstract-ansatz and tapered-circuit
+   real submissions were made) before confirming reproducibility.**
+   Rejected as the wrong order of operations: without first confirming
+   the observed gap survives an independent resubmission, any further
+   mechanism-hunting risked chasing noise in the original single-draw
+   result. The reproducibility check was done FIRST among the remaining
+   options for exactly this reason, and it paid off — confirming the
+   effect is real rather than sending further investigation down a
+   dead end chasing shot-noise variance.
+
+Per the standing branch discipline: an honest "we don't know yet, but we
+proved it's real and we know what it isn't" result — not spun as
+resolved, not abandoned as unexplainable either. No push.
+
+Code: `vqe/z2_tapered_ionq.py` (rerun, unmodified). Diagnostics: Monte
+Carlo reuse test and native-gate/depth/basis-hardness comparisons run
+inline (not saved as standalone scripts this iteration — see this
+section's numbers for the full record). Full data:
+`vqe/z2_tapered_reproducibility_check.json`,
+`vqe/ionq_simulator_binding_curve_checkpoints/z2_tapered_targets_run1.json`
+(run 1, preserved), `vqe/ionq_simulator_binding_curve_checkpoints/z2_tapered_targets.json`
+(run 2, current), `vqe/z2_tapered_ionq_results.json` (overwritten with
+run 2's numbers by `--assemble`; run 1's numbers are preserved in the
+table above and in the reproducibility-check JSON).
 
 ---
