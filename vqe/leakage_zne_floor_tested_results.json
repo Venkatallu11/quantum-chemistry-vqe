@@ -1,0 +1,395 @@
+{
+  "K": 6,
+  "shots": 100000,
+  "n_seeds": 8,
+  "scale_ranges": [
+    [
+      1,
+      2,
+      3
+    ],
+    [
+      1,
+      2,
+      3,
+      4
+    ],
+    [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ]
+  ],
+  "p2_per_gate": 0.01214,
+  "p1_per_gate": 0.0003035,
+  "raw": {
+    "summary": {
+      "1,2,3|order1": {
+        "mean_kcal": 22.111399394210384,
+        "std_kcal": 1.9583303574287931
+      },
+      "1,2,3|order2": {
+        "mean_kcal": 5.821814666830581,
+        "std_kcal": 3.080402921268842
+      },
+      "1,2,3,4|order1": {
+        "mean_kcal": 31.16365924865213,
+        "std_kcal": 1.2818230571989837
+      },
+      "1,2,3,4|order2": {
+        "mean_kcal": 4.385623141872927,
+        "std_kcal": 2.47690710783213
+      },
+      "1,2,3,4|order3": {
+        "mean_kcal": 10.485575102028054,
+        "std_kcal": 5.760518318731601
+      },
+      "1,2,3,4,5|order1": {
+        "mean_kcal": 41.02558305916806,
+        "std_kcal": 1.2419930561955925
+      },
+      "1,2,3,4,5|order2": {
+        "mean_kcal": 5.39190090536386,
+        "std_kcal": 2.6995690235604246
+      },
+      "1,2,3,4,5|order3": {
+        "mean_kcal": 4.693712929859879,
+        "std_kcal": 3.6538202899490853
+      },
+      "1,2,3,4,5|order4": {
+        "mean_kcal": 19.577208568549253,
+        "std_kcal": 13.594172622941864
+      },
+      "1,2,3,4,5,6|order1": {
+        "mean_kcal": 52.222779996391,
+        "std_kcal": 1.1861564968206535
+      },
+      "1,2,3,4,5,6|order2": {
+        "mean_kcal": 6.382606593728994,
+        "std_kcal": 2.23973084582907
+      },
+      "1,2,3,4,5,6|order3": {
+        "mean_kcal": 4.173571948524087,
+        "std_kcal": 3.1487242493224823
+      },
+      "1,2,3,4,5,6|order4": {
+        "mean_kcal": 8.262871684604569,
+        "std_kcal": 5.041939675977597
+      },
+      "1,2,3,4,5,6|order5": {
+        "mean_kcal": 36.14546100842901,
+        "std_kcal": 32.11364704139346
+      },
+      "1,2,3,4,5,6,7|order1": {
+        "mean_kcal": 63.57690635841044,
+        "std_kcal": 1.2151499379259052
+      },
+      "1,2,3,4,5,6,7|order2": {
+        "mean_kcal": 8.997205651841284,
+        "std_kcal": 1.4605487267973083
+      },
+      "1,2,3,4,5,6,7|order3": {
+        "mean_kcal": 3.985850592035229,
+        "std_kcal": 2.5697496236566657
+      },
+      "1,2,3,4,5,6,7|order4": {
+        "mean_kcal": 6.841523961043011,
+        "std_kcal": 4.05463830165292
+      },
+      "1,2,3,4,5,6,7|order5": {
+        "mean_kcal": 15.677705547750957,
+        "std_kcal": 7.332715914470705
+      },
+      "1,2,3,4,5,6,7|order6": {
+        "mean_kcal": 70.17452030498063,
+        "std_kcal": 65.17649592373746
+      }
+    },
+    "floor_test_range_at_order1": {
+      "param_values": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "errors": [
+        22.111399394210384,
+        31.16365924865213,
+        41.02558305916806,
+        52.222779996391,
+        63.57690635841044
+      ],
+      "overall_ratio": 2.87529998553856,
+      "step_ratios": [
+        1.4093933492428334,
+        1.3164558992199376,
+        1.2729320609794643,
+        1.2174171187900014
+      ],
+      "tail_ratio": 1.2729320609794643,
+      "still_falling_at_most_aggressive_point": false,
+      "tail_is_monotonic": true,
+      "has_floor": false,
+      "disqualified": true,
+      "verdict": "DISQUALIFIED -- the tail ([41.026, 52.223, 63.577]) is strictly increasing across all 3 most-aggressive points; small step-ratios alone (consecutive-ratio -> 1 as values grow/shrink roughly additively) do NOT make this a plateau -- it is still drifting, just slowly. See RESEARCH_LEDGER.md iteration 13 for the case that motivated this check."
+    },
+    "floor_test_order_at_widest_range": {
+      "param_values": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "errors": [
+        63.57690635841044,
+        8.997205651841284,
+        3.985850592035229,
+        6.841523961043011,
+        15.677705547750957,
+        70.17452030498063
+      ],
+      "overall_ratio": 17.60590837127906,
+      "step_ratios": [
+        7.066294671768382,
+        2.257286228896801,
+        1.716452687592998,
+        2.2915516538453873,
+        4.476070818605693
+      ],
+      "tail_ratio": 4.476070818605693,
+      "still_falling_at_most_aggressive_point": false,
+      "tail_is_monotonic": true,
+      "has_floor": false,
+      "disqualified": true,
+      "verdict": "DISQUALIFIED -- error falls with no plateau across the full sweep (17.6x overall; the last 2 consecutive step-ratios are [2.29, 4.48], not all below 1.5x). This is the signature of interpolating toward a classically-known answer, not measuring real device noise -- see RESEARCH_LEDGER.md iteration 2."
+    },
+    "floor_test_range_at_order2": {
+      "param_values": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "errors": [
+        5.821814666830581,
+        4.385623141872927,
+        5.39190090536386,
+        6.382606593728994,
+        8.997205651841284
+      ],
+      "overall_ratio": 2.051522750766709,
+      "step_ratios": [
+        1.3274771859089365,
+        1.2294492095965164,
+        1.1837395949505638,
+        1.4096444015022285
+      ],
+      "tail_ratio": 1.4096444015022285,
+      "still_falling_at_most_aggressive_point": false,
+      "tail_is_monotonic": true,
+      "has_floor": false,
+      "disqualified": true,
+      "verdict": "DISQUALIFIED -- the tail ([5.392, 6.383, 8.997]) is strictly increasing across all 3 most-aggressive points; small step-ratios alone (consecutive-ratio -> 1 as values grow/shrink roughly additively) do NOT make this a plateau -- it is still drifting, just slowly. See RESEARCH_LEDGER.md iteration 13 for the case that motivated this check."
+    },
+    "any_plateau_found": false
+  },
+  "post_selected": {
+    "summary": {
+      "1,2,3|order1": {
+        "mean_kcal": 8.968405483501316,
+        "std_kcal": 1.1994598324091608
+      },
+      "1,2,3|order2": {
+        "mean_kcal": 3.7006177672890757,
+        "std_kcal": 2.9443142788756096
+      },
+      "1,2,3,4|order1": {
+        "mean_kcal": 12.185036337255099,
+        "std_kcal": 0.62289079915468
+      },
+      "1,2,3,4|order2": {
+        "mean_kcal": 2.6679019043439007,
+        "std_kcal": 1.3595071594255013
+      },
+      "1,2,3,4|order3": {
+        "mean_kcal": 7.23688197368098,
+        "std_kcal": 7.057121708076455
+      },
+      "1,2,3,4,5|order1": {
+        "mean_kcal": 14.949530845401389,
+        "std_kcal": 0.946397462509945
+      },
+      "1,2,3,4,5|order2": {
+        "mean_kcal": 4.089760117088536,
+        "std_kcal": 1.7365795926652199
+      },
+      "1,2,3,4,5|order3": {
+        "mean_kcal": 2.0204034799961814,
+        "std_kcal": 1.9722519512351837
+      },
+      "1,2,3,4,5|order4": {
+        "mean_kcal": 15.465727895024248,
+        "std_kcal": 15.483741077512406
+      },
+      "1,2,3,4,5,6|order1": {
+        "mean_kcal": 16.88710428419146,
+        "std_kcal": 0.9729501699629263
+      },
+      "1,2,3,4,5,6|order2": {
+        "mean_kcal": 6.613285323059062,
+        "std_kcal": 1.0418154738198746
+      },
+      "1,2,3,4,5,6|order3": {
+        "mean_kcal": 3.06917591318763,
+        "std_kcal": 2.8600124791253503
+      },
+      "1,2,3,4,5,6|order4": {
+        "mean_kcal": 4.8806238350272855,
+        "std_kcal": 4.1135135540063095
+      },
+      "1,2,3,4,5,6|order5": {
+        "mean_kcal": 31.926864091241487,
+        "std_kcal": 32.08812709260945
+      },
+      "1,2,3,4,5,6,7|order1": {
+        "mean_kcal": 18.028905241699974,
+        "std_kcal": 0.9388704651741236
+      },
+      "1,2,3,4,5,6,7|order2": {
+        "mean_kcal": 9.303649155852812,
+        "std_kcal": 1.3628545989645482
+      },
+      "1,2,3,4,5,6,7|order3": {
+        "mean_kcal": 1.5273352336943362,
+        "std_kcal": 1.6910986668943384
+      },
+      "1,2,3,4,5,6,7|order4": {
+        "mean_kcal": 5.029300087579617,
+        "std_kcal": 4.965892610765268
+      },
+      "1,2,3,4,5,6,7|order5": {
+        "mean_kcal": 13.410082068608201,
+        "std_kcal": 13.712185689125262
+      },
+      "1,2,3,4,5,6,7|order6": {
+        "mean_kcal": 65.26158074352394,
+        "std_kcal": 63.36152903175328
+      }
+    },
+    "floor_test_range_at_order1": {
+      "param_values": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "errors": [
+        8.968405483501316,
+        12.185036337255099,
+        14.949530845401389,
+        16.88710428419146,
+        18.028905241699974
+      ],
+      "overall_ratio": 2.010268745638984,
+      "step_ratios": [
+        1.3586625136063755,
+        1.2268761808854025,
+        1.1296076417933933,
+        1.0676137802131884
+      ],
+      "tail_ratio": 1.1296076417933933,
+      "still_falling_at_most_aggressive_point": false,
+      "tail_is_monotonic": true,
+      "has_floor": false,
+      "disqualified": true,
+      "verdict": "DISQUALIFIED -- the tail ([14.95, 16.887, 18.029]) is strictly increasing across all 3 most-aggressive points; small step-ratios alone (consecutive-ratio -> 1 as values grow/shrink roughly additively) do NOT make this a plateau -- it is still drifting, just slowly. See RESEARCH_LEDGER.md iteration 13 for the case that motivated this check."
+    },
+    "floor_test_order_at_widest_range": {
+      "param_values": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "errors": [
+        18.028905241699974,
+        9.303649155852812,
+        1.5273352336943362,
+        5.029300087579617,
+        13.410082068608201,
+        65.26158074352394
+      ],
+      "overall_ratio": 42.7290481511832,
+      "step_ratios": [
+        1.9378315905601633,
+        6.091425739815507,
+        3.2928593386893117,
+        2.6663913139177757,
+        4.866605618790018
+      ],
+      "tail_ratio": 4.866605618790018,
+      "still_falling_at_most_aggressive_point": false,
+      "tail_is_monotonic": true,
+      "has_floor": false,
+      "disqualified": true,
+      "verdict": "DISQUALIFIED -- error falls with no plateau across the full sweep (42.7x overall; the last 2 consecutive step-ratios are [2.67, 4.87], not all below 1.5x). This is the signature of interpolating toward a classically-known answer, not measuring real device noise -- see RESEARCH_LEDGER.md iteration 2."
+    },
+    "floor_test_range_at_order2": {
+      "param_values": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "errors": [
+        3.7006177672890757,
+        2.6679019043439007,
+        4.089760117088536,
+        6.613285323059062,
+        9.303649155852812
+      ],
+      "overall_ratio": 3.4872530885429223,
+      "step_ratios": [
+        1.3870891434440291,
+        1.532949959827816,
+        1.6170350176349708,
+        1.406812000597199
+      ],
+      "tail_ratio": 1.6170350176349708,
+      "still_falling_at_most_aggressive_point": false,
+      "tail_is_monotonic": true,
+      "has_floor": false,
+      "disqualified": true,
+      "verdict": "DISQUALIFIED -- error falls with no plateau across the full sweep (3.5x overall; the last 2 consecutive step-ratios are [1.62, 1.41], not all below 1.5x). This is the signature of interpolating toward a classically-known answer, not measuring real device noise -- see RESEARCH_LEDGER.md iteration 2."
+    },
+    "any_plateau_found": false
+  },
+  "chemical_accuracy_kcal": 1.0
+}

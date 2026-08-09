@@ -1,5 +1,26 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 19, LOCAL BRANCH `local/attack-base-problem`,
+NOT pushed): does removing real, hardware-confirmed particle-number
+leakage (iteration 18) BEFORE fitting ZNE unlock the plateau raw ZNE has
+never found (iterations 13, 14)? Tested via a local synthetic-noise
+sweep reusing the exact same rigorous 3-direction floor test methodology
+this project has used since iteration 13, applied to BOTH a raw and a
+leakage-post-selected scheme built on iteration 18's verified-exact
+ancilla circuit. Result: **NO PLATEAU for either scheme** — leakage
+removal does NOT rescue ZNE. Every one of the 6 floor tests (3
+directions × 2 schemes) is disqualified, each for the same reason
+iteration 13 established: the extrapolated error keeps drifting as the
+scale range or fit order grows, not settling. A genuine, useful side-
+finding survives, though: leakage post-selection roughly HALVES the
+exact (zero-shot-noise) error at EVERY individual noise scale tested
+(scale=1: 122.9→57.5 kcal/mol; scale=7: 625.8→475.5 kcal/mol) — this
+confirms iteration 18's real-hardware benefit is a general, scale-
+independent property of the technique, not a fluke of one real
+submission, even though it does not fix ZNE's separate, still-
+unexplained convergence problem. See iteration 19 below for the full
+write-up and ALTERNATIVES NOT TAKEN.
+
 **STATUS UPDATE (iteration 18, LOCAL BRANCH `local/attack-base-problem`,
 NOT pushed): Task D (spin/particle-number leakage projection), completed
 and it WORKS — real, on real IonQ hardware. Direct analysis of iteration
@@ -2937,5 +2958,182 @@ Full data: `vqe/spin_leakage_postselect_ionq_results.json`,
 `vqe/ionq_simulator_binding_curve_checkpoints/spin_leakage_targets.json`.
 
 ---
+
+## Iteration 19: does leakage removal fix ZNE or CDR? No to both — but the search was rigorous, and it clarifies what's actually going on
+
+**Why this iteration**: the user asked directly to synthesize everything
+learned across 18 iterations and try something genuinely new,
+mathematically motivated, aimed at finally reaching chemical accuracy
+(1 kcal/mol). Two concrete, well-motivated hypotheses followed directly
+from iteration 18's finding that real leakage (~7-8% of shots landing
+outside the physical weight-2 sector) is a real, previously-uncounted
+noise source: (1) does removing it before fitting ZNE unlock the
+plateau raw ZNE has never found (iterations 13, 14)? (2) does removing
+it before fitting CDR rescue CDR, which made things 2.1-2.6x WORSE on
+real IonQ hardware (iteration 9)?
+
+**Test 1 — leakage + ZNE (`leakage_zne_floor_tested.py`).** Built a local
+synthetic-noise sweep combining iteration 18's verified-exact ancilla
+circuit with the SAME depolarizing-scaling noise-scale model and the
+SAME mandatory 3-direction floor test this project has used since
+iteration 13 (range@order1, order@widest-range, range@order2), applied
+separately to a RAW and a POST-SELECTED scheme, at scales 1-7, 8 seeds,
+proper joint multinomial shot sampling (a genuine methodological
+upgrade over the project's existing per-label-independent `shot_sample`
+shortcut, required because post-selection needs the ancilla outcome and
+the Pauli outcome correlated within the SAME shot, not sampled
+independently).
+
+Exact (zero-shot-noise) result at every scale:
+
+| scale | RAW (kcal/mol) | POST-SELECTED (kcal/mol) |
+|---|---|---|
+| 1 | 122.9 | 57.5 |
+| 2 | 231.9 | 121.1 |
+| 3 | 329.0 | 189.3 |
+| 4 | 415.7 | 260.5 |
+| 5 | 493.4 | 333.0 |
+| 6 | 563.2 | 405.1 |
+| 7 | 625.8 | 475.5 |
+
+Leakage post-selection roughly HALVES the error at every single scale —
+a clean, general confirmation that iteration 18's real-hardware benefit
+isn't a one-off. But the SHAPE of both curves is the problem, not the
+level: both climb steadily and near-linearly with scale, with no sign of
+flattening. The 8-seed shot-noisy floor test confirms this formally —
+**all 6 floor tests (3 directions × {raw, post-selected}) are
+DISQUALIFIED**, each for the same "still drifting, not plateaued" reason
+iteration 13 first documented. **Leakage removal does NOT fix ZNE's
+convergence problem.**
+
+**Test 2 — leakage + CDR (`leakage_cdr_combined.py`).** Same local
+noise model (scale=1 only, no ZNE), CDR's own established recipe
+(`cdr_mitigation.py`: per-label/per-slot weighted-least-squares-through-
+origin scale correction, `N_TRAIN_PER_SLOT=5` random-angle training
+circuits with classically-exact known values), applied on the
+ancilla-augmented circuit with and without leakage post-selection on
+BOTH the training data and the target measurements, 8 seeds:
+
+| scheme | mean (kcal/mol) | std |
+|---|---|---|
+| raw | 122.95 | 1.00 |
+| CDR only | 3.39 | 1.16 |
+| leakage only | 57.40 | 0.91 |
+| CDR + leakage | 4.65 | 0.98 |
+
+CDR alone looks excellent on this LOCAL model — 3.39 kcal/mol, at
+chemical accuracy. Adding leakage removal does NOT improve it further
+(4.65 vs 3.39, if anything marginally worse within noise). **This
+refutes the hypothesis**: if leakage contamination were a meaningful
+part of what breaks CDR, removing it should have helped CDR's fit, not
+left it unchanged or slightly worse. It doesn't — CDR's local success
+and its real-hardware failure both have a different, unchanged
+explanation.
+
+**The correct reading of CDR's 3.39 kcal/mol number**: this is NOT a new
+achievement of chemical accuracy. This project already knows, from real
+hardware (iteration 9), that this exact CDR recipe — applied to a
+circuit that looks identical in every way that matters to THIS local
+model — produces 2.1-2.6x WORSE error than raw on real IonQ noise (raw
+was 34.98/43.03 there, so CDR was roughly 73-112 kcal/mol for real). The
+3.39 kcal/mol number is a restatement of something this project has
+already established: the LOCAL depolarizing-scaling noise model is a
+close enough fit to itself that CDR's linear-correction premise works
+almost perfectly against it, but that premise does not survive contact
+with real IonQ noise (coherent errors, crosstalk, drift — whatever the
+real gap is, it is NOT primarily leakage, per this iteration's finding).
+Reporting the 3.39 kcal/mol number without this context would be
+actively misleading; reported here with it.
+
+**Decision: no new real-hardware submission this iteration.** Given (a)
+CDR alone is already known, from real data, to catastrophically fail on
+this hardware, and (b) this iteration's own local test shows leakage
+removal does not change CDR's behavior in the direction that would
+justify hoping for a different real-hardware outcome this time, spending
+a real submission on CDR+leakage is not supported by the evidence in
+hand. This mirrors iteration 14's own discipline (ZNE+tapering: math
+done, found wanting, no real submission) and iteration 4's original one
+(don't submit for real unless the math passes).
+
+**Where this leaves the project's best real number**: unchanged at
+iteration 18's **31.77 kcal/mol (aria-1) / 33.86 kcal/mol (forte-1)**,
+raw leakage-postselected, real hardware, no extrapolation risk. Chemical
+accuracy (1 kcal/mol) has NOT been reached. The honest picture after 19
+iterations: ZNE has now failed its own plateau requirement 4 independent
+times (raw untapered, tapered, leakage-postselected untapered, and — via
+the exponential/order sweeps — every fit variant tried within each); CDR
+and PEC both actively hurt on real hardware; leakage post-selection is
+the ONE technique in this entire project that is both physically
+motivated AND validated to help on real hardware, not just locally. The
+~32-34 kcal/mol residual after leakage removal is consistent with an
+irreducible floor set by this circuit's real 2-qubit gate count (11,
+soon 15 with the ancilla) at IonQ's real per-gate error rate (~1.2%) —
+not something any extrapolation or regression-based correction tested in
+this project has been able to lift without either failing to converge
+(ZNE) or failing to generalize from the idealized model that makes it
+look good (CDR, PEC).
+
+**ALTERNATIVES NOT TAKEN**:
+
+1. **Real gate-folding ZNE on actual IonQ hardware, rather than this
+   project's local depolarizing-rate-scaling proxy for "noise scale."**
+   Every ZNE test in this project's history (iterations 11, 13, 14, this
+   one) uses the SAME simplified local model: scaling the per-gate error
+   RATE directly, not physically folding gates (G → G G† G) and
+   submitting the longer circuit for real. These are similar but not
+   identical for a real device, and it remains formally possible that
+   REAL folded circuits behave better than this proxy predicts. Rejected
+   for this iteration due to cost and a weak prior: iteration 12's real
+   ZNE-linear result (~30 kcal/mol) was ALREADY shown (iteration 13) to
+   fail its own floor test on real data once the range was extended, so
+   there is direct real-hardware evidence, not just the local proxy,
+   that this project's actual ZNE submissions don't converge either.
+   Would revisit only with a specific, different folding recipe not yet
+   tried (e.g. random/mixed folding rather than uniform integer scales).
+
+2. **A full weight-exactly-2 detector (2+ ancillas, catching even-weight
+   leakage too) instead of the single-ancilla parity check.** Rejected:
+   estimated impact is small — even-weight leakage (0 or 4 particles)
+   requires 2 correlated bit-flips, roughly quadratically rarer than the
+   single-flip (odd-weight, ~7-8%) events already caught, unlikely to
+   close a 30x gap to chemical accuracy on its own. Would revisit if a
+   cheaper, single-extra-ancilla design is found that also catches
+   weight-2-but-wrong-configuration coherent errors, which NO Hamming-
+   weight-based check (parity or full) can detect in principle.
+
+3. **Testing CDR + leakage removal at multiple noise scales (building
+   toward a combined CDR+ZNE+leakage triple-stack), rather than stopping
+   after the single-scale CDR result already refuted the core
+   hypothesis.** Rejected: once leakage removal was shown not to change
+   CDR's qualitative behavior at scale=1, extending to more scales would
+   only re-confirm the same negative finding at higher cost, not add new
+   information — the mechanism question (does leakage explain CDR's
+   real-hardware gap?) was already answered. Would revisit only if a
+   DIFFERENT, real reason emerges to suspect CDR's real-hardware failure
+   mode is scale-dependent in a way this single-scale test couldn't see.
+
+4. **Running the locally-excellent CDR+leakage combination for real on
+   IonQ anyway, on the logic that "it's free, why not check."** Rejected
+   deliberately, not out of laziness: this project's own repeated,
+   hard-won lesson (iterations 9, 11, 12, and now reconfirmed here) is
+   that a technique looking good on the local synthetic model is weak
+   evidence at best for real-hardware performance, and CDR specifically
+   already has a DIRECT real-hardware data point (iteration 9) showing
+   catastrophic failure under conditions this iteration's own test says
+   leakage-removal wouldn't have fixed. Submitting anyway would be
+   spending real submissions against the evidence already in hand, not
+   because of it — exactly the discipline this project's standing rules
+   (floor-test everything, don't submit unless the math passes) exist to
+   prevent.
+
+Per the standing branch discipline: two more honest negatives, reported
+with exactly as much rigor as the positives — the project's best real
+number stands at 31.77/33.86 kcal/mol, still well short of chemical
+accuracy, with a clear, evidence-based account of why each tested path
+there has failed. No push.
+
+Code: `vqe/leakage_zne_floor_tested.py`, `vqe/leakage_cdr_combined.py`.
+Full data: `vqe/leakage_zne_floor_tested_results.json`,
+`vqe/leakage_cdr_combined_results.json`.
 
 ---

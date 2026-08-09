@@ -1,0 +1,25 @@
+{
+  "K": 6,
+  "shots": 100000,
+  "n_seeds": 8,
+  "n_train_per_slot": 5,
+  "summary": {
+    "raw": {
+      "mean_kcal": 122.95340801942969,
+      "std_kcal": 0.9997868347952972
+    },
+    "cdr_only": {
+      "mean_kcal": 3.3879394461983288,
+      "std_kcal": 1.1549681287971842
+    },
+    "leakage_only": {
+      "mean_kcal": 57.40412790894548,
+      "std_kcal": 0.9126667149343071
+    },
+    "cdr_plus_leakage": {
+      "mean_kcal": 4.651058949462997,
+      "std_kcal": 0.9793894665544117
+    }
+  },
+  "chemical_accuracy_kcal": 1.0
+}
