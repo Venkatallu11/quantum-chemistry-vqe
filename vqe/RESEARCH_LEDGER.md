@@ -58,8 +58,25 @@ calibration data is rank-17 (of 36), leaving the fit underdetermined, and
 the solver was landing on an arbitrary, energy-favorable configuration
 that happened to look good on real noisy data purely by coincidence, not
 physics. **DISQUALIFIED, both models, built into the script as a
-mandatory gate so it can never be silently missed again.** See iteration
-23 below for the full write-up of all three phases.
+mandatory gate so it can never be silently missed again.**
+
+**Phase 4 (residual ZNE): still no plateau.** Applied the project's
+established, unmodified 3-direction floor test to whatever error remains
+after Phase 1's full reconstruction and Phase 2's selective hybrid.
+Exact-scale sanity check passed (scale=1 RAW=103.995 kcal/mol, matching
+iteration 13's own independent number). But across all three schemes
+(raw, Phase 1, Phase 2) and all three sweep directions, every single
+combination was DISQUALIFIED — either the tail keeps drifting or the
+step-ratios never fall under the 1.5x plateau bar. **ANY PLATEAU: False,
+for all three schemes.** Per the explicit instruction, no ZNE-
+extrapolated number is reported for any of them. Physics-constrained
+reconstruction lowers the error at every fixed noise scale but does not
+change the SHAPE of the error-vs-scale curve — whatever breaks ZNE's
+plateau in this noise model is orthogonal to what Phases 1-3 target.
+Best surviving number from the whole iteration remains **Phase 2's
+selective hybrid, ~28.2/32.5 kcal/mol** (local noise model, not yet run
+for real). See iteration 23 below for the full write-up of all four
+phases.
 
 **STATUS UPDATE (iteration 22, LOCAL BRANCH `local/attack-base-problem`,
 NOT pushed): does Randomized Compiling (Pauli twirling) unlock a genuine
@@ -4385,5 +4402,173 @@ full detail rather than quietly discarded. No push.
 
 Code: `vqe/phase3_constrained_channel_inversion.py`. Full data:
 `vqe/phase3_channel_inversion_results.json`.
+
+---
+
+## Phase 4 (continuing iteration 23 at the user's explicit direction): residual ZNE — still no plateau, for any of the three schemes
+
+**The question**: after Phase 1 (full physics-constrained reconstruction)
+and Phase 2 (selective hybrid) each remove part of the error, does
+whatever error REMAINS finally show the kind of smooth, monotone,
+extrapolable-to-zero-noise behavior that raw ZNE has now failed to show
+four separate times in this project (iterations 11, 13, 14, 19)? Reused
+`zne_floor_tested.py`'s exact machinery unmodified — the same local
+depolarizing `build_noise_model(scale)`, the same 5 nested
+`SCALE_RANGES`, the same `qforge.floor_test` 3-direction check
+(range@order1, order@widest-range, range@order2), the same
+DISQUALIFIED-on-drift / DISQUALIFIED-on-no-plateau logic that caught the
+false "plateau" in iteration 13. No new fitting function was invented,
+per the explicit instruction not to.
+
+**Exact-scale sanity check first (no shot noise, full population, a pure
+consistency check before trusting anything noisy)**:
+
+| scale | RAW | Phase 1 | Phase 2-hybrid |
+|---|---|---|---|
+| 1 | 103.995 | 88.066 | 93.359 |
+| 2 | 198.530 | 167.321 | 177.518 |
+| 3 | 284.627 | 238.898 | 253.619 |
+| 4 | 363.160 | 303.672 | 322.561 |
+| 5 | 434.876 | 362.404 | 385.130 |
+| 6 | 500.422 | 415.744 | 441.999 |
+| 7 | 560.360 | 464.250 | 493.751 |
+
+(kcal/mol.) Scale=1 RAW=103.995 matches iteration 13's own independently
+-obtained local-model result of ~104.0 almost exactly — the standard
+consistency check this project runs before trusting a new pipeline
+against a known number, and it passed. Phase 1 and Phase 2-hybrid both
+sit below RAW at every scale, consistent with Phases 1/2's already-
+established real benefit — reassuring, not yet informative about ZNE.
+
+**8-seed shot-noisy floor test, all three schemes, all three sweep
+directions — every single one DISQUALIFIED**:
+
+- **raw**: range@order1 DISQUALIFIED (tail [30.038, 37.983, 46.673]
+  strictly increasing — still drifting, not settling). order@widest-range
+  DISQUALIFIED (28.4x total fall, last two step-ratios [2.42, 5.88], not
+  under the 1.5x plateau bar). range@order2 DISQUALIFIED (tail [3.943,
+  5.072, 6.141] strictly increasing). **ANY PLATEAU: False.**
+- **phase1**: range@order1 DISQUALIFIED (tail [27.096, 34.405, 42.027]
+  strictly increasing). order@widest-range DISQUALIFIED (35.9x total
+  fall, last two step-ratios [2.16, 5.76]). range@order2 DISQUALIFIED
+  (3.4x total fall, last two step-ratios [1.25, 1.34], still just above
+  the bar). **ANY PLATEAU: False.**
+- **phase2**: range@order1 DISQUALIFIED (tail [28.468, 36.074, 44.134]
+  strictly increasing). order@widest-range DISQUALIFIED (35.4x total
+  fall, last two step-ratios [2.5, 5.88]). range@order2 DISQUALIFIED
+  (3.3x total fall, last two step-ratios [1.26, 1.29]). **ANY PLATEAU:
+  False.**
+
+Sweep timings: raw 1.0s (cached from the exact baseline, no SDP needed),
+phase1 473.0s, phase2 510.3s — the `energy_cache` fix (compute each
+unique (seed, scale) energy once, reuse across all 5 nested
+`SCALE_RANGES`) brought this down from an estimated ~54 minutes to
+~16 minutes total, verified to produce identical numbers to the
+unoptimized version on the smoke-test scale (88.066 both ways).
+
+**OVERALL VERDICT: no plateau under ANY scheme.** Per the explicit
+instruction ("if no plateau, report no ZNE number at all — do not fit
+anyway"), **no ZNE-extrapolated energy is reported for raw, Phase 1, or
+Phase 2** — not even a "best effort" number. Phases 1 and 2 lower the
+error at every fixed scale (consistent with their own independent
+results above), but they do not change ZNE's fundamental problem: the
+error-vs-scale curve in this noise model does not have the smooth,
+saturating shape ZNE extrapolation requires, regardless of which
+mitigation scheme sits underneath it. Removing dominant-term error
+(Phase 2) or full physicality-constrained error (Phase 1) shifts the
+curve down but does not change its SHAPE — direct evidence that
+whatever breaks ZNE's plateau in this noise model is orthogonal to the
+kind of error Phases 1-3 target.
+
+**ALTERNATIVES NOT TAKEN**:
+
+1. **Fitting a higher-order or different extrapolation functional
+   (quadratic, Richardson, exponential-saturating) to see if a plateau
+   appears under a different fit family.** Rejected outright per the
+   user's own explicit instruction not to invent another fitting
+   function — this project already tested multiple functional forms in
+   iteration 13 and found the problem is the underlying curve SHAPE, not
+   the fit family. Re-litigating that with Phases 1/2's residual error
+   would be repeating a closed investigation. Would revisit only if a
+   structurally different noise source (not depolarizing-only) were
+   introduced, changing the shape question itself.
+
+2. **Running Phase 4 against the REAL IonQ noise model (via calibrate.json
+   or a live submission) instead of the local synthetic depolarizing
+   model**, to check whether the no-plateau result is specific to this
+   project's local noise model rather than a general property. Rejected
+   for this iteration: the task was explicitly scoped to "simulator +
+   existing data only, the $3,000 stays unspent," and the local
+   depolarizing model is the same one iterations 13/14/19/22 already used
+   for their own floor tests — using it here keeps Phase 4 comparable to
+   that established baseline rather than introducing a new confound.
+   Would revisit if the user authorizes spending real QPU budget
+   specifically to test ZNE plateau behavior under real hardware noise
+   (as opposed to a local model of it).
+
+3. **Applying ZNE only to the 9 head-labels' underlying Pauli
+   expectation values individually (per-label ZNE), rather than to the
+   final scalar energy after Phase 2's reconstruction.** This would test
+   whether individual matrix elements plateau even when the aggregate
+   energy doesn't — a finer-grained question than what was asked.
+   Rejected as out of scope for this task's four explicitly-specified
+   phases (Phase 4 was defined as "ZNE on residual error," meaning the
+   post-Phase-1/2 energy, not a new fifth investigation into per-label
+   behavior) and because iteration 13 already established at the
+   Pauli-label level that no plateau exists there either. Would revisit
+   as a distinct, separately-scoped investigation if the user wants to
+   know whether SOME labels plateau even though the aggregate doesn't.
+
+Code: `vqe/phase4_residual_zne.py`. Full data:
+`vqe/phase4_residual_zne_results.json`.
+
+---
+
+## Iteration 23 final synthesis: physics-constrained reconstruction, all four phases
+
+Four phases, one continuous investigation, tested honestly end to end:
+
+- **Phase 1** (full SDP reconstruction, free, existing data): real but
+  insufficient per its own pre-committed rule (1.20x/1.31x vs a 2x/3x
+  bar) → ABANDON, then continued past that ABANDON at the user's
+  explicit, documented override.
+- **Phase 2** (selective hybrid on the dominant 9/36 labels): a genuine,
+  striking, well-verified positive result — recovers essentially all of
+  Phase 1's benefit at 25% of the label cost (aria-1 28.24 vs 28.69;
+  forte-1 32.52 vs 31.73 kcal/mol).
+- **Phase 3** (learned channel inversion): the standout finding of this
+  entire iteration — a spectacular-looking 1.40/2.13 kcal/mol result
+  caught and PROVEN to be a non-generalizing artifact via the mandatory
+  ideal-data distortion test (92.54/48.99 kcal/mol of damage on clean
+  data), before it could become this project's next false headline.
+  DISQUALIFIED, both models, with the gate now built permanently into
+  the script.
+- **Phase 4** (ZNE on whatever error remains after Phases 1-3): no
+  plateau under any of the three schemes tested (raw, Phase 1, Phase 2),
+  across all three sweep directions — consistent with iterations 11, 13,
+  14, and 19's independent findings that this noise model's error-vs-
+  scale curve does not have the shape ZNE extrapolation needs, and new
+  evidence that this is orthogonal to (not fixed by) physics-constrained
+  reconstruction.
+
+**Best surviving number from this entire iteration: Phase 2's selective
+hybrid, aria-1 ≈28.2 kcal/mol / forte-1 ≈32.5 kcal/mol** on the local
+depolarizing noise model used throughout iteration 23 — real, floor-
+tested in the sense of surviving an 8-seed bootstrap, but not yet run
+for real on IonQ hardware, and not a clear win over iteration 18's own
+best REAL-hardware result (leakage post-selection, 31.77/33.86 kcal/mol)
+since the two numbers come from different noise models (local synthetic
+vs actual QPU) and are not directly comparable without a real submission.
+Also flagged and left unresolved: `qpu.forte-1`'s current real 2-qubit
+fidelity (99.52%, queried live from IonQ's calibration API) is
+meaningfully better than this project's long-used local calibration
+constant (98.786%) — every local-model number in this iteration,
+including Phase 4's, is therefore a conservative (pessimistic) estimate
+relative to forte-1's actual current hardware.
+
+Everything in this iteration remains LOCAL ONLY on `local/attack-base-
+problem`, not pushed, per explicit standing instruction — nothing here
+has survived a floor test strongly enough on its own to justify spending
+real QPU budget or pushing to origin.
 
 ---
