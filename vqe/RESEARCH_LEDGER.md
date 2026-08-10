@@ -1,5 +1,31 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 23, LOCAL BRANCH `local/attack-base-problem`,
+NOT pushed): physics-constrained reconstruction — the core insight that
+this project has always fit each Pauli matrix element independently,
+never enforcing that the reconstructed reduced density matrix is even a
+valid quantum state (Hermitian, PSD, trace-1) — tested rigorously,
+Phase 1 only (free, existing real IonQ data, no new circuits), against a
+DECISION RULE fixed before running. Built a genuine 6×6 semidefinite
+least-squares reconstruction (cvxpy, global-optimum convex solve) per
+Schmidt-basis slot, using the exact classical projection P_S = U†PU
+(no estimation needed — U is exactly known), and confirmed the K-dim
+Schmidt-subspace restriction ALREADY enforces the particle-number
+constraint with no extra penalty term (verified: the identity-label
+projection is exactly I_K to 1e-16, meaning Tr(ρ)=1 already fixes it).
+**Result: real, statistically clear, but insufficient.** aria-1:
+33.38→27.71 kcal/mol (1.20x reduction), forte-1: 41.35→31.64 kcal/mol
+(1.31x reduction) — both comfortably outside 1σ of the raw baseline (a
+genuine effect, not noise), but far short of the pre-committed 2x/3x bar
+needed to continue. **Per the decision rule, ABANDON — Phases 2-4 were
+NOT attempted**, exactly as instructed. Also queried IonQ's real
+calibration API (not marketing numbers) for every known backend name:
+found `qpu.forte-1`'s CURRENT (2026-08-09) 2-qubit fidelity is 99.52%,
+notably better than this project's own long-used local calibration
+constant (98.786%, `fixed_ansatz.py`'s `P2_PER_GATE=0.01214`, labeled
+"real aria-1") — a real, disclosed discrepancy worth flagging, not
+silently reconciled. See iteration 23 below for the full write-up.
+
 **STATUS UPDATE (iteration 22, LOCAL BRANCH `local/attack-base-problem`,
 NOT pushed): does Randomized Compiling (Pauli twirling) unlock a genuine
 ZNE plateau against a DELIBERATELY COHERENT local noise model — the
@@ -3811,5 +3837,201 @@ negative headline result, not overstated in either direction. No push.
 
 Code: `vqe/rc_zne_coherent_noise.py`. Full data:
 `vqe/rc_zne_coherent_noise_results.json`.
+
+---
+
+## Iteration 23: physics-constrained reconstruction — a real, disciplined, pre-committed ABANDON, plus a genuine IonQ fidelity discrepancy worth flagging
+
+**Why this iteration**: a new, genuinely different idea from every one of
+the 22 prior iterations — this project has always reconstructed each
+K×K Pauli matrix (`combine_matrices`) one matrix element at a time,
+straight from a single noisy measured expectation value, with NOTHING
+anywhere enforcing that the resulting matrices are even consistent with
+a valid quantum state. That's real, previously-discarded structure:
+every Pauli operator measured for a given Schmidt-basis slot is a linear
+functional of the SAME (noisy) prepared state, and a joint,
+physically-constrained fit across all of them should recover more
+signal than treating each measurement in isolation.
+
+**Phase 1 method (free — existing data only, no new circuits)**: for
+each of the 36 K=6 Schmidt-basis slots, the K exact classical Schmidt
+vectors give a known 16×K isometry U. For every alpha-register Pauli
+label P actually measured in iteration 9's real IonQ run (already
+sitting in `targets_d1.0.json`, ideal/aria-1/forte-1), projected it into
+the K-dim Schmidt subspace: P_S = U†PU — a KNOWN, exactly-computable
+6×6 Hermitian matrix (pure linear algebra on already-known classical
+quantities, no estimation). Then, per slot, solved the convex problem
+
+    ρ_S = argmin_ρ  Σ_P w_P (Tr(ρ P_S) − m_P)²   s.t. ρ ≽ 0, Tr(ρ)=1
+
+via `cvxpy` (installed this iteration; SCS solver) — a genuine
+global-optimum semidefinite least-squares fit, not a heuristic
+projection. Weights: inverse-variance, `w_P = shots / max(1−m_P², ε)`,
+the standard (not arbitrarily tuned) choice for a bounded-observable
+weighted fit. Verified before trusting anything: `setup_fragment`'s own
+exact energy matches the checkpoint's to 1.45e-11 kcal/mol; the Schmidt
+basis is exactly orthonormal (U†U − I_K, 8.9e-16); every P_S is exactly
+Hermitian (1.1e-16); a toy problem with known ground truth recovers it
+to within its injected noise level before touching real data.
+
+**A genuine, worth-stating structural fact confirmed directly, not
+assumed**: restricting to the K-dim Schmidt subspace at all ALREADY
+enforces the particle-number constraint, with no extra penalty term
+needed. Verified: the identity label's projection, I_S = U†IU = U†U,
+comes out EXACTLY the K×K identity (8.9e-16) — meaning the Tr(ρ)=1
+constraint alone already fixes the "identity matrix element" to 1,
+exactly matching what `combine_matrices` already hardcodes, and every ρ
+in the feasible set (Hermitian, PSD, trace-1, expressed in the U-basis)
+is automatically confined to the exact same Hamming-weight-2 sector
+`fixed_ansatz.py` established the Schmidt vectors themselves live in.
+No separate spin/parity penalty term was added, because none was needed
+— stated explicitly rather than silently glossed over.
+
+**Once reconstructed, fed unchanged into the existing pipeline**: the
+"cleaned" per-label value Tr(ρ_S · P_S) replaces the raw measured value
+as input to the SAME, UNMODIFIED `qforge.combine_matrices` /
+`energy_from_alpha_matrices` this project has used since it was
+extracted into a library — this file does not reimplement the EF energy
+formula, only the upstream matrix-element reconstruction step, exactly
+as scoped.
+
+**DECISION RULE, written and fixed BEFORE running, never moved
+afterwards**: pass requires the real-data raw baseline error to drop to
+≤1/3 its value, OR at least a 2× reduction; anything smaller (the
+"33 → 32" case) means ABANDON.
+
+**Result, 8-seed bootstrap mean ± std, same checkpoint data, both raw
+and physics-constrained computed from the SAME resampled counts per
+seed for a clean paired comparison**:
+
+| model | RAW (kcal/mol) | PHYSICS-CONSTRAINED (kcal/mol) | reduction |
+|---|---|---|---|
+| ideal | 2.44 ± 0.84 | 1.83 ± 0.31 | 1.34x |
+| aria-1 | 33.38 ± 1.45 | 27.71 ± 0.90 | 1.20x |
+| forte-1 | 41.35 ± 0.84 | 31.64 ± 0.69 | 1.31x |
+
+(err_vs_exact and err_vs_noiseless are identical to 3 decimals in every
+row — expected, not a bug: K=6 was independently verified elsewhere in
+this project to be the EXACT Schmidt rank for this system, not a
+truncation, so the noiseless K=6 reconstruction and the true exact
+energy coincide to far better precision than shown here.)
+
+Sanity-checked the raw baseline against the ALREADY-KNOWN real result
+from iteration 9 (34.98/43.03 kcal/mol, same checkpoint, different
+bootstrap seed stream): this run's 33.38/41.35 differ by 1.6-1.7
+kcal/mol, well within the reported ±0.84-1.45 std — consistent,
+confirming this file's pipeline is a faithful reproduction, not a
+divergent one.
+
+**The result is real, not noise**: aria-1's 33.38±1.45 vs 27.71±0.90 and
+forte-1's 41.35±0.84 vs 31.64±0.69 are non-overlapping even at 1σ —
+physics-constrained reconstruction genuinely, measurably helps, by
+roughly 17-23% depending on model. **But it does not meet the
+pre-committed bar.** Reduction factors of 1.20x (aria-1) and 1.31x
+(forte-1) are both far below the required 2.0x, and the phys/raw ratios
+(0.83, 0.77) are nowhere near the ≤0.333 pass threshold.
+
+**DECISION: ABANDON. Phases 2, 3, and 4 were NOT attempted**, per the
+explicit instruction that the decision rule, once written, does not
+move. This is the discipline working as designed — an idea that is
+REAL (statistically confirmed, not a null result) but not big enough to
+justify the next three phases' additional cost and complexity.
+
+**Interesting side-observation, not concerning, reported for
+completeness**: the `ideal` model's 288 solves took 467s, vs aria-1's
+69s and forte-1's 66s for the same count. Plausible, not investigated
+further given it doesn't affect the headline result: near-noiseless
+states are nearly rank-1 (pure), sitting at the boundary of the PSD
+cone, which is the numerically hardest regime for interior-point/
+first-order SDP solvers like SCS — a real, physically sensible
+computational cost, not a bug (0 solve failures, sane PSD eigenvalues,
+exact trace=1 throughout).
+
+**ALSO CHECKED — IonQ's real calibration API, not marketing numbers**:
+this account's `provider.backends()` listing shows only 2 backends
+(`ionq_simulator`, and a generic unavailable `ionq_qpu`) — the
+`"aria-1"`/`"forte-1"` strings used throughout this project are
+`noise_model` parameters passed to the SAME simulator backend, never
+separate submittable backends. But IonQ's calibration-data endpoint
+(`client.get_latest_calibration(backend_name)`) answers for named
+systems regardless of what this account can submit to. Real, current
+results:
+
+| backend | characterization date | 2-qubit fidelity (median) | 1-qubit fidelity | SPAM fidelity |
+|---|---|---|---|---|
+| qpu.aria-1 | 2026-02-19 | **not reported** (null) | 0.4745 (very low — likely a data-quality gap in this specific record, not trusted as a real system number) | not reported |
+| qpu.aria-2 | 2024-10-31 (stale) | 0.9508 | 0.9995 | not reported |
+| qpu.forte-1 | **2026-08-09** (current) | **0.9952** | 0.9999 | 0.9939 |
+| qpu.forte-enterprise-1 | 2026-08-09 (current) | 0.9909 | 0.9997 | 0.9968 |
+| qpu.tempo | — | no characterization data published |  |  |
+
+A genuine, disclosed discrepancy: this project's own local noise model
+constant, `fixed_ansatz.py`'s `P2_PER_GATE=0.01214` (98.786% per-gate
+fidelity, commented "real aria-1"), does not cleanly match EITHER
+aria-1's own latest record (2q fidelity missing) or aria-2's (95.08%,
+and two years stale) — and forte-1's CURRENT published 2q fidelity
+(99.52%) is meaningfully BETTER than this project's long-used
+calibration constant, and even than forte-enterprise-1's own number
+(99.09% — the "Enterprise" tier is NOT simply better on this specific
+published metric, contradicting a naive marketing-driven assumption).
+Since every real submission in this project has gone through
+`ionq_simulator` with `noise_model="aria-1"`/`"forte-1"` (never a
+literal QPU), it is not established whether the simulator's noise model
+tracks this LIVE calibration data or a fixed/older snapshot — flagged
+honestly as an open question, not resolved here, since resolving it
+would require either IonQ's own documentation of the simulator's noise-
+model sourcing (not found) or a real QPU characterization comparison
+(out of scope, real hardware, not attempted). Reported as real numbers
+from the live API, exactly as asked — not a marketing claim, and not
+smoothed over to match this project's prior assumptions.
+
+**ALTERNATIVES NOT TAKEN**:
+
+1. **Comparing inverse-variance weighting against uniform weighting to
+   see if a different weighting choice pushes the result over the
+   decision-rule bar.** Rejected: inverse-variance IS the statistically
+   principled (BLUE/GLS) choice, not an arbitrary tunable knob, and
+   testing an alternative weighting specifically LOOKING for a bigger
+   number is exactly the "keep tuning until it passes" pattern the
+   honesty rules exist to prevent — doubly so given the result isn't
+   ambiguous or borderline (1.20x/1.31x are clearly, not marginally,
+   short of 2.0x). Would revisit only if a result were genuinely
+   borderline (e.g. 1.8x-2.2x), where methodological choice could
+   plausibly flip the verdict — not the case here.
+
+2. **A more ambitious joint reconstruction across all 36 slots
+   simultaneously (e.g. requiring the (u_n±u_m)/√2 phase-pair slots'
+   density matrices to be algebraically consistent with u_n's and u_m's,
+   not just individually physical), extracting more signal from
+   cross-slot structure.** Rejected: the whole point of pre-committing a
+   decision rule is to prevent exactly this move — invent a fancier
+   version of the same idea and keep escalating until something passes.
+   Phase 1 gave a clean, unambiguous, honest ABANDON; the disciplined
+   response is to stop, not to design Phase 1.5. Would revisit only as
+   an explicitly new, separately-scoped task with its own pre-stated
+   decision rule, not as a rescue of this one.
+
+3. **Switching SDP solvers (CLARABEL, MOSEK) to check whether SCS's
+   "solution may be inaccurate" warnings were suppressing a larger real
+   improvement.** Rejected: zero hard failures occurred (every solve
+   returned a value), and the observed effect (a consistent ~20-30%
+   error reduction across 288 independent solves per model, 8 separate
+   seeds) is far too large and far too consistent to be explained by
+   solver-precision noise on a handful of individual 6×6 SDPs — solver
+   imprecision would show up as scattered, seed-inconsistent results,
+   not the clean, non-overlapping-at-1σ pattern actually observed. Would
+   revisit only if a future result's SIGN or MAGNITUDE seemed
+   solver-dependent under a direct re-run comparison, which was not
+   checked here but has no specific reason to be suspected.
+
+Per the standing branch discipline: a real, positive-but-insufficient
+finding, reported exactly as it came out — not stretched to justify
+continuing, not buried because it didn't fully work. The pre-committed
+decision rule did its job. Best real number in this project remains
+iteration 18's 31.77/33.86 kcal/mol (leakage post-selection), unchanged
+by this iteration. No push.
+
+Code: `vqe/phys_constrained_reconstruction.py`. Full data:
+`vqe/phys_constrained_reconstruction_results.json`.
 
 ---

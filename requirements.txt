@@ -9,3 +9,4 @@ qiskit-nature>=0.7.0
 azure-quantum[qiskit]>=3.10.0
 qiskit-ionq>=1.1.0
 symmer>=0.0.11
+cvxpy>=1.9.2
