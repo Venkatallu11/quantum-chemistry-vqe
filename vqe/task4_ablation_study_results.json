@@ -1,0 +1,70 @@
+{
+  "K": 6,
+  "hybrid_cutoff": 0.9,
+  "n_head_labels": 9,
+  "rows": {
+    "raw": {
+      "ideal": {
+        "mean": 2.5602258525462154,
+        "std": 0.7540070594066738
+      },
+      "aria-1": {
+        "mean": 33.08864411627107,
+        "std": 1.676298267579332
+      },
+      "forte-1": {
+        "mean": 42.59065938140084,
+        "std": 0.9910268661775208
+      }
+    },
+    "raw_plus_leakage": {
+      "ideal": {
+        "mean": 2.1881385754803375,
+        "std": 0.6752682976385234
+      },
+      "aria-1": {
+        "mean": 31.735629591388403,
+        "std": 1.3606603262643964
+      },
+      "forte-1": {
+        "mean": 33.39382122007084,
+        "std": 1.8765470898524346
+      }
+    },
+    "psd_plus_leakage": {
+      "ideal": {
+        "mean": 1.6259991050554379,
+        "std": 0.21950868583265576
+      },
+      "aria-1": {
+        "mean": 29.554077782280253,
+        "std": 1.0939247541483097
+      },
+      "forte-1": {
+        "mean": 30.28542193536334,
+        "std": 1.451117282010606
+      }
+    },
+    "phase2hybrid_plus_leakage": {
+      "ideal": {
+        "mean": 1.814579989808438,
+        "std": 0.6100726693278943
+      },
+      "aria-1": {
+        "mean": 29.778235768882492,
+        "std": 1.1781026859156833
+      },
+      "forte-1": {
+        "mean": 30.620859190896084,
+        "std": 1.4169691164984706
+      }
+    }
+  },
+  "disqualified_psd_plus_leakage": false,
+  "na_rows": {
+    "ionq_debiasing": "N/A -- QPU-only per iteration 21's own research; never run, not fabricated",
+    "ionq_debiasing_plus_leakage": "N/A -- compounds on ionq_debiasing",
+    "psd_leakage_debiasing": "N/A -- compounds on ionq_debiasing",
+    "psd_leakage_debiasing_zne": "N/A -- compounds; ALSO ZNE has shown NO plateau in every prior test (iterations 11,13,14,19,22, Phase4) -- no number would be added even if debiasing existed"
+  }
+}

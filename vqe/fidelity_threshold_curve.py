@@ -56,11 +56,36 @@ SCALES = [1.0, 2.0, 3.0]
 N_TRAIN_PER_SLOT = 5
 LOW_SIGNAL_CUTOFF = 0.05
 CHEM_ACC_KCAL = 1.0
-IONQ_ARIA_FORTE_FIDELITY = 0.98786
-QUANTINUUM_H1_FIDELITY = 0.9782  # 1 - QUANTINUUM_TWO_Q_ERROR-derived, matches entanglement_forging_h4.py's own numbers
-QUANTINUUM_H2_FIDELITY = 0.9891
-# P2 sweep: 0.015 (98.5%) down to 0.0001 (99.99%), log-spaced for even coverage of the crossing region
-P2_VALUES = sorted(set(np.round(np.geomspace(0.0001, 0.015, 22), 6).tolist()), reverse=True)
+
+# CORRECTED iteration 24, Task 0 (was WRONG before this fix -- see
+# RESEARCH_LEDGER.md Task 0 write-up). This project's own local-model
+# constant, used throughout as "real aria-1/forte-1" -- NOT a live device
+# reading, just this project's fixed depolarizing-model parameter.
+LOCAL_MODEL_CONSTANT_FIDELITY = 0.98786
+
+# Queried LIVE from IonQ's real /backends/<name>/characterizations API,
+# 2026-08-10 (see task0_fidelity_correction.py). "2q" field is the
+# device-wide MEDIAN two-qubit gate fidelity IonQ's own API reports (not
+# a best-pair number, not a mean -- the API exposes only median+stderr).
+IONQ_FORTE1_REAL_FIDELITY = 0.9952   # qpu.forte-1, AVAILABLE, characterization dated 2026-08-09
+# qpu.aria-1 is RETIRED (confirmed live via /backends). Its own MOST
+# RECENT characterization record (2026-02-19) has 2q=null and a
+# nonsensical 1q=0.4745 -- clearly a stale/non-representative end-of-life
+# record, not used. Its LAST VALID reading with a real 2q number:
+IONQ_ARIA1_LAST_VALID_FIDELITY = 0.9820  # qpu.aria-1, characterization dated 2025-09-02, RETIRED since
+
+# FIXED (was 0.9782/0.9891 -- those were (0.998)^11-type 11-GATE CIRCUIT
+# fidelities mislabeled as single-gate reference fidelities, matching this
+# project's own 11-CX ansatz gate count by coincidence, not derived from a
+# real per-gate number). Real per-gate values, from this project's own
+# QUANTINUUM_TWO_Q_ERROR=0.002 / QUANTINUUM_ONE_Q_ERROR=0.00005 constants
+# (entanglement_forging_h4.py), i.e. genuinely 1 - per_gate_error:
+QUANTINUUM_H1_FIDELITY = 0.998    # 1 - QUANTINUUM_TWO_Q_ERROR, per 2-qubit gate
+QUANTINUUM_H2_FIDELITY = 0.999    # H2 characterized as modestly better than H1 in this project's own prior notes
+
+# P2 sweep: extended to 0.02 (was 0.015) to cover aria-1's real last-valid
+# p2=0.018, which fell OUTSIDE the original swept range
+P2_VALUES = sorted(set(np.round(np.geomspace(0.0001, 0.02, 24), 6).tolist()), reverse=True)
 RESULTS_PATH = os.path.join(os.path.dirname(__file__), "fidelity_threshold_curve_results.json")
 
 
@@ -223,30 +248,82 @@ def main():
             print(f"    {method:>18}: does NOT cross {CHEM_ACC_KCAL} kcal/mol in the swept range "
                   f"[{1-P2_VALUES[0]:.4%}, {1-P2_VALUES[-1]:.4%}]")
 
-    print(f"\n  -- reference fidelities --")
-    print(f"    IonQ Aria/Forte : {IONQ_ARIA_FORTE_FIDELITY:.4%}")
-    print(f"    Quantinuum H1   : {QUANTINUUM_H1_FIDELITY:.4%}")
-    print(f"    Quantinuum H2   : {QUANTINUUM_H2_FIDELITY:.4%}")
-    for name, fid in (("IonQ Aria/Forte", IONQ_ARIA_FORTE_FIDELITY),
-                       ("Quantinuum H1", QUANTINUUM_H1_FIDELITY), ("Quantinuum H2", QUANTINUUM_H2_FIDELITY)):
+    print(f"\n  -- reference fidelities (CORRECTED, iteration 24 Task 0) --")
+    print(f"    this project's local-model constant : {LOCAL_MODEL_CONSTANT_FIDELITY:.4%}  "
+          f"(NOT a live reading -- fixed_ansatz.P2_PER_GATE, applied identically to both aria-1 and forte-1 local sims)")
+    print(f"    IonQ forte-1 REAL (live, 2026-08-09) : {IONQ_FORTE1_REAL_FIDELITY:.4%}  (AVAILABLE, device-wide median)")
+    print(f"    IonQ aria-1 REAL (last valid, 2025-09-02): {IONQ_ARIA1_LAST_VALID_FIDELITY:.4%}  (RETIRED since; device-wide median)")
+    print(f"    Quantinuum H1 (per-gate, FIXED)      : {QUANTINUUM_H1_FIDELITY:.4%}")
+    print(f"    Quantinuum H2 (per-gate, FIXED)      : {QUANTINUUM_H2_FIDELITY:.4%}")
+
+    # np.interp requires xp ASCENDING -- p2_vals comes out of `rows` in
+    # DESCENDING order (P2_VALUES was built sorted reverse=True), so
+    # interpolate against an explicitly ascending-sorted copy (same fix
+    # crossing_fidelity() already applies via sorted(zip(...)) above;
+    # this loop originally skipped it, silently returning nonsense).
+    p2_vals_asc, idx_asc = np.unique(p2_vals, return_index=True)
+    reference_points = {}
+    for name, fid in (("local_model_constant", LOCAL_MODEL_CONSTANT_FIDELITY),
+                       ("ionq_forte1_real", IONQ_FORTE1_REAL_FIDELITY),
+                       ("ionq_aria1_real_last_valid", IONQ_ARIA1_LAST_VALID_FIDELITY),
+                       ("quantinuum_h1", QUANTINUUM_H1_FIDELITY), ("quantinuum_h2", QUANTINUUM_H2_FIDELITY)):
         p2_ref = 1 - fid
-        # interpolate each method's error at this reference fidelity
-        row_str = f"    at {name} (F={fid:.4%}, p2={p2_ref:.5f}): "
-        for method in ("raw_kcal", "zne_quadratic_kcal", "pec_kcal"):
-            errs = [r[method] for r in rows]
-            interp = float(np.interp(p2_ref, p2_vals, errs))
+        row = {"fidelity": fid, "p2": p2_ref}
+        row_str = f"    at {name:<28} (F={fid:.4%}, p2={p2_ref:.5f}): "
+        for method in ("raw_kcal", "zne_linear_kcal", "zne_quadratic_kcal", "cdr_kcal", "pec_kcal"):
+            errs_asc = np.array([r[method] for r in rows])[idx_asc]
+            interp = float(np.interp(p2_ref, p2_vals_asc, errs_asc))
+            row[method] = interp
             row_str += f"{method}={interp:.2f}  "
+        reference_points[name] = row
         print(row_str)
+
+    # gap decomposition: how much of the real-hardware raw gap (iteration
+    # 9's actual submitted numbers) is explained by the LOCAL depolarizing
+    # model's own miscalibration, vs everything this parameter sweep
+    # cannot capture at all (SPAM, leakage, coherent noise, crosstalk,
+    # shot noise -- already independently investigated elsewhere in this
+    # ledger, e.g. iteration 22's coherent-noise RC study)
+    REAL_HARDWARE_RAW_KCAL = {"aria-1": 34.98, "forte-1": 43.03}  # iteration 9's actual submitted result
+    raw_at_constant = reference_points["local_model_constant"]["raw_kcal"]
+    raw_at_forte1_real = reference_points["ionq_forte1_real"]["raw_kcal"]
+    raw_at_aria1_real = reference_points["ionq_aria1_real_last_valid"]["raw_kcal"]
+    print(f"\n  -- gap decomposition: how much of the real-hardware raw gap was miscalibration? --")
+    print(f"    forte-1: real submitted={REAL_HARDWARE_RAW_KCAL['forte-1']:.2f} kcal/mol; "
+          f"local depolarizing-only model predicts {raw_at_constant:.2f} kcal/mol at the assumed constant, "
+          f"{raw_at_forte1_real:.2f} kcal/mol at forte-1's REAL fidelity")
+    print(f"    aria-1:  real submitted={REAL_HARDWARE_RAW_KCAL['aria-1']:.2f} kcal/mol; "
+          f"local depolarizing-only model predicts {raw_at_constant:.2f} kcal/mol at the assumed constant, "
+          f"{raw_at_aria1_real:.2f} kcal/mol at aria-1's REAL last-valid fidelity")
+    print(f"    HONEST CAVEAT: this depolarizing-only sweep was never a full hardware model (no SPAM, no "
+          f"leakage, no coherent noise, no shot noise -- iteration 22 already found real IonQ noise has a "
+          f"genuine coherent component this exact sweep cannot see). It answers a narrower question: given "
+          f"ONLY the depolarizing-rate assumption, how much of the raw gap traces to picking the wrong rate, "
+          f"vs everything else. It is not a claim that the full 33-43 kcal/mol gap is explained.")
 
     results = {
         "K": K, "p2_p1_ratio": 40, "fidelity_convention": "fidelity = 1 - p2 (not the average-gate-fidelity formula)",
         "sweep": rows,
         "crossings": crossings,
         "reference_fidelities": {
-            "ionq_aria_forte": IONQ_ARIA_FORTE_FIDELITY,
-            "quantinuum_h1": QUANTINUUM_H1_FIDELITY,
-            "quantinuum_h2": QUANTINUUM_H2_FIDELITY,
+            "local_model_constant": LOCAL_MODEL_CONSTANT_FIDELITY,
+            "ionq_forte1_real_live_2026_08_09": IONQ_FORTE1_REAL_FIDELITY,
+            "ionq_aria1_real_last_valid_2025_09_02_RETIRED": IONQ_ARIA1_LAST_VALID_FIDELITY,
+            "quantinuum_h1_per_gate_FIXED": QUANTINUUM_H1_FIDELITY,
+            "quantinuum_h2_per_gate_FIXED": QUANTINUUM_H2_FIDELITY,
         },
+        "reference_points": reference_points,
+        "real_hardware_raw_kcal_iteration9": REAL_HARDWARE_RAW_KCAL,
+        "correction_note": (
+            "iteration 24 Task 0: fixed WRONG quantinuum_h1/h2 reference fidelities "
+            "(were 0.9782/0.9891, an 11-gate CIRCUIT fidelity mislabeled as a per-gate "
+            "number; real per-gate values are ~0.998/0.999). Added REAL live-queried "
+            "IonQ calibration (forte-1=99.52% available; aria-1's last valid reading "
+            "before retirement=98.20%, its current record has a null/broken 2q entry). "
+            "The local_model_constant (98.786%) was never a live reading -- it is this "
+            "project's own fixed depolarizing-model parameter, applied identically to "
+            "both backends despite forte-1 being meaningfully better."
+        ),
         "chemical_accuracy_kcal": CHEM_ACC_KCAL,
     }
     with open(RESULTS_PATH, "w") as f:

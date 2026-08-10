@@ -1,0 +1,48 @@
+{
+  "gate_kcal": 1.0,
+  "gate_results": {
+    "z2_tapered_cross_submission_aria-1": {
+      "run0_mean": 51.05290393898923,
+      "run1_mean": 47.78027855857992,
+      "delta_kcal": 3.272625380409309,
+      "passed": false
+    },
+    "z2_tapered_cross_submission_forte-1": {
+      "run0_mean": 54.43180742261832,
+      "run1_mean": 51.496603229850514,
+      "delta_kcal": 2.935204192767806,
+      "passed": false
+    },
+    "task3_phys21_splithalf_aria-1": {
+      "half_a_mean": 26.133290928661808,
+      "half_b_mean": 26.83626639740504,
+      "delta_kcal": 0.702975468743233,
+      "passed": true
+    },
+    "task3_phys21_splithalf_forte-1": {
+      "half_a_mean": 32.43320070455451,
+      "half_b_mean": 32.43065133903969,
+      "delta_kcal": 0.0025493655148167704,
+      "passed": true
+    },
+    "task4_psd_leakage_splithalf_aria-1": {
+      "half_a_mean": 28.914636775633184,
+      "half_b_mean": 30.193518788927317,
+      "delta_kcal": 1.2788820132941332,
+      "passed": false
+    },
+    "task4_psd_leakage_splithalf_forte-1": {
+      "half_a_mean": 30.266915480005615,
+      "half_b_mean": 30.303928390721065,
+      "delta_kcal": 0.03701291071545043,
+      "passed": true
+    }
+  },
+  "n_pass": 3,
+  "n_total": 6,
+  "no_cross_submission_evidence": [
+    "Phase 1 physics-constrained reconstruction (27.71/31.64 kcal/mol)",
+    "Phase 2 selective hybrid (28.24/32.52 kcal/mol)",
+    "iteration 18 leakage postselection, this project's best real result (31.77/33.86 kcal/mol)"
+  ]
+}

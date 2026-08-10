@@ -1,0 +1,81 @@
+{
+  "K": 6,
+  "M_budgets": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "trade_off_curve": [
+    {
+      "M": 0,
+      "n_cx_mean": 0.0,
+      "n_cx_min": 0,
+      "n_cx_max": 0,
+      "ideal_err_vs_exact_kcal": 1756.7954161888135,
+      "real_noise_exact_kcal": 1756.7017020659148,
+      "real_noise_8seed_mean_kcal": 1756.7554502588441,
+      "real_noise_8seed_std_kcal": 0.1908697873119721,
+      "all_converged_to_exact": false
+    },
+    {
+      "M": 1,
+      "n_cx_mean": 2.3055555555555554,
+      "n_cx_min": 2,
+      "n_cx_max": 3,
+      "ideal_err_vs_exact_kcal": 75.81119343180353,
+      "real_noise_exact_kcal": 106.90999747885834,
+      "real_noise_8seed_mean_kcal": 107.02393158097581,
+      "real_noise_8seed_std_kcal": 0.4159184065289232,
+      "all_converged_to_exact": false
+    },
+    {
+      "M": 2,
+      "n_cx_mean": 4.305555555555555,
+      "n_cx_min": 4,
+      "n_cx_max": 5,
+      "ideal_err_vs_exact_kcal": 3.447573031589915,
+      "real_noise_exact_kcal": 53.48136825760868,
+      "real_noise_8seed_mean_kcal": 53.71688395599425,
+      "real_noise_8seed_std_kcal": 0.40219375905244026,
+      "all_converged_to_exact": false
+    },
+    {
+      "M": 3,
+      "n_cx_mean": 6.305555555555555,
+      "n_cx_min": 6,
+      "n_cx_max": 7,
+      "ideal_err_vs_exact_kcal": 1.2809251563684785,
+      "real_noise_exact_kcal": 59.44845372925369,
+      "real_noise_8seed_mean_kcal": 59.75848494761535,
+      "real_noise_8seed_std_kcal": 0.4150057020723143,
+      "all_converged_to_exact": false
+    },
+    {
+      "M": 4,
+      "n_cx_mean": 7.916666666666667,
+      "n_cx_min": 7,
+      "n_cx_max": 9,
+      "ideal_err_vs_exact_kcal": 1.76641540313589,
+      "real_noise_exact_kcal": 62.76566285862474,
+      "real_noise_8seed_mean_kcal": 63.109925080724935,
+      "real_noise_8seed_std_kcal": 0.44259892764446507,
+      "all_converged_to_exact": false
+    },
+    {
+      "M": 5,
+      "n_cx_mean": 9.527777777777779,
+      "n_cx_min": 7,
+      "n_cx_max": 11,
+      "ideal_err_vs_exact_kcal": 1.0734435232167898,
+      "real_noise_exact_kcal": 65.64510373583589,
+      "real_noise_8seed_mean_kcal": 65.97912865310317,
+      "real_noise_8seed_std_kcal": 0.44863860729755445,
+      "all_converged_to_exact": false
+    }
+  ],
+  "fixed_ansatz_n_cx": 11,
+  "p2_per_gate_local_constant": 0.01214
+}

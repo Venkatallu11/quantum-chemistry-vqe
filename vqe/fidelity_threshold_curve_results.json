@@ -4,242 +4,262 @@
   "fidelity_convention": "fidelity = 1 - p2 (not the average-gate-fidelity formula)",
   "sweep": [
     {
-      "p2": 0.015,
-      "p1": 0.000375,
-      "fidelity": 0.985,
-      "raw_kcal": 127.07716639335773,
-      "zne_linear_kcal": 22.220730370593518,
-      "zne_quadratic_kcal": 1.8278014375815659,
-      "cdr_kcal": 3.0164411273888843,
-      "pec_kcal": 8.360105595303314e-12
-    },
-    {
-      "p2": 0.011816,
-      "p1": 0.0002954,
-      "fidelity": 0.988184,
-      "raw_kcal": 101.34755856661141,
-      "zne_linear_kcal": 14.349685125028003,
-      "zne_quadratic_kcal": 0.9506733709353798,
-      "cdr_kcal": 2.3784110908610883,
-      "pec_kcal": 8.360105595303314e-12
-    },
-    {
-      "p2": 0.009308,
-      "p1": 0.00023270000000000002,
-      "fidelity": 0.990692,
-      "raw_kcal": 80.62271703845273,
-      "zne_linear_kcal": 9.196471655028173,
-      "zne_quadratic_kcal": 0.48858111191017034,
-      "cdr_kcal": 1.8749598350857242,
-      "pec_kcal": 2.2293614920808836e-12
-    },
-    {
-      "p2": 0.007332,
-      "p1": 0.0001833,
-      "fidelity": 0.992668,
-      "raw_kcal": 64.00268818493302,
-      "zne_linear_kcal": 5.856312272776597,
-      "zne_quadratic_kcal": 0.24859161995768478,
-      "cdr_kcal": 1.4777663811091424,
-      "pec_kcal": 5.573403730202209e-12
-    },
-    {
-      "p2": 0.005776,
-      "p1": 0.00014439999999999999,
-      "fidelity": 0.994224,
-      "raw_kcal": 50.73092712135258,
-      "zne_linear_kcal": 3.7107389100032084,
-      "zne_quadratic_kcal": 0.12549895876442138,
-      "cdr_kcal": 1.164671071237913,
-      "pec_kcal": 2.0064253428727953e-11
-    },
-    {
-      "p2": 0.00455,
-      "p1": 0.00011375,
-      "fidelity": 0.99545,
-      "raw_kcal": 40.157666630207636,
-      "zne_linear_kcal": 2.3411973954772956,
-      "zne_quadratic_kcal": 0.06293590357948951,
-      "cdr_kcal": 0.9177786966771374,
-      "pec_kcal": 1.0032126714363976e-11
-    },
-    {
-      "p2": 0.003584,
-      "p1": 8.96e-05,
-      "fidelity": 0.996416,
-      "raw_kcal": 31.753651042882744,
-      "zne_linear_kcal": 1.4719503459119434,
-      "zne_quadratic_kcal": 0.03139026066688458,
-      "cdr_kcal": 0.723123139589693,
-      "pec_kcal": 6.13074410322243e-12
-    },
-    {
-      "p2": 0.002823,
-      "p1": 7.0575e-05,
-      "fidelity": 0.997177,
-      "raw_kcal": 25.08731103620424,
-      "zne_linear_kcal": 0.9228714912573792,
-      "zne_quadratic_kcal": 0.015589216836864662,
-      "cdr_kcal": 0.5697014169594974,
-      "pec_kcal": 9.474786341343755e-12
-    },
-    {
-      "p2": 0.002224,
-      "p1": 5.5599999999999996e-05,
-      "fidelity": 0.997776,
-      "raw_kcal": 19.811484882812344,
-      "zne_linear_kcal": 0.5775699751424433,
-      "zne_quadratic_kcal": 0.007720327770971384,
-      "cdr_kcal": 0.44889359779631494,
-      "pec_kcal": 1.7277551563626848e-11
-    },
-    {
-      "p2": 0.001752,
-      "p1": 4.38e-05,
-      "fidelity": 0.998248,
-      "raw_kcal": 15.636381647293797,
-      "zne_linear_kcal": 0.36080088492872026,
-      "zne_quadratic_kcal": 0.003812563252238205,
-      "cdr_kcal": 0.35367097473331455,
-      "pec_kcal": 1.3933509325505522e-11
-    },
-    {
-      "p2": 0.00138,
-      "p1": 3.45e-05,
-      "fidelity": 0.99862,
-      "raw_kcal": 12.334688844821715,
-      "zne_linear_kcal": 0.22502184195556846,
-      "zne_quadratic_kcal": 0.0018780967530486509,
-      "cdr_kcal": 0.278605030012368,
-      "pec_kcal": 8.917445968323534e-12
-    },
-    {
-      "p2": 0.001087,
-      "p1": 2.7175000000000003e-05,
-      "fidelity": 0.998913,
-      "raw_kcal": 9.727218756576768,
-      "zne_linear_kcal": 0.14019007093429386,
-      "zne_quadratic_kcal": 0.0009236474837691754,
-      "cdr_kcal": 0.21946962361409988,
-      "pec_kcal": 8.917445968323534e-12
-    },
-    {
-      "p2": 0.000856,
-      "p1": 2.14e-05,
-      "fidelity": 0.999144,
-      "raw_kcal": 7.667173592623638,
-      "zne_linear_kcal": 0.08722118661347734,
-      "zne_quadratic_kcal": 0.0004533159817762813,
-      "cdr_kcal": 0.17284076897803147,
+      "p2": 0.02,
+      "p1": 0.0005,
+      "fidelity": 0.98,
+      "raw_kcal": 166.2131188532609,
+      "zne_linear_kcal": 37.186770767072595,
+      "zne_quadratic_kcal": 3.9431252680594215,
+      "cdr_kcal": 4.015760623446287,
       "pec_kcal": 1.0589467087384197e-11
     },
     {
-      "p2": 0.000675,
-      "p1": 1.6875e-05,
-      "fidelity": 0.999325,
-      "raw_kcal": 6.050353895602368,
-      "zne_linear_kcal": 0.05437434842939889,
-      "zne_quadratic_kcal": 0.00022314534440906982,
-      "cdr_kcal": 0.13630059586594548,
-      "pec_kcal": 1.3933509325505522e-11
-    },
-    {
-      "p2": 0.000531,
-      "p1": 1.3275e-05,
-      "fidelity": 0.999469,
-      "raw_kcal": 4.762364402001016,
-      "zne_linear_kcal": 0.03371799609027125,
-      "zne_quadratic_kcal": 0.00010897118193014837,
-      "cdr_kcal": 0.10722736488468358,
-      "pec_kcal": 1.3376168952485301e-11
-    },
-    {
-      "p2": 0.000419,
-      "p1": 1.0475e-05,
-      "fidelity": 0.999581,
-      "raw_kcal": 3.7595640818414333,
-      "zne_linear_kcal": 0.021027658684898556,
-      "zne_quadratic_kcal": 5.366888695473546e-05,
-      "cdr_kcal": 0.08461326375253905,
-      "pec_kcal": 1.9506913055707733e-11
-    },
-    {
-      "p2": 0.00033,
-      "p1": 8.25e-06,
-      "fidelity": 0.99967,
-      "raw_kcal": 2.9620521364530124,
-      "zne_linear_kcal": 0.01305989679393937,
-      "zne_quadratic_kcal": 2.6269957025419736e-05,
-      "cdr_kcal": 0.06664214007130422,
-      "pec_kcal": 3.901382611141546e-12
-    },
-    {
-      "p2": 0.00026,
-      "p1": 6.5e-06,
-      "fidelity": 0.99974,
-      "raw_kcal": 2.3343946079844247,
-      "zne_linear_kcal": 0.008115040691899415,
-      "zne_quadratic_kcal": 1.286753343998257e-05,
-      "cdr_kcal": 0.052506933186249535,
+      "p2": 0.015885,
+      "p1": 0.000397125,
+      "fidelity": 0.984115,
+      "raw_kcal": 134.11567265515586,
+      "zne_linear_kcal": 24.650255047396787,
+      "zne_quadratic_kcal": 2.134269835484366,
+      "cdr_kcal": 3.193555963700697,
       "pec_kcal": 6.13074410322243e-12
     },
     {
-      "p2": 0.000205,
-      "p1": 5.125e-06,
-      "fidelity": 0.999795,
-      "raw_kcal": 1.8409872796293631,
-      "zne_linear_kcal": 0.00504883854589673,
-      "zne_quadratic_kcal": 6.31471296424025e-06,
-      "cdr_kcal": 0.04140031944765696,
+      "p2": 0.012617,
+      "p1": 0.000315425,
+      "fidelity": 0.987383,
+      "raw_kcal": 107.88094245173743,
+      "zne_linear_kcal": 16.196006502952912,
+      "zne_quadratic_kcal": 1.139297038534407,
+      "cdr_kcal": 2.5390397041665764,
+      "pec_kcal": 1.1146807460404419e-11
+    },
+    {
+      "p2": 0.010021,
+      "p1": 0.00025052500000000003,
+      "fidelity": 0.989979,
+      "raw_kcal": 86.55630587019148,
+      "zne_linear_kcal": 10.561246806407114,
+      "zne_quadratic_kcal": 0.6009970845597984,
+      "cdr_kcal": 2.018164036004058,
+      "pec_kcal": 1.0032126714363976e-11
+    },
+    {
+      "p2": 0.007959,
+      "p1": 0.00019897500000000003,
+      "fidelity": 0.992041,
+      "raw_kcal": 69.3045169124205,
+      "zne_linear_kcal": 6.843795277909502,
+      "zne_quadratic_kcal": 0.31392563740235835,
+      "cdr_kcal": 1.6038493697198388,
+      "pec_kcal": 8.917445968323534e-12
+    },
+    {
+      "p2": 0.006321,
+      "p1": 0.000158025,
+      "fidelity": 0.993679,
+      "raw_kcal": 55.39811792086437,
+      "zne_linear_kcal": 4.411643989856526,
+      "zne_quadratic_kcal": 0.16263490270189718,
+      "cdr_kcal": 1.2743672505402663,
+      "pec_kcal": 4.458722984161767e-12
+    },
+    {
+      "p2": 0.005021,
+      "p1": 0.000125525,
+      "fidelity": 0.994979,
+      "raw_kcal": 44.23187000803276,
+      "zne_linear_kcal": 2.832799423317149,
+      "zne_quadratic_kcal": 0.0837443683726559,
+      "cdr_kcal": 1.0126494645967936,
+      "pec_kcal": 1.5048190071545964e-11
+    },
+    {
+      "p2": 0.003988,
+      "p1": 9.970000000000001e-05,
+      "fidelity": 0.996012,
+      "raw_kcal": 35.27625297888858,
+      "zne_linear_kcal": 1.812422308100482,
+      "zne_quadratic_kcal": 0.04288019312001192,
+      "cdr_kcal": 0.8045448976072282,
+      "pec_kcal": 2.452297641288972e-11
+    },
+    {
+      "p2": 0.003167,
+      "p1": 7.9175e-05,
+      "fidelity": 0.996833,
+      "raw_kcal": 28.10576252824674,
+      "zne_linear_kcal": 1.1559764378923851,
+      "zne_quadratic_kcal": 0.02185073762325542,
+      "cdr_kcal": 0.6390618362141429,
+      "pec_kcal": 9.474786341343755e-12
+    },
+    {
+      "p2": 0.002516,
+      "p1": 6.29e-05,
+      "fidelity": 0.997484,
+      "raw_kcal": 22.386498709374127,
+      "zne_linear_kcal": 0.7361919968919473,
+      "zne_quadratic_kcal": 0.011108606335484782,
+      "cdr_kcal": 0.5077899519922634,
+      "pec_kcal": 1.5048190071545964e-11
+    },
+    {
+      "p2": 0.001998,
+      "p1": 4.995000000000001e-05,
+      "fidelity": 0.998002,
+      "raw_kcal": 17.814358301128674,
+      "zne_linear_kcal": 0.4676229336824895,
+      "zne_quadratic_kcal": 0.00562489805504236,
+      "cdr_kcal": 0.4033028386760299,
+      "pec_kcal": 1.6162870817586405e-11
+    },
+    {
+      "p2": 0.001587,
+      "p1": 3.9675e-05,
+      "fidelity": 0.998413,
+      "raw_kcal": 14.173136178935485,
+      "zne_linear_kcal": 0.2967274795341593,
+      "zne_quadratic_kcal": 0.0028436858939662585,
+      "cdr_kcal": 0.32037750731097514,
+      "pec_kcal": 1.783489193664707e-11
+    },
+    {
+      "p2": 0.00126,
+      "p1": 3.15e-05,
+      "fidelity": 0.99874,
+      "raw_kcal": 11.267524010433856,
+      "zne_linear_kcal": 0.18790603918588622,
+      "zne_quadratic_kcal": 0.0014332188510152199,
+      "cdr_kcal": 0.25438690885784565,
       "pec_kcal": 1.1704147833424639e-11
     },
     {
-      "p2": 0.000161,
-      "p1": 4.0250000000000004e-06,
-      "fidelity": 0.999839,
-      "raw_kcal": 1.4461042944231168,
-      "zne_linear_kcal": 0.0031160717796255935,
-      "zne_quadratic_kcal": 3.061856069868017e-06,
-      "cdr_kcal": 0.03251478797288352,
+      "p2": 0.001001,
+      "p1": 2.5025e-05,
+      "fidelity": 0.998999,
+      "raw_kcal": 8.960721816337978,
+      "zne_linear_kcal": 0.11902911732964618,
+      "zne_quadratic_kcal": 0.0007226438857173509,
+      "cdr_kcal": 0.20211065718219742,
+      "pec_kcal": 1.783489193664707e-11
+    },
+    {
+      "p2": 0.000795,
+      "p1": 1.9875000000000002e-05,
+      "fidelity": 0.999205,
+      "raw_kcal": 7.122541075563806,
+      "zne_linear_kcal": 0.0752979708129684,
+      "zne_quadratic_kcal": 0.0003636241240751986,
+      "cdr_kcal": 0.16052653139899148,
+      "pec_kcal": 7.245424849262872e-12
+    },
+    {
+      "p2": 0.000631,
+      "p1": 1.5775e-05,
+      "fidelity": 0.999369,
+      "raw_kcal": 5.656959609992189,
+      "zne_linear_kcal": 0.04754620761269121,
+      "zne_quadratic_kcal": 0.0001824641180876264,
+      "cdr_kcal": 0.1274173525058142,
+      "pec_kcal": 7.245424849262872e-12
+    },
+    {
+      "p2": 0.000502,
+      "p1": 1.2549999999999998e-05,
+      "fidelity": 0.999498,
+      "raw_kcal": 4.502797326304306,
+      "zne_linear_kcal": 0.030148018603397966,
+      "zne_quadratic_kcal": 9.21322474866319e-05,
+      "cdr_kcal": 0.1013720612328996,
+      "pec_kcal": 4.458722984161767e-12
+    },
+    {
+      "p2": 0.000398,
+      "p1": 9.950000000000001e-06,
+      "fidelity": 0.999602,
+      "raw_kcal": 3.57143852355097,
+      "zne_linear_kcal": 0.01897835255297262,
+      "zne_quadratic_kcal": 4.6017939299371766e-05,
+      "cdr_kcal": 0.08037296522552949,
+      "pec_kcal": 5.573403730202209e-12
+    },
+    {
+      "p2": 0.000316,
+      "p1": 7.899999999999999e-06,
+      "fidelity": 0.999684,
+      "raw_kcal": 2.836548883085069,
+      "zne_linear_kcal": 0.011977672484458224,
+      "zne_quadratic_kcal": 2.307330735032622e-05,
+      "cdr_kcal": 0.06381514202460911,
       "pec_kcal": 6.13074410322243e-12
     },
     {
-      "p2": 0.000127,
-      "p1": 3.175e-06,
-      "fidelity": 0.999873,
-      "raw_kcal": 1.140871740443952,
-      "zne_linear_kcal": 0.0019398732949326878,
-      "zne_quadratic_kcal": 1.5039629323416373e-06,
-      "cdr_kcal": 0.025648549123619684,
-      "pec_kcal": 1.0032126714363976e-11
+      "p2": 0.000251,
+      "p1": 6.274999999999999e-06,
+      "fidelity": 0.999749,
+      "raw_kcal": 2.253670155556617,
+      "zne_linear_kcal": 0.0075639218339435986,
+      "zne_quadratic_kcal": 1.1579272936147592e-05,
+      "cdr_kcal": 0.05068951016401681,
+      "pec_kcal": 6.13074410322243e-12
+    },
+    {
+      "p2": 0.0002,
+      "p1": 5e-06,
+      "fidelity": 0.9998,
+      "raw_kcal": 1.79612124828627,
+      "zne_linear_kcal": 0.004805899102641883,
+      "zne_quadratic_kcal": 5.8644870015002256e-06,
+      "cdr_kcal": 0.040390610722812505,
+      "pec_kcal": 1.5605530444566184e-11
+    },
+    {
+      "p2": 0.000159,
+      "p1": 3.975e-06,
+      "fidelity": 0.999841,
+      "raw_kcal": 1.428151748216854,
+      "zne_linear_kcal": 0.003039221230549251,
+      "zne_quadratic_kcal": 2.9493034108980753e-06,
+      "cdr_kcal": 0.03211089509922881,
+      "pec_kcal": 1.0589467087384197e-11
+    },
+    {
+      "p2": 0.000126,
+      "p1": 3.15e-06,
+      "fidelity": 0.999874,
+      "raw_kcal": 1.1318930490102883,
+      "zne_linear_kcal": 0.0019094715644407591,
+      "zne_quadratic_kcal": 1.4687231365661283e-06,
+      "cdr_kcal": 0.025446598990789646,
+      "pec_kcal": 1.226148820644486e-11
     },
     {
       "p2": 0.0001,
       "p1": 2.5e-06,
       "fidelity": 0.9999,
-      "raw_kcal": 0.898421726990895,
-      "zne_linear_kcal": 0.0012031863961613721,
-      "zne_quadratic_kcal": 7.346440005170922e-07,
-      "cdr_kcal": 0.020195856836607858,
-      "pec_kcal": 7.802765222283092e-12
+      "raw_kcal": 0.8984217269920096,
+      "zne_linear_kcal": 0.001203186397554723,
+      "zne_quadratic_kcal": 7.346492952506359e-07,
+      "cdr_kcal": 0.020195856838279878,
+      "pec_kcal": 1.1146807460404419e-11
     }
   ],
   "crossings": {
     "raw_kcal": {
-      "p2_crossing": 0.00011053255599350994,
-      "fidelity_crossing": 0.9998894674440065
+      "p2_crossing": 0.00011057807672122272,
+      "fidelity_crossing": 0.9998894219232788
     },
     "zne_linear_kcal": {
-      "p2_crossing": 0.002919251293449402,
-      "fidelity_crossing": 0.9970807487065506
+      "p2_crossing": 0.0029074683531870966,
+      "fidelity_crossing": 0.9970925316468129
     },
     "zne_quadratic_kcal": {
-      "p2_crossing": 0.011975613028323714,
-      "fidelity_crossing": 0.9880243869716763
+      "p2_crossing": 0.011886862315272455,
+      "fidelity_crossing": 0.9881131376847275
     },
     "cdr_kcal": {
-      "p2_crossing": 0.0049262679684199,
-      "fidelity_crossing": 0.9950737320315801
+      "p2_crossing": 0.004951190905751125,
+      "fidelity_crossing": 0.9950488090942489
     },
     "pec_kcal": {
       "p2_crossing": null,
@@ -247,9 +267,63 @@
     }
   },
   "reference_fidelities": {
-    "ionq_aria_forte": 0.98786,
-    "quantinuum_h1": 0.9782,
-    "quantinuum_h2": 0.9891
+    "local_model_constant": 0.98786,
+    "ionq_forte1_real_live_2026_08_09": 0.9952,
+    "ionq_aria1_real_last_valid_2025_09_02_RETIRED": 0.982,
+    "quantinuum_h1_per_gate_FIXED": 0.998,
+    "quantinuum_h2_per_gate_FIXED": 0.999
   },
+  "reference_points": {
+    "local_model_constant": {
+      "fidelity": 0.98786,
+      "p2": 0.01214000000000004,
+      "raw_kcal": 103.96266369619175,
+      "zne_linear_kcal": 15.160651967031448,
+      "zne_quadratic_kcal": 1.0403875323534106,
+      "cdr_kcal": 2.443331809823934,
+      "pec_kcal": 1.0941991314078823e-11
+    },
+    "ionq_forte1_real": {
+      "fidelity": 0.9952,
+      "p2": 0.0048000000000000265,
+      "raw_kcal": 42.315905474208336,
+      "zne_linear_kcal": 2.6144999630433285,
+      "zne_quadratic_kcal": 0.07500188751028103,
+      "cdr_kcal": 0.9681275775641813,
+      "pec_kcal": 1.707522567797067e-11
+    },
+    "ionq_aria1_real_last_valid": {
+      "fidelity": 0.982,
+      "p2": 0.018000000000000016,
+      "raw_kcal": 150.61290198905445,
+      "zne_linear_kcal": 31.093689007813442,
+      "zne_quadratic_kcal": 3.0639731744628036,
+      "cdr_kcal": 3.6161471800705476,
+      "pec_kcal": 8.422408528860877e-12
+    },
+    "quantinuum_h1": {
+      "fidelity": 0.998,
+      "p2": 0.0020000000000000018,
+      "raw_kcal": 17.832011352897975,
+      "zne_linear_kcal": 0.46865987987248825,
+      "zne_quadratic_kcal": 0.0056460706738857835,
+      "cdr_kcal": 0.40370626382396935,
+      "pec_kcal": 1.6158567030922153e-11
+    },
+    "quantinuum_h2": {
+      "fidelity": 0.999,
+      "p2": 0.0010000000000000009,
+      "raw_kcal": 8.9517986088585,
+      "zne_linear_kcal": 0.11881683021063338,
+      "zne_quadratic_kcal": 0.0007209010713404489,
+      "cdr_kcal": 0.20190879249392962,
+      "pec_kcal": 1.7783486756611274e-11
+    }
+  },
+  "real_hardware_raw_kcal_iteration9": {
+    "aria-1": 34.98,
+    "forte-1": 43.03
+  },
+  "correction_note": "iteration 24 Task 0: fixed WRONG quantinuum_h1/h2 reference fidelities (were 0.9782/0.9891, an 11-gate CIRCUIT fidelity mislabeled as a per-gate number; real per-gate values are ~0.998/0.999). Added REAL live-queried IonQ calibration (forte-1=99.52% available; aria-1's last valid reading before retirement=98.20%, its current record has a null/broken 2q entry). The local_model_constant (98.786%) was never a live reading -- it is this project's own fixed depolarizing-model parameter, applied identically to both backends despite forte-1 being meaningfully better.",
   "chemical_accuracy_kcal": 1.0
 }
