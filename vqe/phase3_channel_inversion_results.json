@@ -1,0 +1,60 @@
+{
+  "aria-1": {
+    "n_calibration_circuits": 40,
+    "X_effective_rank": 17,
+    "X_n_labels": 36,
+    "M_fit_residual": 0.022216621662377572,
+    "M_condition_number": 961276406290.7206,
+    "M_off_diag_mass_fraction": 0.596268759901043,
+    "naive_inversion_n_out_of_range": 9,
+    "naive_inversion_max_abs": 1.1081550766634207,
+    "real_model_result": {
+      "raw_mean": 32.621772388526274,
+      "raw_std": 1.5279611597543867,
+      "phase1_mean": 27.31063533735383,
+      "phase1_std": 0.7752788851359307,
+      "phase3_mean": 1.402808767225957,
+      "phase3_std": 0.19061236354185332
+    },
+    "ideal_sanity_check": {
+      "raw_mean": 1.5804968954028629,
+      "raw_std": 0.9151355492678312,
+      "phase1_mean": 1.819184967435019,
+      "phase1_std": 0.1441744674577606,
+      "phase3_mean": 92.5406169634171,
+      "phase3_std": 0.4034400596772303
+    },
+    "ideal_distortion_ratio_phase3_over_phase1": 50.869273119542,
+    "DISQUALIFIED": true,
+    "wall_clock_s": 80.5512022972107
+  },
+  "forte-1": {
+    "n_calibration_circuits": 40,
+    "X_effective_rank": 17,
+    "X_n_labels": 36,
+    "M_fit_residual": 0.02263984688424417,
+    "M_condition_number": 949935332157.3201,
+    "M_off_diag_mass_fraction": 0.5967789450420796,
+    "naive_inversion_n_out_of_range": 10,
+    "naive_inversion_max_abs": 1.1697887489037477,
+    "real_model_result": {
+      "raw_mean": 41.96221480473278,
+      "raw_std": 2.187651954539164,
+      "phase1_mean": 31.992108420515457,
+      "phase1_std": 1.3940483615846673,
+      "phase3_mean": 2.1336245078384897,
+      "phase3_std": 0.23587068348430418
+    },
+    "ideal_sanity_check": {
+      "raw_mean": 3.729339375101102,
+      "raw_std": 1.063792363626733,
+      "phase1_mean": 1.6963329804127774,
+      "phase1_std": 0.25659042438282426,
+      "phase3_mean": 48.991095996164454,
+      "phase3_std": 0.26946656985480233
+    },
+    "ideal_distortion_ratio_phase3_over_phase1": 28.880589225025386,
+    "DISQUALIFIED": true,
+    "wall_clock_s": 72.24815583229065
+  }
+}

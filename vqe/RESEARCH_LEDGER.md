@@ -40,8 +40,26 @@ the head dominates (35-42 kcal/mol isolated) — and the selective hybrid
 treatment benefit (aria-1: hybrid 28.24 vs full 28.69 kcal/mol; forte-1:
 32.52 vs 31.73) — a genuine, real, mathematically clean confirmation
 that this system's energy error is concentrated in a small, identifiable
-minority of measured quantities. See iteration 23 below for the full
-write-up of both phases.
+minority of measured quantities.
+
+**Phase 3 (constrained channel inversion): a caught, disqualified false
+positive — the single most important honesty check this project has
+performed since it began.** Learned a Pauli transfer matrix M from real
+existing calibration data (40 circuits, already on disk); folded it
+directly into Phase 1's SDP. The FIRST result looked spectacular —
+1.40-2.13 kcal/mol, AT chemical accuracy, a ~20x improvement over raw.
+Exactly because it looked too good, ran the mandatory sanity check this
+project's own history demands before trusting a striking number: applied
+the SAME learned M to already-clean, near-noiseless IDEAL data. **It
+distorted that clean data catastrophically — 92.54/48.99 kcal/mol of
+damage where raw and Phase 1 both stayed under 4.** This proves the
+spectacular real-noise-model number was never a genuine correction: M's
+calibration data is rank-17 (of 36), leaving the fit underdetermined, and
+the solver was landing on an arbitrary, energy-favorable configuration
+that happened to look good on real noisy data purely by coincidence, not
+physics. **DISQUALIFIED, both models, built into the script as a
+mandatory gate so it can never be silently missed again.** See iteration
+23 below for the full write-up of all three phases.
 
 **STATUS UPDATE (iteration 22, LOCAL BRANCH `local/attack-base-problem`,
 NOT pushed): does Randomized Compiling (Pauli twirling) unlock a genuine
@@ -4201,5 +4219,171 @@ explicit direction toward Phase 3. No push.
 
 Code: `vqe/phase2_dominant_term_mitigation.py`. Full data:
 `vqe/phase2_dominant_term_results.json`.
+
+---
+
+## Phase 3 (continuing iteration 23 at the user's explicit direction): constrained channel inversion — a spectacular result caught and disqualified before it could become this project's next false headline
+
+**Why this matters more than a normal negative result**: this project's
+own standing honesty rules state plainly — "these have caught four bad
+results including our own old headline." This is the fifth. Reported in
+full, not because it worked, but because catching it IS the result.
+
+**Method**: `M_ij = d⟨P_i⟩_noisy / d⟨P_j⟩_ideal`, learned from real
+calibration data ALREADY on disk (`calibrate.json`, iteration 9's own
+real IonQ calibration submission: 40 independent circuits per model, 8
+seeds × 5 random-angle draws of the SAME fixed-structure ansatz, all 36
+non-identity labels measured for each — no new circuits needed). Fit via
+minimum-norm least squares (`M = Y @ pinv(X)`). Rather than explicitly
+inverting M (ill-posed on its own, see below), M was folded DIRECTLY
+into Phase 1's own SDP as part of the forward model:
+
+    ρ_S = argmin_ρ  Σ_i w_i ( (M · x(ρ))_i − m_noisy,i )²
+    s.t.  ρ Hermitian, ρ ≽ 0, Tr(ρ)=1,   x(ρ)_j = Tr(ρ P_S[j])
+
+(Phase 1 is exactly the M = Identity special case.) A real speed bug was
+caught and fixed along the way: the first cvxpy formulation built the
+objective as 36 separately-squared Python-level terms, which cvxpy's own
+runtime flagged ("too many subexpressions") and which timed at 2.3-4.0s
+per solve — fixed by vectorizing into a single `cp.sum_squares` atom,
+dropping the per-solve time to 0.07s, FASTER than Phase 1's own baseline.
+
+**A real, honest, upfront finding, reported before anything built on
+top of it**: the 40 calibration circuits' ideal Pauli-expectation vectors
+span only a **rank-17** subspace of the full 36-dimensional label space
+(17 nonzero singular values, 19 exactly zero to numerical precision) —
+40 circuits drawn from a 5-parameter angle family simply cannot uniquely
+determine a full 36×36 transfer matrix. A naive standalone inversion of
+M is therefore fundamentally ill-posed (condition number ~9.6×10¹¹,
+confirmed directly). This is exactly why M was folded into Phase 1's SDP
+rather than inverted on its own — the physicality constraint (a
+Hermitian, PSD, trace-1 K×K matrix has only 35 real degrees of freedom)
+was intended to supply the regularization the rank-deficient calibration
+data cannot supply by itself. Also directly demonstrated, as Phase 3
+explicitly asked: a naive UNCONSTRAINED inversion (`pinv(M) @ m_noisy`)
+on a real target slot puts 9-10 of 36 entries outside the physical
+[-1,1] range (max |value| up to 1.17) — visibly unstable, motivating the
+constrained approach in the first place.
+
+**The result that demanded extreme scrutiny — and got it**: the
+constrained, channel-corrected reconstruction gave aria-1=1.40±0.19,
+forte-1=2.13±0.24 kcal/mol — a ~20-23x reduction from raw (32.62/41.96),
+landing AT chemical accuracy. This is a stunning number. It is also
+EXACTLY the shape of result this project's own history has repeatedly
+warned about (the "old headline" 0.57 kcal/mol result, which turned out
+to be a local-simulation-only artifact that gave 123-135 kcal/mol on
+real circuits). Rather than write this up, ran the decisive test first:
+
+**The mandatory sanity check that broke it**: applied the SAME
+aria-1-learned M to the near-noiseless IDEAL data (already-collected,
+same checkpoint). A genuine noise-correcting channel should leave
+already-clean data close to correct. Instead:
+
+| | raw (kcal/mol) | Phase 1 (M=I) | Phase 3 (learned M) |
+|---|---|---|---|
+| aria-1-learned M, applied to IDEAL data | 1.58 | 1.82 | **92.54** |
+| forte-1-learned M, applied to IDEAL data | 3.73 | 1.70 | **48.99** |
+
+Phase 3 makes ALREADY-CORRECT data 25-50× WORSE than doing nothing. This
+is not noise, not a marginal effect, not a close call — it is a
+catastrophic, unambiguous failure that proves the spectacular real-noise-
+model number above was never a genuine correction.
+
+**Root cause, understood, not just observed**: with 35 real degrees of
+freedom in ρ and calibration data constraining only ~17 of the 36 output
+dimensions M can meaningfully influence, the fitting problem is severely
+underdetermined. The physicality constraint (Hermitian, PSD, trace-1)
+is a REAL constraint, but it is not enough on its own to pin down a
+unique, physically-meaningful answer in a 35-dimensional space using
+effectively ~17 informative constraints. The solver reliably finds SOME
+ρ satisfying the well-determined part of the fit — reused across two
+independent bootstrap seeds and found to be numerically STABLE there
+(max diff 0.0036, and the reconstructed state for slot u_0 looked
+physically sensible, diag≈[0.999,0,0,0.0001,0.0001,0.0006]) — but
+stability of a bad answer is not correctness. On the REAL noisy target
+data, the poorly-constrained directions happened, by what can only be
+described as coincidence, to land somewhere that made the FINAL,
+BILINEAR EF energy formula (which Phase 2 already showed is dominated by
+a small subset of terms) come out looking good. On the IDEAL data, where
+the truth in those same poorly-constrained directions is different, the
+same arbitrary-landing behavior produces catastrophic error instead.
+Same underdetermined mechanism, opposite-looking outcome depending on
+what the (uncontrolled) poorly-determined directions happen to need to
+be — the literal definition of an unreliable, non-generalizing result.
+
+**DISQUALIFIED, both models.** Built directly into the script as an
+automatic, mandatory gate (`DISQUALIFIED` flag, computed from the
+ideal-data check on every run) rather than left as a one-off manual
+check that could be silently skipped on a future re-run or by a
+differently-motivated reader of the code.
+
+**Answering Phase 3's own explicit questions, honestly**: M's
+conditioning is extremely poor (rank-17 of 36, condition number
+~9.6×10¹¹) — confirmed directly, not estimated. Do the physicality
+constraints stabilize the inverse? **Partially, and not enough.** They
+prevent the WILD, out-of-[-1,1]-range instability a naive unconstrained
+inversion shows (demonstrated directly above) — but they do NOT prevent
+the deeper problem of a genuinely underdetermined fit landing on an
+arbitrary, non-physical-in-substance answer that merely satisfies the
+constraints' FORM (Hermitian, PSD, trace-1) without being uniquely
+determined by real information. Constraints that only restrict the
+FEASIBLE SET, without the data itself sufficiently constraining WHERE
+in that set the true answer lies, are not sufficient regularization on
+their own — a genuine, transferable lesson for any future attempt at
+this kind of learned-channel correction.
+
+**ALTERNATIVES NOT TAKEN**:
+
+1. **Regularizing M toward the identity in its poorly-determined
+   directions** (e.g. shrinkage: M_reg = α·M_learned + (1−α)·I, or
+   projecting M onto its well-determined ~17-dimensional subspace and
+   using identity elsewhere) — a principled fix that would likely
+   restore the "leave clean data alone" property, since identity trivially
+   passes that test. Rejected for this iteration on time grounds, given
+   the session's already-substantial length across three phases — but
+   this is the CONCRETE, well-motivated next step if this line of
+   investigation continues, not a vague gesture at "more work needed."
+   Would need its own floor test on the shrinkage parameter α itself
+   (exactly the kind of free-parameter sweep this project's honesty
+   rules require) before trusting any result from it.
+
+2. **Collecting more/better calibration data** (more circuits, or
+   circuits specifically designed to explore a higher-dimensional slice
+   of the 36-label space, e.g. genuinely random Pauli-basis circuits
+   rather than random-angle draws of one fixed 5-parameter ansatz family)
+   to raise M's effective rank beyond 17. Rejected for this iteration:
+   the existing "$3,000 stays unspent, simulator + existing data" framing
+   for this whole exercise, plus the fact that even a rank-36 M fit from
+   NEW data would still need the same "does it distort clean data" check
+   before being trusted — this alternative doesn't remove the need for
+   Alternative #1's regularization discipline, it only makes the
+   raw-data starting point richer. Would revisit if a future task
+   specifically authorizes new calibration circuit submissions (still to
+   the free simulator only).
+
+3. **Reporting the spectacular 1.40/2.13 kcal/mol number as the headline
+   Phase 3 result, with the ideal-data caveat as a footnote.** Rejected
+   outright, not seriously considered as a real option: this is exactly
+   the failure mode this project's standing honesty rules exist to
+   prevent, and doing it anyway — even with a footnote — would misrepresent
+   a disqualified, non-generalizing artifact as an achievement. The
+   DISQUALIFIED verdict is the headline, not a footnote.
+
+**Where this leaves the running total**: Phase 3's headline number is
+void. It does not sit alongside Phase 1's 27.71/31.64 or Phase 2's
+28.24/32.52 kcal/mol as a comparable, competing result — it never
+survived its own sanity check. The best result from this whole
+physics-constrained-reconstruction line remains **Phase 2's selective
+hybrid, ~27-29 kcal/mol**, still well short of chemical accuracy and
+still well short of iteration 18's own best real number (31.77/33.86 —
+comparable in the same ballpark, not a clear win over the project's
+prior best, though obtained through a genuinely different mechanism).
+
+Per the standing branch discipline: the most honest, most valuable
+result of this entire iteration is a caught false positive, reported in
+full detail rather than quietly discarded. No push.
+
+Code: `vqe/phase3_constrained_channel_inversion.py`. Full data:
+`vqe/phase3_channel_inversion_results.json`.
 
 ---
