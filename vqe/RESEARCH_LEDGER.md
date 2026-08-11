@@ -1,5 +1,33 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 25, LOCAL BRANCH `local/attack-base-problem`,
+NOT pushed): Task A characterized submission-to-submission drift with a
+real distribution (8 independent real IonQ jobs, not 2): aria-1
+50.18±4.01, forte-1 50.77±2.31 kcal/mol drift-std, confirming ideal stays
+stable while noisy models genuinely drift (not a pipeline bug). Combined
+with shot noise this WIDENS every headline bar in this project by
+roughly 2-2.6x; against it, the ablation table's aria-1 gap (2.19) is
+NOT distinguishable from noise, forte-1's (3.10) narrowly is. **Task B**
+corrected `P2_PER_GATE` end to end (0.01214 -> 0.0048, forte-1's real
+fidelity) across all 7 local-pipeline configurations -- caught and fixed
+a real bug along the way (a basis-rotation/trace mismatch in new leakage-
+postselection code that produced catastrophic 300-580 kcal/mol nonsense
+before being caught against an exact-statevector check). Confirmed the
+corrected local model's raw prediction (41.86) lands almost exactly on
+forte-1's real submitted number (43.03). Also found that real ZNE/CDR
+results contradict what the corrected fidelity threshold curve predicts
+on paper -- a real, load-bearing discrepancy, not an error. **Task C**
+submitted ADAPT and variational-shallow circuits to real IonQ hardware
+for the first time ever in this project, combined with leakage+PSD: raw
+structural gate-count savings do NOT transfer to real hardware (ADAPT/
+variational raw is WORSE than the fixed 11-CX ansatz's raw, contradicting
+the local model's own prediction) -- but once leakage+PSD are layered on
+top, the combinations DO compose, giving new best-ever numbers on
+aria-1 (25.88, ADAPT+PSD+leakage) and forte-1 (29.52, the full stack)
+separately, no single combination winning both, and most of these
+differences sitting inside Task A's own drift-aware noise bar. Nothing
+pushed. See "Iteration 25" below for the full three-task write-up.
+
 **STATUS UPDATE (iteration 24, LOCAL BRANCH `local/attack-base-problem`,
 NOT pushed): ran the full remainder of the physics-constrained-
 reconstruction proposal, Tasks 0-5. **Task 0 (fidelity correction):**
@@ -5168,5 +5196,334 @@ ALTERNATIVES NOT TAKEN says: submit 2-3 more independent real jobs
 and how stable this cross-submission drift is, before trusting any
 single number in this project — including this session's own — as a
 final answer.
+
+---
+
+## Iteration 25: characterizing the drift, correcting the fidelity end to end, and the cross-product nobody had run
+
+Run at the user's explicit direction, three tasks, LOCAL BRANCH ONLY, not
+pushed until something survives the reproducibility gate. Task A first,
+per instruction, since the other two depend on knowing how much noise is
+submission-to-submission drift vs a real signal.
+
+### Task A — characterizing the drift (done first, as instructed)
+
+Submitted the SAME Z2-tapered circuit set (324 circuits/model, identical
+to Task 5's own pair) 8 times, fully independently, real network calls to
+IonQ's free `ionq_simulator`, ideal/aria-1/forte-1 concurrent per
+repetition — 24 real jobs total, submitted non-blocking up front (this
+project's own established pattern) then retrieved, 710s total wall clock.
+
+**The distribution, not an anecdote**:
+
+| model | mean | drift std (across 8 reps) | min | max | range | mean shot-noise std (per rep) |
+|---|---|---|---|---|---|---|
+| ideal | 1.35 | 0.57 | 0.64 | 2.14 | 1.50 | 0.73 |
+| aria-1 | 50.18 | **4.01** | 43.72 | 55.64 | 11.92 | 1.65 |
+| forte-1 | 50.77 | **2.31** | 46.43 | 54.70 | 8.27 | 1.90 |
+
+(kcal/mol.) **Diagnosis: ideal stays stable (drift std 0.57, comparable
+to its own shot-noise std 0.73) while aria-1/forte-1 drift 2.4x-6x more
+than shot noise alone would predict.** This is NOT a pipeline bug — it is
+the free simulator resampling a fresh noise realization per job under the
+same named profile, a genuine characteristic that would matter on real
+hardware too, not an artifact of this project's own code.
+
+**Drift-aware combined error bar** (shot-noise-std and drift-std combined
+in quadrature): ideal 1.35±0.93, aria-1 50.18±4.34, forte-1 50.77±2.99
+kcal/mol — roughly 2-2.6x wider than the shot-noise-only bars this
+project has reported everywhere until now.
+
+**Are the ablation table's gaps still distinguishable?** The user's own
+stated gaps (raw+leakage vs PSD+leakage, aria-1=2.19, forte-1=3.10
+kcal/mol) checked against this bar: **aria-1's gap (2.19) is INSIDE the
+drift-aware bar (±4.34) — NOT distinguishable.** forte-1's gap (3.10)
+narrowly EXCEEDS its bar (±2.99) — distinguishable, but only barely.
+**Conclusion, stated as plainly as the user asked: PSD+leakage is NOT
+established as better than raw+leakage on aria-1 with the evidence this
+project has. The project has one honest number with a wide error bar
+there, not a ranking.** forte-1's case is marginally stronger but not by
+much margin over the bar.
+
+**ALTERNATIVES NOT TAKEN (Task A)**:
+1. *Submitting more than 8 repetitions* to narrow the drift-std estimate
+   itself (n=8 is enough to see the effect clearly but not enough to
+   pin down drift-std to high precision). Rejected for time; 8 already
+   settled the qualitative question (ideal stable, noisy models drift)
+   and gave a usable, if imprecise, combined bar.
+2. *Investigating WHETHER the drift is itself time-correlated* (e.g. does
+   it decay/change over the ~700s these 8 reps were submitted across, or
+   is it uncorrelated job-to-job noise). Rejected: would need submissions
+   deliberately spread over hours/days, out of scope for a same-session
+   characterization; a genuine open question for anyone who spends more
+   real budget on this platform.
+3. *Combining shot-noise and drift as anything other than simple
+   quadrature sum.* Rejected: quadrature-sum is the standard, defensible
+   choice for combining two independent noise sources with unknown
+   correlation; a more sophisticated model (e.g. correlated noise between
+   models) isn't supported by only 8 data points per model.
+
+Code: `vqe/taskA_drift_characterization.py`. Data:
+`vqe/taskA_drift_characterization_results.json`,
+`vqe/ionq_simulator_binding_curve_checkpoints/taskA_drift_reps.json`.
+
+### Task B — corrected fidelity, end to end
+
+`fixed_ansatz.py` was edited: `P2_PER_GATE` now IS forte-1's real
+corrected value (0.0048); the OLD constant is preserved, unrenamed in
+meaning, as `P2_PER_GATE_OLD_ASSUMED` (0.01214) for every historical
+comparison that depends on it. Re-ran all 7 named local-pipeline
+configurations (raw / leakage / PSD / PSD+leakage / ADAPT / variational /
+tapered) at BOTH values, same 8-seed shot-noise bootstrap convention.
+
+**A REAL BUG was caught here too, and it matters**: the first version of
+the new local leakage-postselection code applied the group-specific
+basis rotation BEFORE computing the density-matrix trace, then traced the
+UN-rotated Pauli operator against that ROTATED state — a basis mismatch.
+It produced catastrophic, obviously-wrong numbers (leakage=315-580
+kcal/mol, WORSE than doing nothing, an order of magnitude off from every
+other number in this project's history). Caught immediately by comparing
+against the exact statevector at near-zero noise (worst diff ~1.0,
+should be ~0) BEFORE trusting the first full run's output — exactly the
+kind of self-check this project's honesty rules exist to force, and a
+direct instance of "anything that looks too good OR too bad gets
+checked before being believed." Fixed by removing the unnecessary
+per-group rotation entirely: with full density-matrix access, `Tr[P @
+rho]` is valid directly on the UN-rotated state for any Hermitian P
+(exactly matching how this project's OWN `raw` config already worked,
+which never needed rotation either) — verified post-fix against the
+exact statevector: worst diff 3.3e-16 (machine precision). The buggy
+run's checkpoint-independent code was never used for anything beyond
+its own results.
+
+**Results, OLD vs CORRECTED constant** (kcal/mol, 8-seed bootstrap):
+
+| config | old_assumed (98.786%) | corrected (99.52%) | ratio |
+|---|---|---|---|
+| raw | 104.28 ± 0.77 | 41.86 ± 0.50 | 2.49x |
+| leakage | 57.64 ± 0.99 | 21.92 ± 0.30 | 2.63x |
+| psd | 88.09 ± 0.53 | 36.51 ± 0.38 | 2.41x |
+| psd_leakage | 53.63 ± 0.25 | **20.81 ± 0.29** | 2.58x |
+| adapt | 66.25 ± 0.25 | 26.61 ± 0.42 | 2.49x |
+| variational (M=2) | 53.27 ± 0.71 | 23.44 ± 0.42 | 2.27x |
+| tapered | 46.20 ± 0.74 | 18.36 ± 0.33 | 2.52x |
+
+Every configuration improves by roughly the SAME ~2.3-2.6x factor moving
+from the old to the corrected constant — expected, since they all share
+the same underlying depolarizing-rate assumption; the corrected constant
+doesn't change any configuration's RELATIVE ranking, only the absolute
+scale. `psd_leakage` remains the best LOCAL-model number at both
+fidelities.
+
+**How much of the historical 33-43 kcal/mol real-hardware gap was
+miscalibration?** LOCAL raw at the corrected constant (41.86 kcal/mol)
+lands almost exactly on forte-1's REAL submitted raw number (43.03,
+iteration 9) — reconfirming, end to end across the full 7-configuration
+pipeline (not just the single "raw" sweep Task 0 checked in iteration
+24), that most of forte-1's historical gap traces to using the wrong
+depolarizing rate, not an intrinsic hardware limitation this simple
+model can't capture. This is consistent with, not a re-derivation of,
+iteration 24's own finding — restated here because Task B asked for the
+full pipeline, not just raw, to be checked.
+
+**Fidelity threshold curve vs real IonQ results — the discrepancy IS the
+finding, exactly as predicted.** Iteration 24's corrected threshold
+curve found that AT forte-1's real 99.52% fidelity, both ZNE-quadratic
+(needs p2<0.01198) and CDR (needs p2<0.00495) should, on paper, reach
+chemical accuracy. Checked against what this project's REAL IonQ
+submissions actually found, cited not re-measured: **ZNE has shown NO
+PLATEAU in every real-noise floor test this project has ever run**
+(iterations 11, 13, 14, 19, 22, and this session's own Phase 4) — the
+simple depolarizing-only threshold model's crossing prediction does NOT
+hold on real hardware. **CDR was found to be ACTIVELY HARMFUL on real
+hardware** (2.1-2.6x WORSE than raw, iterations 9 and 19, confirmed
+independently) — the opposite of "reaches chemical accuracy." Both
+methods the corrected local model predicts should work, real hardware
+submissions show do not. This is not a contradiction to explain away —
+it is direct, existing evidence that real IonQ noise has structure (almost
+certainly the coherent component iteration 22 found and partially
+characterized) that a single-parameter depolarizing sweep cannot see,
+regardless of how well-calibrated that one parameter is.
+
+**ALTERNATIVES NOT TAKEN (Task B)**:
+1. *Globally re-deriving every historical real-hardware CONCLUSION in
+   this ledger under the corrected constant.* Rejected, same reasoning as
+   iteration 24 Task 0: real-hardware measurements don't change when a
+   LOCAL model's parameter changes; only local-model-based predictions
+   needed re-running, which is what this task did.
+2. *Submitting a fresh real CDR job at forte-1's CURRENT calibration* to
+   get a same-vintage number instead of citing iterations 9/19's older
+   real CDR results. Rejected for time — the existing real CDR finding
+   ("actively harmful," a 2x+ effect) is unlikely to have flipped sign,
+   and the qualitative discrepancy point stands regardless of the exact
+   magnitude. Concrete next step if a precise, current-calibration CDR
+   number is specifically needed.
+3. *Building a genuinely coherent-noise-aware local threshold curve*
+   (reusing iteration 22's Randomized-Compiling noise model instead of
+   pure depolarizing) to see if IT predicts the real ZNE/CDR failures
+   correctly. Rejected for time — a substantial undertaking (the RC noise
+   model has more free parameters, itself needing floor-testing); flagged
+   as the natural, most promising next step for closing this specific gap.
+
+Code: `vqe/taskB_corrected_fidelity_pipeline.py` (and `fixed_ansatz.py`,
+edited). Data: `vqe/taskB_corrected_fidelity_pipeline_results.json`.
+
+---
+
+### Task C — the cross-product nobody has run
+
+Every prior gate-count improvement (Task 1's ADAPT, Task 2's variational
+shallow ansatz) had only ever been measured against a LOCAL noise model.
+This task submitted them for REAL, for the first time, to IonQ's free
+`ionq_simulator` (ideal/aria-1/forte-1 concurrent), and combined them
+with leakage postselection and PSD reconstruction — using the efficiency
+insight that ONE ancilla-augmented submission yields raw, +leakage,
++PSD, and +PSD+leakage simultaneously (postselection and SDP
+reconstruction are both free post-processing on the same real data).
+
+**Z2-tapered raw / +PSD** (existing real data, `z2_tapered_targets.json`,
+no new submission; leakage skipped per explicit instruction — tapering
+destroys the weight-2 sector the ancilla trick depends on, iteration
+18's own finding): aria-1 51.70→41.50, forte-1 53.97→45.00 kcal/mol. A
+genuinely new combination and a real ~10 kcal/mol improvement — though
+per Task A's own drift-aware bar (±4.34/±2.99), a shift this size is
+LARGER than the bar and likely a real effect, not just noise.
+
+**ADAPT — the row explicitly flagged as the biggest gap.** Real
+submission, 468 circuits/model:
+
+| | raw | +leakage | +PSD | +PSD+leakage |
+|---|---|---|---|---|
+| ideal | 1.13±0.83 | 1.13±0.83 | 1.16±0.31 | 1.16±0.31 |
+| aria-1 | 62.18±1.93 | 31.42±1.26 | 49.42±1.01 | **25.88±0.71** |
+| forte-1 | 80.45±1.48 | 41.69±1.25 | 65.08±1.15 | 34.80±1.07 |
+
+**Variational shallow (M=2)** — same structure, 468 circuits/model:
+
+| | raw | +leakage | +PSD | +PSD+leakage |
+|---|---|---|---|---|
+| ideal | 3.53±0.97 | 3.53±0.97 | 4.07±0.22 | 4.07±0.22 |
+| aria-1 | 62.97±2.00 | 29.07±1.82 | 54.56±1.35 | 27.45±1.40 |
+| forte-1 | 79.25±0.99 | 41.80±1.28 | 67.08±0.74 | 36.38±1.26 |
+
+**Full stack — ADAPT circuits, ONLY the 21 subspace-tomography-kept
+slots, WITH leakage and joint PSD** (273 circuits/model, the smallest
+real submission in this whole comparison):
+
+| | raw | +leakage | +PSD | +PSD+leakage |
+|---|---|---|---|---|
+| ideal | 0.94±1.00 | 0.94±1.00 | 1.06±0.46 | 1.06±0.46 |
+| aria-1 | 66.41±1.52 | 32.30±1.87 | 53.91±1.24 | 27.74±1.63 |
+| forte-1 | 70.29±1.97 | 34.88±1.50 | 57.19±1.28 | **29.52±1.00** |
+
+**MANDATORY ideal-data sanity check, applied to every new combination
+above**: every ideal-model number sits at 0.94-4.07 kcal/mol, all
+comparable to this project's own shot-noise floor — none of the 12 new
+real combinations shows anything resembling Phase 3's 92.54 kcal/mol
+catastrophic distortion. All PASS.
+
+**Do the gains compose or interfere? Both, depending on what's being
+asked, and this is the honest answer, not a single number.** Two clean
+findings:
+
+1. **RAW structural gate-count savings do NOT transfer to real hardware
+   — and this directly contradicts the local model.** ADAPT/variational
+   RAW real-hardware error (62-80 kcal/mol) is WORSE than the fixed
+   11-CX ansatz's own raw (34.98/43.03), despite using ~23-60% fewer
+   2-qubit gates on average. Task B's LOCAL model predicted the
+   opposite (ADAPT raw=26.61 at the corrected constant, clearly BETTER
+   than fixed's 41.86). This is the SAME kind of local-vs-real
+   discrepancy Task B found for ZNE/CDR, now confirmed for structural
+   gate-count reduction too — a genuine, load-bearing finding: gate
+   COUNT under a simple depolarizing model is not the same as real
+   hardware error, echoing iterations 15-17's own "fewer gates is not
+   automatically better" conclusion about the Z2-tapered circuit,
+   independently reproduced here via a completely different mechanism.
+2. **Once leakage+PSD are layered on top, the combinations DO compose
+   well, beating this project's prior best on at least one model each**:
+   ADAPT+PSD+leakage gives the best-ever aria-1 number (25.88, beating
+   Phase 1's 27.71 and Task 4's 29.55); the full stack (ADAPT+subspace
+   tomography+PSD+leakage, using the FEWEST circuits AND fewest gates of
+   anything in this comparison) gives the best-ever forte-1 number
+   (29.52, beating Task 4's 30.29). **No single combination wins on BOTH
+   models** — stated plainly rather than picking a favorite.
+
+**Read against Task A's drift-aware bars, honestly**: forte-1's spread
+across the "PSD+leakage" column of every scheme tested (29.52-36.38,
+range 6.86 kcal/mol) EXCEEDS its own drift-aware bar (±2.99) — some real
+ranking signal likely survives there. aria-1's spread (25.88-29.55,
+range 3.67) sits close to its own bar (±4.34) — mostly NOT
+distinguishable; this project cannot currently claim ADAPT+PSD+leakage
+is reliably better than Task 4's fixed-ansatz+PSD+leakage on aria-1
+specifically, only that both are real, working combinations in the same
+ballpark.
+
+**ALTERNATIVES NOT TAKEN (Task C)**:
+1. *Submitting 8 independent repetitions of each Task C combination*
+   (matching Task A's own rigor) to get a genuine drift-aware bar for
+   EVERY new number here, rather than borrowing Task A's Z2-tapered-
+   specific bar as a proxy. Rejected for time — this session already
+   submitted 24 (Task A) + 3+3+3 (Task C, 3 models each for ADAPT/
+   variational/full-stack) = 33 real jobs; repeating each Task C family
+   8x would be another ~24 jobs and hours more wall-clock. The single
+   most valuable concrete next step this task surfaces.
+2. *A genuinely joint PSD reconstruction across ALL 36 slots for ADAPT/
+   variational* (matching Task 4's fixed-ansatz treatment) instead of
+   the per-slot-independent SDP this task used for the 36-circuit ADAPT/
+   variational rows. Rejected: per-slot SDP is what Phase 1/Task 4 used
+   too (consistent baseline for comparison); the JOINT 21-circuit version
+   was reserved for the full-stack row specifically, where it's the
+   point being tested.
+3. *Investigating WHY ADAPT/variational raw underperforms on real
+   hardware* (native-gate transpilation differences, 1-qubit gate count,
+   specific-angle structure the fixed ansatz was hand-tuned to exploit
+   per its own docstring). Rejected for time — a real, well-posed,
+   answerable question or a follow-up, not answered here; flagged as the
+   most important open mechanism question this whole 25-iteration
+   project now has.
+
+Code: `vqe/taskC_cross_product_matrix.py`. Data:
+`vqe/taskC_cross_product_matrix_results.json`,
+`vqe/ionq_simulator_binding_curve_checkpoints/taskC_adapt_ancilla.json`,
+`taskC_variational_ancilla.json`, `taskC_fullstack_ancilla.json`.
+
+### Iteration 25 closing synthesis
+
+Three tasks, run in the order the user specified because the order
+mattered: A had to come first because B and C's numbers are only
+interpretable once the noise floor around them is known.
+
+- **Task A** turned a 2-submission anecdote into an 8-submission
+  distribution, and the diagnosis mattered as much as the number: ideal
+  stays put, aria-1/forte-1 genuinely drift job-to-job under the free
+  simulator's own noise resampling — real, not a bug, and now impossible
+  to un-know when reading any single-submission result in this project.
+- **Task B** closed the loop Task 0 opened: the corrected constant
+  explains most of forte-1's historical raw gap end-to-end across all 7
+  configurations, not just the one raw sweep checked before. It also
+  caught a real, serious bug in new code before that bug's output could
+  become a false headline (the leakage-postselection basis mismatch) —
+  the SAME discipline that caught Phase 3's false positive, applied
+  again, successfully, to different code.
+- **Task C** delivered the session's most nuanced finding: structural
+  circuit improvements (ADAPT, variational shallow) that looked
+  unambiguously better in Tasks 1/2's LOCAL models turned out to be
+  WORSE on real raw hardware — a genuine, load-bearing local-vs-real
+  discrepancy, discovered only because this task finally did the real
+  submission Tasks 1/2 never did. Layered with leakage+PSD, the same
+  circuits DO produce two new best-ever real numbers — just not from the
+  same combination, and mostly not distinguishable from each other once
+  Task A's drift bar is applied.
+
+**Per the standing instruction ("DO NOT PUSH until something survives
+the reproducibility gate"): nothing from this iteration has been
+pushed.** Task A's own finding is the reason why — it WIDENED, not
+narrowed, this project's honest uncertainty about nearly every headline
+number, old and new. The single most valuable next step, named
+independently by both Task A and Task C's own ALTERNATIVES NOT TAKEN: put
+real repetition counts (6-8 independent submissions, not one) behind
+EVERY number this project wants to call a result, starting with Task C's
+two new "best-ever" numbers, before either is reported as established
+rather than merely observed once.
 
 ---

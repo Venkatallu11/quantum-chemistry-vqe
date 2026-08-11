@@ -201,8 +201,21 @@ def load_h4_targets(K=5):
     return targets, lambdas, u_top, enuc, residual
 
 
-P2_PER_GATE = 0.01214   # per-2-qubit-gate fractional signal loss, real aria-1
-P1_PER_GATE = P2_PER_GATE / 40  # per-1-qubit-gate, ~1/40th the 2-qubit error
+# CORRECTED, iteration 25 Task B: this project used a SINGLE shared local-
+# model constant for both aria-1 and forte-1, labeled "real aria-1" but
+# never a live reading (iteration 24 Task 0 confirmed this directly via
+# IonQ's real calibration API). forte-1's REAL current two-qubit fidelity
+# is 99.52% (queried live 2026-08-09, device-wide MEDIAN -- IonQ's own
+# field name, not a best-pair number, not a mean; see
+# vqe/task0_fidelity_correction.py). The OLD value is kept available,
+# unrenamed in meaning, for every historical comparison that depends on
+# it -- nothing here silently reinterprets old results, they still used
+# what they used.
+P2_PER_GATE_OLD_ASSUMED = 0.01214   # OLD constant, kept for comparison -- NEVER a live reading
+P1_PER_GATE_OLD_ASSUMED = P2_PER_GATE_OLD_ASSUMED / 40
+
+P2_PER_GATE = 1 - 0.9952   # = 0.0048, forte-1's REAL live 2-qubit fidelity (99.52%)
+P1_PER_GATE = P2_PER_GATE / 40  # per-1-qubit-gate, ~1/40th the 2-qubit error, same ratio as before
 
 
 def fidelity_from_counts(n2q, n1q, p2=P2_PER_GATE, p1=P1_PER_GATE):
