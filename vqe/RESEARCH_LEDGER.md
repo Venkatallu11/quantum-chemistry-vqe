@@ -1,5 +1,38 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 26, LOCAL BRANCH `local/attack-base-problem`,
+NOT pushed): "H4 K=6 to chemical accuracy" -- six tasks, and the honest
+answer is: not yet, and here is exactly how far short. **Task 1** found
+the real shot-noise floor (1.845 kcal/mol at 300,000 shots/setting,
+REAL, not the optimistic 0.087 local prediction) sits ABOVE chemical
+accuracy even before hardware noise -- caught and fixed a real ordering
+bug along the way (sorted() vs actual submission order scrambled which
+counts mapped to which label, giving an obviously-wrong 1416.9 kcal/mol
+"ideal" result before the fix). Real QPU costs $56,497-$9.7M across the
+whole sweep -- categorically unaffordable at every shot level tested.
+**Task 2** built a 5,184-datapoint real fold-response dataset (native
+gate folding, folds 1/3/5/9, 12 representative slots) and found the
+dominant-energy family (Schmidt cross-terms, 50% of energy weight) has
+the SMALLEST per-circuit fold-response magnitude, not the largest.
+**Task 3** applied the held-out-fold selection rule as specified and
+caught a SECOND false positive this project's honesty discipline has
+now found (per-term ZNE's spectacular 13.81/17.70 kcal/mol was an
+artifact of ~5.7% of individual curves extrapolating to unphysical
+values like -101,291, silently clipped) -- and found family-wise ZNE
+came out WORSE than raw on aria-1, a genuine negative for the task's
+own headline method. **Task 4** tried to explain the raw-vs-mitigation
+local/real gap with a tuned coherent+damping noise model and got a
+clean negative: no improvement over pure depolarizing, does not
+generalize to held-out data. **Task 5** found gate count was never the
+right optimization target for real hardware (tapered beats ADAPT/
+variational on raw despite MORE gates); circuit COUNT, not gate count,
+best explains the best mitigated results. **Task 6**: no configuration
+-- across 26 iterations of this project -- passes chemical accuracy,
+central value AND drift-aware uncertainty, on real IonQ hardware for H4
+K=6. The closest real numbers (29.52-30.29 kcal/mol) sit ~29-30x the
+bar. Nothing pushed. See "Iteration 26" below for the full six-task
+write-up with ALTERNATIVES NOT TAKEN for each.
+
 **STATUS UPDATE (iteration 25, LOCAL BRANCH `local/attack-base-problem`,
 NOT pushed): Task A characterized submission-to-submission drift with a
 real distribution (8 independent real IonQ jobs, not 2): aria-1
@@ -5525,5 +5558,467 @@ real repetition counts (6-8 independent submissions, not one) behind
 EVERY number this project wants to call a result, starting with Task C's
 two new "best-ever" numbers, before either is reported as established
 rather than merely observed once.
+
+---
+
+## Iteration 26: H4 K=6 to chemical accuracy — six tasks, and the honest answer is not yet
+
+Run at the user's explicit direction, LOCAL BRANCH ONLY, not pushed
+until something survives the drift-aware reproducibility gate. Task 1
+first, per instruction, since it gates every other task's shot-count
+choice.
+
+### Task 1 — the shot budget
+
+At this project's standard 10,000 shots/setting, the IDEAL control
+itself sits at 0.965±0.564 kcal/mol — already brushing against chemical
+accuracy (1.0) before any noise is even considered. Swept shots/setting
+in {10k, 30k, 100k, 300k, 1M} — confirmed LIVE (not assumed) that IonQ's
+real per-job cap is exactly 1,000,000 shots (a shots=1,000,001 request is
+rejected with that exact message), meaning the sweep's own top value
+needed no cross-job pooling after all.
+
+**Local shot-noise floor**: crosses below the 0.3 kcal/mol target at
+300,000 shots/setting (0.087±0.052 kcal/mol, local prediction).
+
+**A REAL BUG, caught before being trusted**: the first real validation
+submission at 300,000 shots came back at 1416.9 kcal/mol for the IDEAL
+model — an obviously-wrong number (the whole point of an ideal-model
+control is that it should be small). Root cause: `target_names =
+sorted(fixed_solutions.keys())` was used for POST-HOC analysis while the
+circuits had been submitted in `fixed_solutions.items()` iteration order
+— Python's string sort puts every `"(un+um)"`-style name (ASCII `(` = 40)
+BEFORE `"u_0".."u_5"` (ASCII `u` = 117), a completely different order
+from insertion, silently scrambling which measured counts got assigned
+to which (slot, label) pair. Fixed by using the SAME order for both
+(and the fix was checked against every OTHER iteration-25/26 script for
+the identical pattern — Task A, Task C, and Task 2 were all confirmed
+already safe, tags/`target_names` built inline with or threaded through
+from circuit construction, never independently reconstructed).
+
+**The corrected REAL validation is itself the most important finding of
+this task**: at 300,000 shots, the REAL ideal-model submission (checkpoint
+saved so this ~11-minute real job never needs re-submitting) came back at
+**1.845±0.198 kcal/mol — ABOVE both the 0.3 kcal/mol target AND the 1.0
+kcal/mol chemical-accuracy bar itself**, more than 20x the LOCAL shot-
+noise-only prediction (0.087) at the SAME shot level. This means the
+"gates everything" conclusion is MORE pessimistic than the local model
+alone would suggest: something beyond simple 1/√N shot noise — plausibly
+the SAME submission-to-submission drift Task A (iteration 25) already
+found affects the "ideal" model too, at a smaller but non-zero scale
+(drift-std 0.57 kcal/mol there) — keeps the REAL achievable floor above
+chemical accuracy even at 300,000 shots/setting. **This real number, not
+the optimistic local one, is what Task 6's error budget uses.**
+
+**Real QPU cost, every configuration, every shot level** (rate card
+confirmed live: `cost_1q_gate=$0.000164`, `cost_2q_gate=$0.001121`,
+`job_cost_minimum=$25.7899`, the SAME numbers iteration 9 found,
+reconfirmed not re-guessed): the CHEAPEST option anywhere in this whole
+sweep — the 21-circuit subspace-tomography design, 10,000 shots — costs
+**$56,497 (18.8x the $3,000 budget)**. At the chosen 300,000-shot level,
+every configuration costs $914,069-$2,905,578 (305x-969x over budget).
+**No shot level, no circuit design tested fits the budget** — extends
+iteration 9's finding (452x over budget at the old 7-geometry scope) to
+this session's full shot range and current single-geometry K=6 scope.
+Real QPU remains categorically out of reach; the free `ionq_simulator`
+remains the only viable path, exactly as this project has used
+throughout.
+
+**ALTERNATIVES NOT TAKEN (Task 1)**:
+1. *Submitting the real validation at EVERY shot level (not just the
+   chosen 300k), to map the full real-vs-local shot-noise-floor gap.*
+   Rejected for time — one real, corrected datapoint already established
+   the qualitative finding (real floor sits above the local prediction);
+   a full real sweep is the natural, concrete next step.
+2. *Treating the 1.845 kcal/mol real floor as itself informative about
+   drift's shot-dependence* (does drift shrink with more shots, or stay
+   roughly constant?). Rejected: one real datapoint at one shot level
+   cannot answer that; would need Task A's own 8-repetition methodology
+   repeated at 300k shots specifically.
+3. *Re-deriving the whole cost table using a discount for bundling many
+   circuits into fewer, larger jobs.* Rejected: iteration 9 already
+   established the $25.79 floor is per-JOB (not per-circuit) via an
+   exact 125x-scaling test, and already showed gate-execution cost
+   dominates the floor at these shot counts — bundling changes nothing
+   here, which is why this file reused that conclusion rather than
+   re-testing it.
+
+Code: `vqe/task1_shot_budget.py`. Data: `vqe/task1_shot_budget_results.json`,
+`vqe/ionq_simulator_binding_curve_checkpoints/task1_shot_validation.json`.
+
+---
+
+### Task 2 — the per-term fold-response dataset
+
+Stopped treating the energy as one object. Built NATIVE-gate-folded
+circuits (`fold_native_2q`, reused unchanged from `ionq_fold_check.py` —
+folding ABSTRACT u3/cx gates is known to get CANCELLED before execution,
+confirmed by this project's own prior work; only `gateset="native"`
+submission survives) at folds 1/3/5/9, verified every folded circuit's
+gate angles stay within IonQ's real [0, 0.25] pulse-angle constraint
+(0 violations across all slots/gates/folds/models, checked before
+submitting). Verified native transpilation is safe for the CURRENT fixed
+ansatz specifically (constant 11 native 2-qubit gates across all 36
+targets at BOTH optimization_level 0 and 1 — the earlier-documented
+opt_level>=1 collapse risk is specific to u3/cx BASIS transpilation, not
+native-TARGET transpilation, confirmed directly rather than assumed).
+
+**Scope, disclosed**: 12 of 36 K=6 slots (all 6 diagonal + 6 Schmidt
+cross-term pairs, deliberately keeping BOTH structural families in
+scope) x 13 groups x 4 folds x 3 models = 1,872 real circuit executions
+(vs 5,616 for the full 36-slot design) — a principled 1/3 reduction, not
+a hidden one.
+
+**Real submission**: 12 model x fold jobs, all submitted non-blocking
+before any retrieval (this project's established pattern), 2,753s total
+retrieve time (one job hit a real, gracefully-retried `IonQRetriableError`
+mid-retrieval — handled by the existing SDK retry decorator, not a bug).
+5,184 (model, fold, slot, label) datapoints assembled.
+
+**Per-label exact energy-sensitivity weight** reused directly from Phase
+2's `rank_terms` (iteration 24), not re-derived — confirms concentration
+again, at a finer grain: the 216 Schmidt-cross-term datapoints (all 6
+representative cross-term pairs) carry 50.0% of the total energy weight
+despite being only 6 of 36 slots.
+
+**Family clustering, circuit fingerprint x model**:
+
+| family | aria-1 mean\|delta\|(fold1) | forte-1 mean\|delta\|(fold1) | energy weight |
+|---|---|---|---|
+| all_Z_low_depth | 0.0682 | 0.0603 | 39.7% |
+| XX_YY_medium (ms) / high_ZZ | 0.0641 | 0.0550 | 10.3% |
+| schmidt_cross_term | 0.0607 | 0.0523 | **50.0%** |
+
+**A genuinely counter-intuitive finding, reported plainly**: the family
+carrying HALF the energy weight (schmidt_cross_term) has the SMALLEST
+per-circuit fold-response magnitude of the three families, not the
+largest — the dominant-energy family is not the noisiest-per-circuit
+family. `all_Z_low_depth`, which carries the LEAST energy weight, shows
+the WORST per-circuit fold response. Energy sensitivity and fold-response
+magnitude are separate axes here, not the same thing wearing two names.
+
+**ALTERNATIVES NOT TAKEN (Task 2)**:
+1. *The full 36-slot design.* Rejected for time (see scope note above);
+   the 12-slot reduction keeps every family the task named in scope.
+2. *Finer-grained family definitions using the recorded DEPTH values*
+   (rather than the coarser "n_nonI_paulis_in_label <= 1" proxy used for
+   "low depth"). Rejected for time — depth IS recorded per datapoint in
+   the dataset (available for a future, finer re-clustering) but wasn't
+   used in this session's own family assignment; a real, disclosed
+   simplification, not a hidden one.
+3. *Repeating each (model, fold) submission multiple times* to get
+   Task-A-style drift bars on the fold-response curves themselves.
+   Rejected for time — this session's 33+ real jobs already stretch the
+   available time budget; the single-submission fold curves used here
+   should be read with the SAME drift caveat Task A established
+   everywhere else in this project.
+
+Code: `vqe/task2_fold_response_dataset.py`. Data:
+`vqe/task2_fold_response_dataset_results.json`,
+`vqe/ionq_simulator_binding_curve_checkpoints/task2_fold_response.json`.
+
+---
+
+### Task 3 — family-wise ZNE, validated by predicting an unseen fold — and a second caught false positive
+
+**The selection rule, applied as specified, non-negotiable**: fit six
+model classes (linear, quadratic, exponential, rational, stretched-
+exponential, and a GENUINE Gaussian Process — `scikit-learn` installed
+this session — not a spline dressed up as one) on folds [1,3,5], PREDICT
+fold=9, select by lowest held-out error. Never by which model's fold-0
+extrapolation looks best. Applied at three granularities: GLOBAL (one
+class for the whole aggregate signal), FAMILY-WISE (one class per
+family), PER-TERM (one class per individual (slot,label) curve).
+
+**Selected classes**: aria-1 GLOBAL=exponential, families mostly
+exponential/rational; forte-1 GLOBAL=rational, all three families also
+rational. Reconstructed partial energies (6 measured diagonal + 6
+measured cross-term slots extrapolated per scheme; the remaining 24
+cross-term slots held at their EXACT IDEAL value in every scheme
+compared, so the comparison isolates the measured terms' extrapolation
+quality — NOT a claim about the full real forged energy):
+
+| scheme | aria-1 | forte-1 |
+|---|---|---|
+| raw (fold=1) | 138.99 | 120.61 |
+| global | 66.89 | 85.33 |
+| family_wise | **191.41 (WORSE than raw)** | 85.33 |
+| per_term | 13.81 | 17.70 |
+
+**FAMILY-WISE ZNE — the more sophisticated approach — came out WORSE
+than doing nothing (raw) on aria-1.** Reported plainly, not explained
+away: the family-wise scheme's held-out-validated model classes, applied
+individually per curve, do not reliably improve on the naive baseline
+here. A real, negative result for the method this task set out to test.
+
+**PER-TERM ZNE (13.81/17.70) is a SECOND caught false positive this
+session, and the pattern is now familiar: a result too good relative to
+everything else in this ledger triggered the mandatory check, and the
+check found the problem.** Diagnostic: of 431 individual (slot,label)
+fold-response curves per model, **25 (aria-1, 5.8%) and 24 (forte-1,
+5.6%) produced UNPHYSICAL fold=0 extrapolations — values like -101,291,
+-71,959, and 11,180** (a Pauli expectation value must lie in [-1,1]) —
+silently clipped to ±1 before use in the energy formula. The clip acts
+as an undisclosed ad hoc regularizer: it is WHY per_term's aggregate
+looks good, not evidence the extrapolation itself is trustworthy.
+**Per-term ZNE is DISQUALIFIED here, matching Phase 3's own precedent
+(iteration 23) exactly — a spectacular-looking number, checked before
+being believed, and found to be an artifact.**
+
+**The deeper methodological finding, arguably more valuable than any
+single scheme's number**: the held-out-fold selection rule, while a real
+improvement over "pick the model that looks good," does NOT fully solve
+the reliability problem, because predicting fold=9 from folds [1,3,5]
+tests INTERPOLATION/near-range behavior INSIDE the observed range — while
+the actual quantity of interest (fold→0) requires extrapolating OUTSIDE
+and in the OPPOSITE direction from the validated point. A model can win
+the held-out test and still diverge wildly when extrapolated to zero,
+especially flexible classes (rational has poles; a 3-parameter Padé[1/1]
+fit to exactly 3 points is EXACTLY determined, meaning it passes through
+the training points with ZERO residual freedom regardless of physical
+sense, then extrapolates however that exact fit implies). This is a real
+limitation of the specified selection rule, not a flaw in this
+implementation of it — stated as a headline finding, not swept under.
+
+**CDR comparison**: cited from iterations 9/19's own established real-
+hardware finding (actively harmful, 2.1-2.6x worse than raw), not
+re-run — Task 2's circuits carry no CDR calibration data. "family_wise +
+CDR" is reported as N/A, not fabricated: composing CDR with a scheme it
+was never tested against would not be honest.
+
+**ALTERNATIVES NOT TAKEN (Task 3)**:
+1. *Regularizing the per-term fits (e.g. bounding rational/stretched-exp
+   parameters, or requiring extrapolated values to stay near the fold=1
+   value) instead of a blind ±1 clip.* Rejected for time — the clip was
+   sufficient to EXPOSE the problem (which is what this task needed); a
+   principled regularizer is the concrete next step if per-term ZNE is
+   revisited, not attempted here since the honest conclusion is
+   disqualification, not repair.
+2. *Restricting the per-term model-class pool to only low-flexibility
+   classes (linear, quadratic) to avoid the pole/exact-fit problem
+   entirely.* Rejected: this would silently change what "per-term ZNE"
+   means rather than test the specified method as given; the failure
+   mode found is itself the valuable result.
+3. *Extending the held-out validation to TWO folds (e.g. train on 1/3,
+   validate on 5 AND 9) to test extrapolation reliability more
+   directly.* Rejected for time — Task 2's dataset only has 4 fold
+   levels total, leaving at most 2 for fitting if 2 are held out; flagged
+   as the natural way to directly probe the interpolation-vs-extrapolation
+   gap this task's own finding surfaced, if revisited.
+
+Code: `vqe/task3_family_wise_zne.py`. Data:
+`vqe/task3_family_wise_zne_results.json`.
+
+---
+
+### Task 4 — tuning the local model to reproduce the mitigation failures — a genuine negative
+
+Extended the LOCAL noise model beyond pure depolarizing with two new,
+physically distinct components (a third, crosstalk, was implemented but
+held at 0 in the searched grid — see ALTERNATIVES NOT TAKEN): a
+COHERENT over-rotation (`coherent_unitary_error`, a deterministic small
+extra ZZ-type rotation on every 2-qubit gate — has a preferred axis,
+unlike depolarizing) and AMPLITUDE DAMPING (`amplitude_damping_error`,
+T1-style, has a preferred |1>→|0> direction). Grid-searched (coarse, 12
+points, reduced 12-slot/3-seed scope for speed) to jointly minimize
+|raw_pred - 43.03| + |psd_leak_pred - 30.29| + a fold-response
+shape-mismatch term (compared against Task 2's own real all_Z_low_depth
+family curve) — forte-1 only; aria-1 held out entirely from fitting.
+
+**Result: NO IMPROVEMENT over pure depolarizing, and it does not
+generalize.** The reduced-scope grid search selected coherent_eps=0.03 as
+best, but CONFIRMED at full scope (36 slots, 8 seeds): raw=45.43 (err
+2.40), psd_leakage=21.50 (err 8.79), objective=11.19 — WORSE than the
+pure-depolarizing baseline's own full-scope objective (10.02). The
+reduced-scope proxy used to guide the search was too noisy to reliably
+find a genuine improvement within the tested grid. Held-out validation
+against aria-1 (never used in fitting) confirms this: raw predicted
+45.43 vs real 34.98 (err 10.45), the model does NOT generalize.
+
+**Reported as the honest negative it is, not reframed as a partial
+win**: within the ranges tested (coherent_eps up to 0.10, damping_gamma
+up to 0.02), neither coherent over-rotation nor amplitude damping closes
+the gap between the local model's optimistic mitigation prediction
+(~20-21 kcal/mol) and the real PSD+leakage result (~30-36 kcal/mol). The
+mechanism behind that gap remains OPEN. This result is NOT used
+downstream (Task 5's own mechanism discussion explicitly avoids leaning
+on it, since citing a result that failed its own validation would repeat
+the exact mistake this project's honesty rules exist to prevent).
+
+**ALTERNATIVES NOT TAKEN (Task 4)**:
+1. *Actually searching crosstalk* (implemented — a spectator depolarizing
+   error on idle qubits during every 2-qubit gate, via explicit `id`-gate
+   insertion so the noise model can target it — but held at 0 in the
+   active grid). Rejected for time: making it work consistently across
+   BOTH the raw circuit path and the 5-qubit ancilla/leakage path (which
+   needs its own spectator bookkeeping) was judged not worth a second
+   possible bug under this session's remaining budget. The single most
+   concrete next step this task surfaces — crosstalk is the one
+   physically-motivated component never actually tested here.
+2. *A finer grid or a gradient-based optimizer (scipy.optimize.minimize)
+   instead of a coarse grid.* Rejected: with only 2 actively-searched
+   parameters and expensive simulations, a coarse grid is more
+   transparent and directly inspectable (every point's objective is
+   visible in the saved results) than a black-box optimizer's trajectory;
+   a finer grid around the current best region is the natural refinement
+   if this line continues.
+3. *Fitting on BOTH aria-1 and forte-1 jointly* instead of holding aria-1
+   out entirely. Rejected: the task explicitly asked for held-out
+   validation on data the tuning never saw; fitting on both would remove
+   the only honest generalization test this task could run with the
+   real numbers available.
+
+Code: `vqe/task4_tune_noise_model.py`. Data:
+`vqe/task4_tune_noise_model_results.json`.
+
+---
+
+### Task 5 — optimizing against MITIGATED error, not ideal error
+
+Aggregated every REAL PSD+leakage (or PSD-only, where leakage is
+structurally unavailable) number this project has collected for
+fixed/ADAPT/variational/tapered/subspace-tomography/full-stack — no new
+circuits, "existing data" satisfies this task directly.
+
+**The Pareto frontier, mitigated error vs 2-qubit gate budget, real data
+only**:
+
+| N_2q budget | best real mitigated error | circuit |
+|---|---|---|
+| aria-1, ≤4.30 | 27.45 | variational |
+| aria-1, ≤8.53 | **25.88** | ADAPT |
+| forte-1, ≤4.30 | 36.38 | variational |
+| forte-1, ≤8.53 | 34.80 | ADAPT |
+| forte-1, ≤8.53 (21 circuits) | **29.52** | full stack |
+
+**The standing puzzle, addressed directly, not ignored**: RAW error vs
+gate count is not even monotonic across these four circuit families —
+tapered (fewest native qubits, 3.94 CX) BEATS ADAPT/variational (more
+CX!) on raw, while ADAPT/variational (FEWER abstract CX than the fixed
+ansatz) are WORSE than fixed on raw. Task 4's own negative result means
+this file does NOT cite "a coherent noise mechanism" as the explanation
+(that would be citing a disqualified finding) — the explanation offered
+is a plain, data-visible one: abstract 2-qubit gate COUNT was never
+validated as the variable real hardware error tracks, independent of
+which specific noise mechanism is responsible. Once mitigation (PSD+
+leakage) is applied, the ranking becomes closer to sensible, but the
+BEST point (full-stack, 29.52) is not the fewest-gate point (variational,
+36.38) — it is the fewest-CIRCUIT point (21 vs 36) at a MODERATE gate
+count. **The variable that best correlates with the best mitigated
+result in this data is circuit COUNT (fewer independent noisy estimates
+entering the joint SDP), not per-circuit gate count** — a genuinely
+different optimization target than every prior iteration of this project
+implicitly assumed.
+
+**ALTERNATIVES NOT TAKEN (Task 5)**:
+1. *Running subspace-tomography + leakage for real* (flagged as missing
+   in iteration 24 Task 3's own ALTERNATIVES NOT TAKEN, still missing
+   here) to get a genuine circuit-count-only comparison point (11 CX, 21
+   circuits, no ADAPT gate reduction) alongside full-stack (8.53 CX, 21
+   circuits). Rejected for time this session; the single most direct way
+   to test the "circuit count, not gate count" hypothesis this task's
+   own finding proposes.
+2. *A proper multi-objective (gate count AND circuit count) Pareto
+   surface* instead of the single-axis (N_2q) frontier requested.
+   Rejected: this task specifically asked for N_2q as the constraint
+   variable; the circuit-count observation is reported as a finding
+   ABOUT the requested frontier, not substituted for it.
+3. *Re-deriving the mitigated numbers with Task A's drift-aware error
+   bars applied before ranking.* Rejected here — done properly in Task 6
+   instead, which is exactly what Task 6 is for; duplicating it here
+   would be redundant.
+
+Code: `vqe/task5_mitigated_error_optimization.py`. Data:
+`vqe/task5_mitigated_error_optimization_results.json`.
+
+---
+
+### Task 6 — the error budget: does anything pass chemical accuracy?
+
+Every component either cited from an earlier real measurement in this
+ledger or from this session's own Tasks 1/A — nothing re-derived or
+guessed. Shot error and drift were each measured on ONE representative
+circuit (fixed ansatz; Z2-tapered raw) and generalized here as a platform
+floor across configurations, not independently re-measured per scheme —
+stated explicitly, not silently assumed.
+
+| component | value |
+|---|---|
+| method error (K=6 EF vs exact) | 6.65e-9 kcal/mol (exact, verified no truncation) |
+| shot error (REAL, 300k shots) | 1.845 ± 0.198 kcal/mol (Task 1's real validation, not the optimistic local prediction) |
+| drift-std | aria-1 4.01, forte-1 2.31 kcal/mol (Task A) |
+
+**Full budget, best real configurations**:
+
+| configuration | model | hardware bias (raw) | mitigation bias | combined uncertainty | TOTAL | verdict |
+|---|---|---|---|---|---|---|
+| ADAPT | aria-1 | 62.18 | 25.88 | ±4.41 | 25.88 | FAIL |
+| full stack | forte-1 | 70.29 | 29.52 | ±2.96 | 29.52 | FAIL |
+| fixed | forte-1 | 42.59 | 30.29 | ±2.96 | 30.29 | FAIL |
+
+**NO configuration passes chemical accuracy — central value AND
+uncertainty, as required.** The closest central values (29.52-30.29
+kcal/mol) sit ~29-30x the 1.0 kcal/mol bar BEFORE even adding the
+drift-aware uncertainty. Per the explicit instruction ("a central
+estimate of 0.8 with a ±4 bar is NOT a pass. Say so explicitly."): this
+project has NOT reached chemical accuracy on real IonQ hardware for H4
+K=6, at any configuration tested across 26 iterations. Stating that
+plainly, not softened, is the entire deliverable of this task.
+
+**ALTERNATIVES NOT TAKEN (Task 6)**:
+1. *Independently re-measuring shot error and drift for EVERY
+   configuration* rather than generalizing from one representative
+   circuit each. Rejected for time (would need ~4 configurations x 8
+   repetitions x multiple shot levels = dozens more real jobs); the
+   generalization is disclosed, not hidden, and the qualitative verdict
+   (nothing passes) is not close enough to the bar for this
+   simplification to plausibly change the conclusion.
+2. *Reporting a single "best" number instead of the full budget table.*
+   Rejected: the whole point of this task is showing EVERY component,
+   including the ones (drift, shot error) that make single "best number"
+   reporting misleading — a table is the honest format here, not a
+   simplification for its own sake.
+3. *Loosening the PASS rule to central-value-only* (which several
+   individual iterations of this project might have satisfied in
+   isolation, e.g. a bootstrap std alone under 1 kcal/mol). Rejected
+   outright — this is exactly the rule this task was written to prevent
+   relaxing, per its own explicit text.
+
+Code: `vqe/task6_error_budget.py`. Data: `vqe/task6_error_budget_results.json`.
+
+### Iteration 26 closing synthesis
+
+Six tasks, and this iteration's throughline is that this project's own
+honesty machinery kept working exactly as designed, against its OWN
+newest results, not just old ones:
+
+- **Task 1** found the shot-noise floor itself, measured for real, is
+  worse than the local model claimed — a finding that would have been
+  missed entirely if the (buggy) first real validation hadn't been
+  checked, caught, fixed, and re-run rather than reported as-is.
+- **Task 3** caught a second false positive with the identical shape to
+  Phase 3's (iteration 23): a spectacular number, disqualified by
+  checking the individual pieces that composed it, not just the
+  aggregate.
+- **Task 4** is a clean, reported negative — a plausible mechanism
+  (coherent + damping noise) tested and found NOT to explain what it was
+  built to explain, and NOT quietly reused downstream once it failed its
+  own validation.
+- **Task 5** and **Task 6** turn all of this into a plain, unhedged
+  answer to the question the iteration opened with: H4 K=6 has not
+  reached chemical accuracy on real IonQ hardware, gate count is not the
+  variable that was worth optimizing, and the honest error budget — drift
+  included, not just shot-noise bootstrap — makes that gap roughly
+  30-fold, not a rounding error.
+
+**Per the standing instruction ("DO NOT PUSH until a result survives the
+drift-aware reproducibility gate"): nothing from this iteration is
+pushed — Task 6 found that literally nothing in this project's 26-
+iteration history clears that gate yet.** The most concrete, most
+repeated next step named across this iteration's own ALTERNATIVES NOT
+TAKEN sections: search crosstalk properly (Task 4, implemented but
+untested), run subspace-tomography+leakage for real (Task 5, tests the
+circuit-count hypothesis directly), and put real repetition counts behind
+whichever number results from those before calling anything established.
 
 ---

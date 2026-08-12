@@ -1,0 +1,107 @@
+{
+  "method_error": 6.65160042506886e-09,
+  "shot_error_real": 1.845,
+  "drift": {
+    "aria-1": 4.01,
+    "forte-1": 2.31
+  },
+  "budgets": {
+    "fixed (11 CX)": {
+      "aria-1": {
+        "method_error": 6.65160042506886e-09,
+        "shot_error": 1.845,
+        "hardware_bias_raw": 33.09,
+        "mitigation_bias": 29.55,
+        "drift_std": 4.01,
+        "combined_uncertainty": 4.414082577387967,
+        "total": 29.55,
+        "passes_central_value": false,
+        "passes_with_uncertainty": false
+      },
+      "forte-1": {
+        "method_error": 6.65160042506886e-09,
+        "shot_error": 1.845,
+        "hardware_bias_raw": 42.59,
+        "mitigation_bias": 30.29,
+        "drift_std": 2.31,
+        "combined_uncertainty": 2.9563702406836665,
+        "total": 30.29,
+        "passes_central_value": false,
+        "passes_with_uncertainty": false
+      }
+    },
+    "ADAPT (8.53 CX mean)": {
+      "aria-1": {
+        "method_error": 6.65160042506886e-09,
+        "shot_error": 1.845,
+        "hardware_bias_raw": 62.18,
+        "mitigation_bias": 25.88,
+        "drift_std": 4.01,
+        "combined_uncertainty": 4.414082577387967,
+        "total": 25.88,
+        "passes_central_value": false,
+        "passes_with_uncertainty": false
+      },
+      "forte-1": {
+        "method_error": 6.65160042506886e-09,
+        "shot_error": 1.845,
+        "hardware_bias_raw": 80.45,
+        "mitigation_bias": 34.8,
+        "drift_std": 2.31,
+        "combined_uncertainty": 2.9563702406836665,
+        "total": 34.8,
+        "passes_central_value": false,
+        "passes_with_uncertainty": false
+      }
+    },
+    "variational (4.3 CX mean)": {
+      "aria-1": {
+        "method_error": 6.65160042506886e-09,
+        "shot_error": 1.845,
+        "hardware_bias_raw": 62.97,
+        "mitigation_bias": 27.45,
+        "drift_std": 4.01,
+        "combined_uncertainty": 4.414082577387967,
+        "total": 27.45,
+        "passes_central_value": false,
+        "passes_with_uncertainty": false
+      },
+      "forte-1": {
+        "method_error": 6.65160042506886e-09,
+        "shot_error": 1.845,
+        "hardware_bias_raw": 79.25,
+        "mitigation_bias": 36.38,
+        "drift_std": 2.31,
+        "combined_uncertainty": 2.9563702406836665,
+        "total": 36.38,
+        "passes_central_value": false,
+        "passes_with_uncertainty": false
+      }
+    },
+    "full stack (ADAPT, 21 circ)": {
+      "aria-1": {
+        "method_error": 6.65160042506886e-09,
+        "shot_error": 1.845,
+        "hardware_bias_raw": 66.41,
+        "mitigation_bias": 27.74,
+        "drift_std": 4.01,
+        "combined_uncertainty": 4.414082577387967,
+        "total": 27.74,
+        "passes_central_value": false,
+        "passes_with_uncertainty": false
+      },
+      "forte-1": {
+        "method_error": 6.65160042506886e-09,
+        "shot_error": 1.845,
+        "hardware_bias_raw": 70.29,
+        "mitigation_bias": 29.52,
+        "drift_std": 2.31,
+        "combined_uncertainty": 2.9563702406836665,
+        "total": 29.52,
+        "passes_central_value": false,
+        "passes_with_uncertainty": false
+      }
+    }
+  },
+  "any_configuration_passes": false
+}
