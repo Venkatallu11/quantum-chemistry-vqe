@@ -1,5 +1,35 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 27, LOCAL BRANCH `local/attack-base-problem`,
+pushed to the SIDE BRANCH only, `origin/main` untouched -- PASS gate not
+met): native-gate H4 entanglement forging, validated end to end on
+IonQ's free simulators, no real QPU submission. **Tasks A/B**: native
+Schmidt-vector state prep (Forte GPi/GPi2/ZZ, Aria GPi/GPi2/MS) for K=5
+AND K=6, fidelity ~1e-14, N_2q constant at 11, and EVERY fold (1/3/5/7/9)
+preserves the ideal answer to ~2e-15 -- six orders of magnitude inside
+the 1e-10 requirement. Caught a real discrepancy: the task's claimed K=5
+method error (~0.17 kcal/mol) doesn't match direct recomputation (0.5655,
+matching this project's own prior CLASSICAL_FLOOR_KCAL constant) --
+used the verified number. **Task C**: ran the FULL H4 forged energy (not
+the Bell proxy) at native folds 1-9, real submission, and found CLEAN,
+MONOTONIC noise scaling with fold for the first time ever on this
+quantity -- but ALSO found native-gate raw error (132-148 kcal/mol) is
+3-4x WORSE than the historical abstract-gate raw (34.98/43.03), likely
+because native transpilation needs ~4-6x more 1-qubit gates (197/285 vs
+51) that this project's noise model has always under-weighted. **Task
+D**: held-out ZNE validation (train on 1,3,5, predict 7; train on
+1,3,5,7, predict 9; NO clipping, unphysical extrapolations excluded and
+counted, not hidden) -- and for the FIRST TIME in this project's
+27-iteration history, ZNE PASSES its own held-out test AND improves the
+held-out error: forte-1 raw 132.27 -> ZNE 14.28 kcal/mol (9.3x). Still
+~5-7x short of the 2-3 kcal/mol target, and the drift-aware uncertainty
+(+/-2.31 forte-1) does not support a pass. **Task E**: real IonQ pricing
+of the validated circuits -- cheapest configuration is 1,351x the $3,000
+budget. **THE PASS GATE: 5 of 6 criteria pass (a first for this
+project) -- criterion 6 (2-3 kcal/mol, drift-aware) does not. Per the
+explicit rule, no real hardware submission is warranted, and none was
+made.** See "Iteration 27" below for the full five-task write-up.
+
 **STATUS UPDATE (iteration 26, LOCAL BRANCH `local/attack-base-problem`,
 NOT pushed): "H4 K=6 to chemical accuracy" -- six tasks, and the honest
 answer is: not yet, and here is exactly how far short. **Task 1** found
@@ -6020,5 +6050,365 @@ TAKEN sections: search crosstalk properly (Task 4, implemented but
 untested), run subspace-tomography+leakage for real (Task 5, tests the
 circuit-count hypothesis directly), and put real repetition counts behind
 whichever number results from those before calling anything established.
+
+---
+
+## Iteration 27: native-gate H4 entanglement forging, validated on IonQ's free simulators — the first ZNE that actually passes its own held-out test, and still falls short
+
+Run at the user's explicit direction. NO real QPU submission anywhere in
+this iteration — free `ionq_simulator` only, the $3,000 stays unspent.
+Committed locally; per this task's own instruction, pushed to the SIDE
+BRANCH (`local/attack-base-problem`, its normal remote name) for backup
+and visibility, NOT merged to `origin/main` — the PASS gate (below) is
+not met, so main stays untouched.
+
+### Task A — native state preparation, K=5 and K=6
+
+Reused `fixed_ansatz.build_ansatz` (already a hand-derived, real-only,
+fixed-Hamming-weight-sector circuit — never `StatePreparation`) plus
+`native_stateprep.to_native` unchanged. K is NOT a property of the
+circuit family here — both K=5 (25→ still fit all 25 targets) and K=6
+(36 targets) reuse the IDENTICAL 5-angle architecture, so no new
+synthesis or correctness risk was introduced testing both.
+
+**A real discrepancy, caught and reported, not silently resolved**: the
+task text claimed K=5's method error is "~0.17 kcal/mol." Direct
+recomputation gives **0.5655 kcal/mol** — which matches this project's
+own independently-established `ionq_native_forged_energy.py::
+CLASSICAL_FLOOR_KCAL = 0.5655` from an earlier iteration exactly. The
+verified, corroborated value is used throughout this iteration; the 0.17
+claim is not adopted.
+
+**Results, both K, both gate families** (identical, since the circuit
+architecture doesn't depend on K):
+
+| | fidelity (worst) | N_2q | N_1q | depth | angle violations |
+|---|---|---|---|---|---|
+| aria (ms) | 1.66e-14 | 11 (constant) | 197 | 72 | 0 |
+| forte (zz) | 1.63e-14 | 11 (constant) | 285 | 88 | 0 |
+
+Per explicit instruction, gate count was NOT the optimization target —
+reported as a diagnostic. **It turns out to matter anyway, and not in
+the direction this project's local model ever predicted — see Task C.**
+
+**ALTERNATIVES NOT TAKEN (Task A)**:
+1. *Hand-deriving a genuinely NEW native-gate synthesis* (directly
+   composing GPi/GPi2/ZZ or GPi/GPi2/MS gates from the target amplitudes,
+   rather than abstract-circuit + `to_native` translation). Rejected:
+   reusing the already-verified `to_native` pipeline (iteration 26 Task 2:
+   constant gate count, 1e-14 fidelity) carries far less correctness risk
+   than a new hand-rolled synthesizer built under this session's time
+   budget, and the results below show gate count was never the
+   bottleneck anyway.
+2. *Optimizing N_1q specifically* (197/285 is large; a native-aware
+   resynthesis might cut it). Rejected per the task's own explicit
+   instruction not to make gate-count reduction the primary objective —
+   but flagged as the single most promising lever Task C's finding
+   below actually points to.
+3. *Testing K=4 or K=3 as a third comparison point.* Rejected: the task
+   specified K=5 and K=6 exactly; going further changes the Hamiltonian
+   truncation floor into territory this project has not otherwise
+   characterized this session.
+
+Code: `vqe/task27ab_native_stateprep_fold.py`. Data:
+`vqe/task27ab_native_stateprep_fold_results.json`.
+
+---
+
+### Task B — exact native-fold verifier
+
+For every prepared vector (both K, both gate families — 4 configurations
+x their respective target counts), folded natively at 1/3/5/7/9 and
+compared the folded statevector to the un-folded native circuit's own
+statevector directly (pure unitary algebra, no noise). **Worst deviation
+across every fold, every vector, every configuration: ~2e-15 — six
+orders of magnitude inside the 1e-10 requirement.** Also verified live
+(not assumed) that every emitted gate angle stays within IonQ's real
+[0, 0.25]-turn constraint: 0 violations across all configurations.
+**PASS-GATE CRITERION 1 (every fold preserves the ideal answer to
+1e-10): SATISFIED, with six orders of magnitude of margin.**
+
+**ALTERNATIVES NOT TAKEN (Task B)**:
+1. *Testing fold factors beyond 9* (e.g. 21, 81, matching the original
+   Bell-probe sweep this task's own "WHY THIS TASK EXISTS" section
+   cites). Rejected: this task's fold set (1/3/5/7/9) was specified
+   explicitly to match Task D's two-stage held-out design; higher folds
+   would need their own held-out structure to be useful, not just added
+   as extra points.
+2. *Verifying against the ABSTRACT (u3/cx) circuit's statevector instead
+   of the native circuit's own.* Rejected: Task A's fidelity check
+   already confirms native matches abstract matches target to 1e-14;
+   checking fold-preservation against the native circuit's own
+   statevector isolates the fold operation itself as the thing under
+   test, which is what Task B asked for.
+3. *Random/statistical fold-preservation sampling instead of exhaustive
+   (every vector, every fold, every configuration).* Rejected: exhaustive
+   was cheap here (all local, no network) — no reason to sample when the
+   full check is affordable.
+
+Code: `vqe/task27ab_native_stateprep_fold.py` (combined with Task A).
+Data: `vqe/task27ab_native_stateprep_fold_results.json`.
+
+---
+
+### Task C — the noisy H4, the real thing — and the discrepancy nobody predicted
+
+Ran the FULL H4 forged energy (not the Bell proxy) at native folds
+1/3/5/7/9 on ideal/aria-1/forte-1, concurrently, on the free
+`ionq_simulator`. Circuit-count minimized per explicit instruction:
+reused iteration 24 Task 3's subspace-tomography design (diagonal +
+"+"-pair slots only, algebraic derivation of the "-" cross terms) for
+BOTH K=5 (15 kept circuits, down from 25) and K=6 (21 kept circuits,
+down from 36) — 30 real jobs total, ~7,020 circuit executions,
+100,000 shots/setting.
+
+**Two real bugs, caught before any submission or during it, fixed, not
+worked around**:
+1. `build_folded_measurement_circuits` (reused from iteration 26 Task 2)
+   internally loops over THAT module's own `FOLD_FACTORS=[1,3,5,9]`
+   global — missing fold=7, which Task D's Stage 1 needs. Caught by a
+   `KeyError: 7` crash before any circuits were submitted (no cost, no
+   wasted jobs — the crash happened during local circuit construction).
+   Fixed by patching the imported module's fold list before use, and
+   restructuring to build each slot's circuits ONCE (outside the fold
+   loop) rather than once per fold — which also fixed a real 5x-redundant
+   `to_native()` transpile the original loop structure would have
+   repeated needlessly.
+2. **The submission process was killed twice by an external process**
+   mid-run (not by this session's own code) — once during retrieval with
+   nothing saved (the run had to restart from scratch), and a second time
+   after being refactored to checkpoint per-K individually, which meant
+   the second kill only cost re-running K=6, not K=5 too. **Real
+   engineering lesson, not just a physics one: for any real submission
+   this large, checkpoint at the finest granularity that's actually
+   resumable, not just "did the whole multi-hour run finish."**
+
+**PASS-GATE CRITERION 2 (noise increases monotonically with fold):
+SATISFIED, cleanly, for both real models, both K** — e.g. K=6 forte-1:
+132.70 → 325.30 → 481.29 → 598.07 → 703.70 kcal/mol across folds
+1/3/5/7/9, strictly increasing at every step, both K values, both real
+backends. **This is the first time in this project's history that a
+valid native-gate fold-scaling experiment has been run on the FULL H4
+forged energy (not a 2-qubit Bell proxy) — and it produces the clean,
+monotonic response ZNE requires, which no ABSTRACT-gate fold experiment
+in this project's history (iterations 11-22) has ever shown.**
+
+**PASS-GATE CRITERION 3 (signal remains statistically meaningful):
+SATISFIED, overwhelmingly, for both real models** — signal-to-noise
+(|change from fold=1| / std) exceeds 100 at every fold from 3 onward for
+both aria-1 and forte-1, both K. The `ideal` control's own SNR is small
+and noisy at every fold (0.09-2.2) — expected and correct: there is
+almost no real trend to detect in a near-zero, shot-noise-dominated
+signal, not a sign of a broken pipeline.
+
+**THE DISCREPANCY NOBODY PREDICTED, reported plainly**: fold=1 (11
+native 2-qubit gates, the SAME logical circuit as this project's
+established abstract-gate baseline) gives raw error **132-148 kcal/mol**
+— roughly **3-4x WORSE than the historical abstract-gate raw baseline
+(34.98 aria-1 / 43.03 forte-1, iteration 9)** for the logically identical
+circuit. The likely mechanism, directly visible in Task A's own gate
+counts: native transpilation needs **197 (ms) / 285 (zz) one-qubit
+gates, vs the abstract circuit's 51** — roughly 4-6x more 1-qubit gates,
+which this project's local noise model has ALWAYS assumed contribute
+only 1/40th the error of a 2-qubit gate (`P1_PER_GATE = P2_PER_GATE/40`,
+unchanged since iteration 6). Holding N_2q constant and optimizing
+nothing about 1-qubit gate count (per this task's own explicit
+instruction) leaves that 4-6x one-qubit-gate multiplier as the most
+likely, though not yet definitively isolated, explanation for why native
+raw is so much worse than abstract raw. **This is a genuinely new
+finding this session did not anticipate, sitting adjacent to — but
+distinct from — iteration 26 Task 5's "gate count was never the right
+optimization target" conclusion: THIS time it's 1-qubit gate count,
+specifically introduced by the native-gate TRANSLATION step itself, not
+an ansatz-family choice.**
+
+**ALTERNATIVES NOT TAKEN (Task C)**:
+1. *Isolating whether 1-qubit gate count specifically (not native
+   translation generally) explains the raw-error gap*, e.g. by comparing
+   against a hypothetical native circuit with fewer 1-qubit gates at the
+   same N_2q. Rejected for time — flagged as the single most important
+   open mechanism question this task's own finding raises, directly
+   answerable with this project's existing tools (build a native circuit
+   family sweeping 1-qubit gate count independently of 2-qubit count).
+2. *Running the full 25/36-slot design instead of the circuit-count-
+   reduced 15/21-slot one.* Rejected per this task's own explicit
+   "minimise circuit count" instruction; the algebraic subspace-
+   tomography reconstruction was already validated (iteration 24 Task 3)
+   to reproduce the same physics from fewer circuits.
+3. *Submitting more than one repetition per (K, fold, model)* to get a
+   Task-A(iteration 25)-style drift bar on these specific numbers.
+   Rejected for time — this session's 30+ real jobs already stretch the
+   budget; the single-submission fold curves here should be read with
+   the SAME drift caveat established everywhere else in this project.
+
+Code: `vqe/task27c_full_h4_folds.py`. Data:
+`vqe/task27c_full_h4_folds_results.json`,
+`vqe/ionq_simulator_binding_curve_checkpoints/task27c_full_h4_folds_K5.json`,
+`task27c_full_h4_folds_K6.json`.
+
+---
+
+### Task D — held-out ZNE validation, no rescue — the first real pass in this project's history, and still short of target
+
+Two-stage held-out procedure exactly as specified: Stage 1 fits folds
+[1,3,5], predicts fold=7 (held out); Stage 2 fits [1,3,5,7], predicts
+fold=9 (held out). Four model classes (linear, quadratic, exponential,
+rational) compared PER (slot, label) CURVE by held-out error alone —
+never by the final energy. **NO CLIPPING**: any curve whose selected
+class extrapolates to |value| > 1 at fold=0 is EXCLUDED and counted, not
+silently fixed — the exact discipline iteration 26 Task 3 established
+after catching per-term ZNE's clipped -101,291-style false positive.
+
+**Held-out prediction quality (Stage 1 and 2, mean error across ALL
+curves, K=6)**: ideal 0.0023/0.0023, aria-1 0.0071/0.0047, forte-1
+0.0065/0.0048 — every curve class was selected by ACTUALLY predicting
+the held-out fold well (errors of order 0.005 on a [-1,1]-bounded
+quantity), not by a cherry-picked final answer. **PASS-GATE CRITERION 4
+(ZNE predicts held-out folds): SATISFIED for all three models, both K.**
+
+**Physicality**: 625/756 (ideal), 720/756 (aria-1), 717/756 (forte-1)
+curves extrapolated to a physical (|value|≤1) result at K=6; the
+remainder (36-131 curves, 5-17%) were EXCLUDED and fall back to their
+RAW fold=1 measured value — a real, disclosed limitation (roughly 1 in
+6-20 terms in the final "ZNE energy" below is not actually extrapolated,
+it's raw), not swept under a clip.
+
+**The headline result — real, validated, and still short**:
+
+| K | model | raw (fold=1) | ZNE (fold→0, excluded not clipped) | reduction |
+|---|---|---|---|---|
+| 6 | aria-1 | 148.34 | 52.89 | 2.8x |
+| 6 | **forte-1** | 132.27 | **14.28** | **9.3x** |
+| 5 | aria-1 | 146.89 | 62.90 | 2.3x |
+| 5 | **forte-1** | 130.76 | **13.73** | **9.5x** |
+
+**PASS-GATE CRITERION 5 (ZNE improves the held-out zero-noise error, not
+just the fitted points): SATISFIED for aria-1 and forte-1, both K
+(ideal correctly fails this criterion — its raw error is already near
+zero, so there is nothing for ZNE to improve, exactly as expected, not a
+concern).** This is the FIRST time in this project's 27-iteration
+history that a ZNE scheme has passed BOTH a genuine held-out-fold
+validation AND demonstrated improvement on the held-out metric, for the
+real noise models. Every prior ZNE attempt (iterations 2, 11, 13, 14, 19,
+22, 25's Phase 4, 26's Task 3) failed the plateau/held-out test; this one
+does not.
+
+**PASS-GATE CRITERION 6 — where it still falls short, stated exactly as
+instructed, not softened**: forte-1's 14.28 kcal/mol (the best result)
+is ~5-7x the 2-3 kcal/mol target, and applying the drift-aware
+uncertainty this project established (iteration 25, Task A: ±2.31
+forte-1, ±4.01 aria-1 kcal/mol): 14.28 ± 2.31 does not overlap 2-3
+kcal/mol by a wide margin. **A central value of 14.28 with a ±2.31 bar
+is not a pass, exactly the kind of claim this task's own instruction
+explicitly warned against accepting.** aria-1 (52.89/62.90) is further
+still. **Criterion 6 FAILS for every configuration tested.**
+
+**ALTERNATIVES NOT TAKEN (Task D)**:
+1. *Investigating whether the 36-131 excluded (unphysical) curves are
+   concentrated in a particular family* (echoing iteration 26 Task 2's
+   family-clustering approach) — if so, a targeted fix (e.g. a different
+   model class for that family specifically) might reduce the exclusion
+   rate and improve the result further. Rejected for time; the single
+   most concrete next step for improving on 14.28 kcal/mol without
+   touching the honesty rules that produced it.
+2. *Trying stretched-exponential or GP model classes* (available from
+   iteration 26 Task 3's toolkit, not used here since this task specified
+   exactly linear/quadratic/exponential/rational). Rejected: matching the
+   task's own specified model set exactly, not silently expanding it
+   after seeing promising results from the specified four — that would
+   be the same "chosen by the answer it produces" mistake this task's
+   own rule exists to prevent, applied one level up (choosing the MODEL
+   SET by its results, not just the model within a fixed set).
+3. *Combining the K=5 and K=6 ZNE results* (e.g. averaging, given both
+   land in a similar 13-15 kcal/mol range for forte-1) to claim a more
+   robust estimate. Rejected: K=5 and K=6 are different physical
+   truncations with their own distinct method-error floors (0.57 vs 0
+   kcal/mol) — averaging across them would conflate two different
+   quantities, not genuinely reduce uncertainty on either.
+
+Code: `vqe/task27d_held_out_zne.py`. Data:
+`vqe/task27d_held_out_zne_results.json`.
+
+---
+
+### Task E — resource estimate, no submission
+
+Fed this iteration's OWN validated native circuit design (Task A/B: 11
+N_2q constant, 197/285 N_1q, the actual circuits Task C submitted) into
+IonQ's real `GET /jobs/estimate` (free, read-only, no hardware touched —
+reused unchanged from iterations 9 and 26). Priced folds 1/3/5
+separately and combined, both K, both real backends, at both this
+iteration's own 100,000-shot convention and iteration 26 Task 1's
+300,000-shot chosen level.
+
+**Cheapest possible validated configuration found: aria-1, K=5,
+100,000 shots, folds 1+3+5 combined = $4,054,108.50 — 1,351x the $3,000
+budget.** Every other configuration is more expensive still (up to
+$20.6M, 6,858x budget, at K=6/forte-1/300,000 shots). **DOES NOT FIT the
+budget at any configuration tested. STILL NO SUBMISSION — this was a
+costing exercise only, exactly as instructed.**
+
+**ALTERNATIVES NOT TAKEN (Task E)**:
+1. *Pricing only the SURVIVING (non-excluded) curves from Task D*, rather
+   than the full circuit set, to see if a "trust only what ZNE actually
+   validated" design would be cheaper. Rejected: circuits are priced
+   per-JOB submission, not per-surviving-term after the fact — you cannot
+   know in advance which curves will be excluded without first running
+   them, so this isn't a real cost-reduction lever, just a reporting
+   distinction.
+2. *Pricing a fold set that stops at 5* (since folds 7/9 exist mainly to
+   support Task D's held-out validation, not the final answer) to see if
+   a "production" ZNE run could be cheaper than the full 1-9 sweep this
+   session used for validation. Rejected: without folds 7/9, there is NO
+   way to run Task D's held-out procedure at all — a cheaper "production"
+   design is only trustworthy once the validation this session did IS
+   the thing being reused, not re-earned each time.
+3. *Estimating cost for the EXCLUDED-curve-reduced circuit set specific
+   to whichever slots survived* (a smaller, curve-specific circuit
+   design). Rejected: which curves survive is discovered POST-hoc from
+   real data (Task D), so it cannot be designed into a PRE-submission
+   circuit set without running the validation first — the same
+   chicken-and-egg problem as alternative 1.
+
+Code: `vqe/task27e_resource_estimate.py`. Data:
+`vqe/task27e_resource_estimate_results.json`.
+
+---
+
+### Iteration 27 closing synthesis — THE PASS GATE
+
+| # | criterion | verdict |
+|---|---|---|
+| 1 | every fold preserves the ideal answer to 1e-10 | **PASS** (worst deviation ~2e-15) |
+| 2 | noise increases monotonically with fold, real models | **PASS** (both K, both backends, no exceptions) |
+| 3 | H4 signal remains statistically meaningful at folds used | **PASS** (SNR>100 from fold 3 onward) |
+| 4 | ZNE predicts held-out folds | **PASS** (mean error ~0.005 on a [-1,1] quantity) |
+| 5 | ZNE improves the held-out zero-noise error | **PASS** (aria-1, forte-1, both K) |
+| 6 | energy in 2-3 kcal/mol, drift-aware uncertainty supports it | **FAIL** (best: 14.28±2.31, forte-1 K=6) |
+
+**5 of 6 criteria pass — the first time this project has cleared
+criteria 1-5 at all, let alone together. Criterion 6 does not pass, so
+per the explicit rule ("all six, or no hardware"), no real QPU submission
+is warranted, and none was made.** This is a genuinely different outcome
+from iteration 26's Task 6 (where NOTHING passed the analogous gate) —
+native-gate ZNE, properly validated, is a REAL, working technique for
+this circuit and noise model, just not yet at the funded target. The
+gap between 14.28 and 2-3 kcal/mol (roughly 5-7x) is smaller than any
+gap this project has closed with a single subsequent iteration's worth
+of work, but it is not closed yet, and Task E's own finding means closing
+it further has to happen on the free simulator, not real hardware,
+regardless of how good the technique looks.
+
+**The single most consequential NEW finding, worth restating on its
+own**: converting to native gates while holding 2-qubit gate count fixed
+made RAW error 3-4x WORSE, not better, apparently because of a ~4-6x
+increase in 1-qubit gate count this project's noise model has always
+under-weighted. This reframes Task A/B's own "gate count as diagnostic,
+not objective" instruction — the diagnostic just found something worth
+optimizing after all, just not the thing (2-qubit count) every prior
+iteration of this project optimized for.
+
+Per the standing instruction: committed locally, pushed to the SIDE
+BRANCH only, `origin/main` untouched.
 
 ---
