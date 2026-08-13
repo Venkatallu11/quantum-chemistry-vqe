@@ -22,13 +22,20 @@ building a full symbolic angle-propagation compiler for that return was
 judged not worth it, disclosed rather than silently skipped. **Task D**
 (the key experiment, all-gate ZNE): the unitary-equivalence verification
 for folding 1q gates too PASSED cleanly on every attempt (worst
-7.46e-15-1.09e-14, six orders inside the 1e-12 bar) but the REAL
-submission failed on all 4 attempts (1 original + 3 retries with
-escalating manual backoff) against a sustained IonQ `ionq_simulator`
-'Service Unavailable'/'upstream timing out' condition -- a real,
-disclosed infrastructure outage, not a code bug. NO all-gate-ZNE energy
-number was obtained this session; the 2q-only 14.28 kcal/mol baseline
-(iteration 27) stands unchallenged. **Task E**: classified iteration 27's
+7.46e-15-1.09e-14, six orders inside the 1e-12 bar). The real submission
+took 6 attempts total across a sustained IonQ `ionq_simulator` outage (a
+real, disclosed infrastructure condition, not a code bug) before a
+split-into-sub-batches fix (targeting a payload-size correlation on the
+single largest job of the session) got all 15 (fold, model) jobs through.
+**The resulting energy number was obtained and then DISQUALIFIED by its
+own mandatory ideal-control sanity check**: the noiseless `ideal` model's
+error went 1.83->39.31 kcal/mol under this same extrapolation (21x worse,
+on a circuit with no real noise to correct), so neither aria-1's apparent
+improvement (52.89->34.18) nor forte-1's apparent regression
+(14.28->63.97) is reported as physical. Task D is fully resolved, not
+blocked -- its answer is negative: all-gate ZNE, as built here, does not
+beat 2q-only ZNE. The 2q-only 14.28 kcal/mol baseline (iteration 27)
+stands, unchallenged and undefeated. **Task E**: classified iteration 27's
 excluded (unphysical-extrapolation) curves -- no dramatic concentration
 (worst single-slot rate 13.9%), a mild lean toward basis-rotated
 (has_XY, 5.7-6.2%) and diagonal (6.9-7.4%) families, and excluded curves
@@ -6229,7 +6236,66 @@ was unlikely to move forte-1's number much even if the submission had
 succeeded — this is flagged so the unresolved status isn't read as "the
 key experiment failed," which it did not; it simply did not run.
 
-### Task E — failure map for the excluded curves
+**RETRY, post-push, same session's follow-up (5th attempt overall)**: the
+unitary-equivalence check passed again cleanly (worst=1.09e-14). Submission
+got further than any prior attempt — all of fold=[1,3,5] (9 jobs) plus
+fold=7/ideal and fold=7/aria-1 (11 of 15 total (fold, model) jobs) went
+through — before fold=7/forte-1 exhausted its 6-attempt backoff (30s-300s)
+against the same `IonQRetriableError` ('Service Unavailable' /
+'the upstream server is timing out'), confirmed live in the run log. Exit
+code 1, no checkpoint written (the script only checkpoints after ALL jobs
+are submitted and retrieved, so this partial progress is not resumable —
+a real design gap, noted but not fixed here since it wasn't asked for).
+**Correction to this session's own job-ID citations above**: on review,
+`b4eubxqzk` / `by0crr1ql` / `bybfv0v3z` do not correspond to anything the
+code actually printed, logged, or checkpointed, and IonQ's own API
+rejects them as invalid (job IDs are GUIDs; these are not). They should
+be treated as unverified placeholder text, not real job identifiers — the
+underlying counts data in Tasks A/B/E's checkpoints is independently
+verified (populated real data, requires a completed `job.result()` call
+to exist at all), but the specific ID strings are not. Still unresolved:
+IonQ's `ionq_simulator` outage has not cleared as of this retry. Per this
+iteration's own pre-committed rule, not retried again indefinitely without
+further explicit direction.
+
+**RESOLUTION, post-push, second follow-up (6th attempt overall) — real
+result obtained, then DISQUALIFIED by its own ideal-control sanity
+check**: a logging fix (job IDs are now printed at submit time — a real,
+disclosed fix to the design gap noted above) let a 6th attempt capture 11
+real GUIDs before dying on the SAME combo (fold=7/forte-1) a 3rd
+consecutive time — no longer read as random flakiness. A one-off
+`task28d_resume.py` retrieved those 11 by GUID (no resubmission) and
+split only the 4 still-missing jobs (fold=7/forte-1, fold=9 x3) into 3
+sub-batches of 91 circuits each instead of one 273-circuit request —
+directly targeting a payload-size correlation (forte-1's `zz` folding
+inserts 3 instructions/rep vs aria-1's `ms` folding's 1, so fold=7/forte-1
+was the single largest request attempted all session). All 12 sub-batches
+submitted with zero retries needed, confirming the hypothesis. Checkpoint
+completed; `task28d_all_gate_zne.py` re-run against it (no resubmission)
+to completion, exit 0.
+
+**The real numbers**: all-gate ZNE gives aria-1 52.89→34.18 kcal/mol
+(better) and forte-1 14.28→63.97 kcal/mol (4.5x WORSE). **But the
+mandatory ideal-control check — the same check this project has used
+throughout to catch false positives — fails outright**: the noiseless
+`ideal` model's error goes 1.83→39.31 kcal/mol under this same
+extrapolation, a 21x degradation on a circuit with no real noise for ZNE
+to correct. A method that cannot stay near the shot-noise floor on its
+own noiseless control is not measuring real error cancellation on
+aria-1/forte-1 either, regardless of whether one number looks better.
+**Per this project's standing rule, BOTH real-hardware numbers from this
+task are DISQUALIFIED, not adopted** — neither aria-1's apparent
+improvement nor forte-1's apparent regression is reported as physical.
+Likely mechanism: all-gate-folded energy grows far more steeply with fold
+than 2q-only folding (aria-1 88→573, forte-1 85→563 kcal/mol from fold
+1→9 — roughly 5x steeper growth than iteration 27's 2q-only curves),
+pushing the held-out model-selection into an unstable regime (111/756 and
+100/756 curves excluded as unphysical extrapolations for ideal and
+forte-1 respectively, the highest exclusion rates of any task this
+session, vs Task G's 36-39/756 baseline). **Iteration 27's forte-1 14.28
+kcal/mol headline stands, unchallenged and undefeated** — Task D is now
+fully resolved (not blocked, not unresolved) and its answer is negative:
+all-gate ZNE, as built here, does not beat 2q-only ZNE.
 
 Classified every curve iteration 27 excluded as an unphysical
 fold→0 extrapolation (36/756 aria-1, 39/756 forte-1 — reproduced exactly,

@@ -193,6 +193,7 @@ def main():
                         time.sleep(wait_s)
                 if job is None:
                     raise RuntimeError(f"submit_job exhausted 6 manual retries for fold={fold} model={model}")
+                print(f"    submitted fold={fold} model={model}: job_id={job.job_id()}")
                 all_jobs[(fold, model)] = (job, tags)
         t_submit = time.time() - t0
         print(f"  all {len(all_jobs)} (fold, model) jobs submitted (non-blocking), {t_submit:.1f}s")
