@@ -6544,6 +6544,69 @@ solved.
    spirit elsewhere; worth doing explicitly on THIS checkpoint in a future
    iteration for a clean fold=1-manifold-vs-fold=1-general comparison.
 
+### Task D — three pipelines, identical data: a synthesis, not a new experiment
+
+Per the task's own instruction, pipeline (ii) all-gate ZNE is reported as
+**INVALID** (Task A), not evaluated for a number -- it fails its own
+ideal-control check and is not compared further. Pipelines (i) and (iii)
+were both computed FRESH on the SAME iteration-27 2q-only-folding
+checkpoint data in Task C above; this section is their side-by-side
+report, not new computation.
+
+| pipeline | ideal-control error | final energy, aria-1 | final energy, forte-1 | valid? |
+|---|---|---|---|---|
+| (i) 2q-only ZNE (per-Pauli-curve, recomputed here) | 1.261 kcal/mol | 51.31 | **14.61** | VALID |
+| (ii) all-gate ZNE | 39.31 kcal/mol (Task 28D) | -- | -- | **INVALID (Task A)** |
+| (iii) manifold-constrained, fold=1 only (no extrapolation) | 0.132 kcal/mol | 69.20 | 38.42 | VALID |
+| (iii) manifold-constrained, extrapolated (4-class) | 48.56 kcal/mol | 48.78 | 10.30 | **INVALID** (fails ideal check despite good-looking numbers) |
+| (iii) manifold-constrained, extrapolated (linquad-only) | 0.635 kcal/mol | 60.85 | 143.73 | VALID but worse than fold=1-only |
+
+Adding drift-aware uncertainty (this project's own established
+submission-to-submission drift bars, aria-1 +/-4.01, forte-1 +/-2.31
+kcal/mol) to each VALID pipeline's forte-1 number: (i) 14.61+/-2.31, (iii
+fold=1) 38.42+/-2.31, (iii linquad) 143.73+/-2.31. **Acceptance criterion
+|E_hat - E_exact| + 2*sigma < 0.5 kcal/mol: NOT MET by any valid pipeline
+here** -- the closest is (i) at 14.61+4.62=19.23, ~38x over target.
+
+**Best currently-valid real number remains pipeline (i), the established
+2q-only per-Pauli ZNE (14.61, consistent with iteration 27/28's own
+14.28)** -- not because pipeline (iii) is a worse idea, but because its
+only ideal-control-passing extrapolation variant (linquad-only) performs
+worse than not extrapolating at all, and its best-looking variant
+(4-class) is disqualified. Task C's real contribution is establishing
+that manifold-constrained fold=1 reconstruction (38.42) is a genuine
+improvement over raw fold=1 (132.06) and over 28G's general
+reconstruction at the same fold -- the extrapolation half of the "rebuild
+the estimator" goal is not yet solved.
+
+**SCOPE LIMITATION, disclosed rather than silently dropped**: the shot
+sweep (10k/25k/50k/100k/300k, bias and variance reported separately) from
+this task's own addendum was NOT run -- it requires either a new real
+submission at each shot level for pipeline (i)/(iii) or extensive
+reprocessing of the existing 100k-shot-only checkpoint via sub-sampling,
+and was judged out of reach of this iteration's remaining scope. Flagged
+explicitly as still open, not silently completed.
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Run pipeline (ii) anyway with a naive fix (e.g. clip more
+   aggressively) just to have a number for the table.* Rejected --
+   exactly the kind of undisclosed tuning-to-get-a-number this project's
+   honesty rules forbid; INVALID is the correct and complete answer until
+   Task A's fix is actually built.
+2. *Report the 4-class manifold-extrapolated forte-1 number (10.30,
+   BEATS pipeline i) with a footnote about the ideal-control failure.*
+   Rejected -- a footnoted disqualified number is still a headline number
+   to a reader skimming this table; it is omitted from any "best" claim
+   entirely, not soft-pedaled.
+3. *Substitute sub-sampling the existing 100k-shot checkpoint for a true
+   shot sweep, to at least partially address the missing addendum.*
+   Rejected for this pass -- sub-sampling from an already-shot-noise-
+   affected 100k dataset to emulate a LOWER shot count changes the
+   effective noise distribution in a way that would need its own
+   validation before trusting; a real sweep at each shot level is the
+   correct method and is flagged for a future iteration instead of
+   approximated here.
+
 ---
 
 ## Iteration 28: gate-type-complete H4 ZNE — settling the 1q-noise premise, an optimizer that actually helps, a variance-reduction method the Monte Carlo check caught before it could fool anyone, and a constrained-reconstruction win that beats iteration 27's own headline
