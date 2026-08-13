@@ -6196,6 +6196,99 @@ whichever number results from those before calling anything established.
 
 ---
 
+## Iteration 30: direct error correction, no extrapolation
+
+Run at the user's explicit direction. Simulator only, the $3,000 stays
+unspent. Local branch `local/attack-base-problem` only. THE STRATEGIC
+DECISION: iteration 29 found that every method which extrapolates to
+lambda=0 has failed or produced artifacts (the per-Pauli ZNE extrapolator,
+and the manifold estimator's own component-wise extrapolation, both
+reproduce the same conditioning pathology), while every method that
+corrects DIRECTLY (28G's reconstruction, 28B's optimizer, the manifold
+estimator's single-fold reconstruction) has worked. ZNE is FROZEN for this
+iteration; the pipeline is rebuilt from direct corrections only. The
+funded deliverable's 2q-only native-gate ZNE result (14.61 kcal/mol,
+consistent with iteration 27/28's 14.28) is kept intact, not deleted or
+deprecated -- see the Vadim scope-change note at the end of this section.
+
+### Task A — is the manifold estimator real, or is it injecting the answer? BLOCKING, done first
+
+Task 29C's `mean_pure_state_fit_residual` was huge (7,725 ideal; 153,664
+aria-1; 157,576 forte-1) for data that should fit a pure state nearly
+perfectly. Two explanations, tested directly rather than assumed.
+
+**PART 1 — is the huge residual just mis-scaled weighting, or a genuinely
+bad fit?** The fit objective is `sum_l w_l (pred-m)^2`, `w_l = 1/var`,
+`var = max(1-m^2, 1e-4)/total`. Measured directly on 6 sample slots of
+real ideal fold=1 data: weights span **1e5 to 1e6** (near-deterministic
+labels have tiny variance, hence huge weight) while the UNWEIGHTED
+`|pred-m|` errors are genuinely small -- mean 0.0027, median 0.0021, max
+0.0180 across all sampled labels, consistent with ordinary 100,000-shot
+statistical noise (~0.3% typical Pauli-expectation deviation). A handful
+of high-weight, small-but-nonzero-residual labels (e.g. u_2's worst
+label: weight ~1e6, error 0.018, contributing ~324 to the SSE on its own)
+is enough to produce SSE values in the hundreds to thousands even for an
+objectively good fit. **Explanation (a) is substantively confirmed**: the
+raw SSE number was never in comparable units to begin with; this project
+should report unweighted mean|pred-m| (or an RMS) alongside it going
+forward, not the raw weighted SSE alone, which is easy to misread as a
+badness-of-fit signal it isn't.
+
+**PART 2 — THE DECISIVE TEST for whether the constraint injects the
+answer.** Fit the SAME estimator to DELIBERATELY WRONG data, two ways,
+each with BOTH production's target-anchored initialization (the known
+ideal target + 7 perturbations, exactly Task 29C's own scheme) AND a
+fully UNINFORMED initialization (8 random points on the sphere, no
+knowledge of the target anywhere):
+
+| input | target-anchored init | uninformed init |
+|---|---|---|
+| pure random noise (uniform, zero physical information) | 1156.67 kcal/mol | 1118.78 kcal/mol |
+| real H4 data, labels SHUFFLED (same numbers, wrong meaning) | 1091.26 kcal/mol | 988.69 kcal/mol |
+| **CONTROL: real, unshuffled data** | **0.67 kcal/mol** | **0.12 kcal/mol** |
+
+**Both adversarial inputs return errors of ~1,000-1,157 kcal/mol —
+nowhere near the true H4 ground state — regardless of which
+initialization scheme is used.** The control recovers the expected small
+error with both initialization schemes too. **The estimator does not
+inject the answer: garbage in produces garbage out, real data in produces
+a real answer, independent of whether the optimizer starts near the known
+target or nowhere near it.** This is the opposite of iteration 2's
+failure mode and the manifold estimator is CLEARED for use -- unblocking
+every "manifold" row in Tasks C and D below.
+
+**A minor, disclosed side-finding**: the uninformed-init control
+(0.12 kcal/mol) came out slightly BETTER than the target-anchored control
+(0.67 kcal/mol) on this specific run -- weak evidence that target-
+anchoring may occasionally settle for a nearby-but-not-optimal local
+minimum the wider uninformed search escapes, not that it injects bias.
+Worth folding uninformed restarts into the production fit alongside the
+target-anchored ones in a future iteration for extra robustness; not
+blocking, since both schemes already clear the adversarial test cleanly.
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Use a different molecule's real Hamiltonian data as the "wrong data"
+   input instead of shuffled labels / pure noise.* Rejected for this pass
+   -- would require standing up a second molecule's fragment setup for a
+   question (does the constraint inject a specific known answer regardless
+   of input) that shuffled labels and pure noise already answer decisively;
+   worth doing if a future reviewer specifically doubts the shuffled-label
+   test's realism.
+2. *Report only the automated Part-1 threshold check's literal verdict
+   ("NOT CONFIRMED", since max weight was exactly 1e6, not >1e6).*
+   Rejected -- the automated boundary condition is a script artifact, not
+   a real finding; the actual numbers (small unweighted errors, huge
+   weight range) substantively confirm explanation (a), and reporting the
+   literal-but-misleading automated verdict without the numbers behind it
+   would itself be a small dishonesty.
+3. *Skip Part 1 entirely since Part 2 is the decisive test anyway.*
+   Rejected -- Part 1 answers a real, separate question (is the reported
+   residual metric itself trustworthy as a diagnostic for FUTURE fits) that
+   Part 2's pass/fail verdict doesn't address; both were needed for a
+   complete answer.
+
+---
+
 ## Iteration 29: finding the ideal-control bug, and rebuilding the estimator around H4's known structure
 
 Run at the user's explicit direction. Simulator only, the $3,000 stays

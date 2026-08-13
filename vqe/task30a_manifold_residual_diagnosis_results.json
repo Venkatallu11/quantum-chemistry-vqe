@@ -1,0 +1,81 @@
+{
+  "part1_unweighted_stats": {
+    "mean_abs_err": 0.0027122885534243495,
+    "median_abs_err": 0.0021156065462156343,
+    "max_abs_err": 0.018041873993701135,
+    "weight_min": 100000.52694777671,
+    "weight_max": 1000000.0,
+    "explanation_a_confirmed": false
+  },
+  "per_slot_part1": {
+    "u_0": {
+      "weighted_sse": 47.371764477975724,
+      "mean_unweighted_abs_err": 0.0021298724735704286,
+      "max_unweighted_abs_err": 0.006125656510980036,
+      "max_weight": 1000000.0,
+      "min_weight": 100000.53563286901
+    },
+    "u_1": {
+      "weighted_sse": 45.078685228745734,
+      "mean_unweighted_abs_err": 0.002057309048823408,
+      "max_unweighted_abs_err": 0.009968469164415739,
+      "max_weight": 1000000.0,
+      "min_weight": 100000.6179738189
+    },
+    "u_2": {
+      "weighted_sse": 578.7753708004957,
+      "mean_unweighted_abs_err": 0.004618194330993783,
+      "max_unweighted_abs_err": 0.018041873993701135,
+      "max_weight": 1000000.0,
+      "min_weight": 100000.5737432918
+    },
+    "u_3": {
+      "weighted_sse": 65.98708291418056,
+      "mean_unweighted_abs_err": 0.002555524491225864,
+      "max_unweighted_abs_err": 0.011113706717265859,
+      "max_weight": 1000000.0,
+      "min_weight": 100000.52694777671
+    },
+    "u_4": {
+      "weighted_sse": 38.35361883099338,
+      "mean_unweighted_abs_err": 0.0023126850485510253,
+      "max_unweighted_abs_err": 0.005394355362986051,
+      "max_weight": 1000000.0,
+      "min_weight": 100000.70804001317
+    },
+    "u_5": {
+      "weighted_sse": 46.230417130772935,
+      "mean_unweighted_abs_err": 0.002600145927381588,
+      "max_unweighted_abs_err": 0.00726327137440369,
+      "max_weight": 1000000.0,
+      "min_weight": 100000.59830357967
+    }
+  },
+  "part2_adversarial": {
+    "random_noise__target_anchored (production)": {
+      "E": -0.3231241589516607,
+      "err_vs_exact_kcal": 1156.665177464328
+    },
+    "random_noise__uninformed (fixed)": {
+      "E": -0.3834907997078818,
+      "err_vs_exact_kcal": 1118.7845384724355
+    },
+    "shuffled_real__target_anchored (production)": {
+      "E": -0.4273554100682846,
+      "err_vs_exact_kcal": 1091.2590798951965
+    },
+    "shuffled_real__uninformed (fixed)": {
+      "E": -0.5908089728044694,
+      "err_vs_exact_kcal": 988.6904207088731
+    },
+    "real_unshuffled__target_anchored (production)": {
+      "E": -2.165322083759069,
+      "err_vs_exact_kcal": 0.6685265482968081
+    },
+    "real_unshuffled__uninformed (fixed)": {
+      "E": -2.1665719778570005,
+      "err_vs_exact_kcal": 0.11579383973063685
+    }
+  },
+  "disqualified": false
+}
