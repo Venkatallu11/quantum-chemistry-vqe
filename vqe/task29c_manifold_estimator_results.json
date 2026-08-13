@@ -1,0 +1,41 @@
+{
+  "ideal": {
+    "err_raw_fold1": 1.4556718520899086,
+    "err_raw_pauli_curve_zne": 1.2605667023673264,
+    "n_excluded_raw_curves": 129,
+    "n_total_raw_curves": 756,
+    "err_manifold_fold1_only": 0.1316456983847529,
+    "err_manifold_extrapolated_4class": 48.55995940606888,
+    "err_manifold_extrapolated_linquad": 0.6353857556292098,
+    "n_component_fallback_4class": 0,
+    "n_component_fallback_linquad": 0,
+    "n_component_total": 126,
+    "mean_pure_state_fit_residual": 7725.41429108245
+  },
+  "aria-1": {
+    "err_raw_fold1": 148.61580007091158,
+    "err_raw_pauli_curve_zne": 51.304560302261464,
+    "n_excluded_raw_curves": 43,
+    "n_total_raw_curves": 756,
+    "err_manifold_fold1_only": 69.19548363244529,
+    "err_manifold_extrapolated_4class": 48.7835835815569,
+    "err_manifold_extrapolated_linquad": 60.84459266481277,
+    "n_component_fallback_4class": 0,
+    "n_component_fallback_linquad": 0,
+    "n_component_total": 126,
+    "mean_pure_state_fit_residual": 153664.00889048714
+  },
+  "forte-1": {
+    "err_raw_fold1": 132.06398084568005,
+    "err_raw_pauli_curve_zne": 14.613712340126733,
+    "n_excluded_raw_curves": 39,
+    "n_total_raw_curves": 756,
+    "err_manifold_fold1_only": 38.41458124269534,
+    "err_manifold_extrapolated_4class": 10.29798896075587,
+    "err_manifold_extrapolated_linquad": 143.73302161846794,
+    "n_component_fallback_4class": 0,
+    "n_component_fallback_linquad": 0,
+    "n_component_total": 126,
+    "mean_pure_state_fit_residual": 157576.45203628438
+  }
+}

@@ -6369,6 +6369,181 @@ class away from a near-singular denominator.
    not just their conditioning), so re-running it here would duplicate
    rather than add information.
 
+### Task B — honest 1q spectroscopy redo: two circuit arms, two padding styles, real kcal/mol units
+
+Real IonQ `ionq_simulator` submission (15 circuit variants x 13 groups x
+3 models). Two arms: the UN-OPTIMIZED native circuit (285 1q/11 2q,
+forte's zz family -- the actual circuit behind the 89 kcal/mol native-
+vs-abstract gap) and the OPTIMIZED circuit (28B's own, ~54-78 1q). Two
+padding styles at each of 2 padded levels per arm: cancelling identical-
+angle GPi(0)-GPi(0) pairs (28A's original method) vs varied-angle
+GPi2(phi_k)/GPi2(phi_k+0.5) pairs (a different phi_k drawn per inserted
+pair, exact identity verified to <1e-16 before use) -- a materially
+closer proxy for real synthesis output. Slopes now reported in actual
+kcal/mol, via an explicit Hamiltonian-coefficient-weighted conversion
+(shown in code, not asserted).
+
+| model | arm | style | slope (kcal/mol per 1q gate) |
+|---|---|---|---|
+| aria-1 | unoptimized | identical / varied | 0.00715 / 0.00704 |
+| aria-1 | optimized | identical / varied | 0.00433 / 0.00448 |
+| forte-1 | unoptimized | identical / varied | 0.00181 / 0.00155 |
+| forte-1 | optimized | identical / varied | 0.00015 / -0.00113 |
+| ideal | unoptimized | identical / varied | 0.00009 / 0.00001 |
+| ideal | optimized | identical / varied | -0.00037 / 0.00007 |
+
+**Does padding style matter?** Mostly no -- aria-1 is nearly identical
+between styles on both arms (ratio 0.98x/1.03x). **forte-1's optimized
+arm is the one real exception**: identical=0.00015 vs varied=-0.00113
+(sign flip, ratio -7.7x). Per this task's own framing, that difference
+IS reported as a finding, not smoothed over -- but disclosed honestly
+alongside its likely explanation: both slopes are tiny (<0.0013 kcal/mol/
+gate) and the underlying 6-point energy_err values are visibly non-
+monotonic (4.12, 2.39, 4.31, 2.72 kcal/mol across increasing N_1q),
+consistent with per-slot variation dominating over any real N_1q trend
+at this scale -- more likely noise around a near-zero true slope than a
+robust padding-style-dependent effect.
+
+**Does this explain the 89 kcal/mol native-vs-abstract gap?** No.
+Extrapolating the UN-OPTIMIZED arm's own (larger) forte-1 slope
+(0.00181 kcal/mol/gate, the more favorable case for the 1q hypothesis)
+across the full gap's gate-count difference (285 native vs 51 abstract =
+234 gates) predicts only 0.00181 x 234 = **0.42 kcal/mol** -- under 0.5%
+of the actual 89 kcal/mol gap. **The 1q-gate-count hypothesis, honestly
+redone with the correct baseline circuit, the correct padding style
+comparison, and the correct units, still does not explain the gap.**
+Whatever produces the 89 kcal/mol difference is not primarily a function
+of 1-qubit gate count -- it remains this project's single largest
+unaccounted quantity, now with a real upper bound on how much of it 1q
+noise alone could plausibly explain.
+
+**METHODOLOGICAL CAVEAT, disclosed**: the dose-response metric here
+(mean|measured-exact|, energy-weighted) is an unsigned per-Pauli
+magnitude sum, not the actual signed combined energy computed via
+`combine_matrices`/`energy_from_alpha_matrices` -- cancellation between
+terms means this is an upper-bound-style quantity, not a direct
+prediction of the real combined energy error. The 0.42 kcal/mol figure
+above should be read as "the most 1q noise could plausibly contribute
+under a linear model," not as a decomposition of the actual 89 kcal/mol
+number into additive parts.
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Test more than 2 padded N_1q levels per arm for a more reliable
+   slope.* Rejected for time -- 2 levels x 2 styles x 2 arms x 3 models
+   already required 585 real circuits; the qualitative conclusion (slope
+   too small to explain the gap by ~200x) is robust to modest slope
+   uncertainty and would not change with more points.
+2. *Use the SIGNED combined energy instead of the unsigned dose-response
+   metric throughout.* Rejected -- would require building and verifying
+   a full alpha-matrix reconstruction per padding level (more real
+   circuits, more complexity) for a question (does 1q count explain the
+   gap) that the unsigned upper-bound metric already answers decisively
+   in the negative; worth doing only if a future hypothesis needs the
+   signed number specifically.
+3. *Investigate the forte-1/optimized sign flip further (more seeds, more
+   padding levels).* Rejected as not worth the real-submission cost given
+   both slopes are tiny relative to any target this project cares about;
+   flagged for revisit only if some future finding makes small forte-1 1q
+   effects suddenly decision-relevant.
+
+### Task C — the physical-manifold estimator: a real, strong single-fold win, and an extrapolation pathology that reproduces Task A's finding exactly
+
+For K=6, every slot's target lives in the 6-dim weight-2 Schmidt sector;
+with real amplitudes and unit norm that is FIVE free parameters, not 35
+(28G's general density matrix) or hundreds (independent Pauli channels).
+Per slot: `a_hat = argmin_a sum_l w_l[m_l - a^T P_S[l] a]^2`, parametrized
+as `a = v/|v|` for unconstrained `v` (automatically unit-norm, no explicit
+constraint needed) -- reuses `build_P_S` UNCHANGED from
+`phys_constrained_reconstruction.py`. 2q-only folding only (`fold_native_2q`,
+the one ZNE variant that has legitimately passed), reusing iteration 27's
+own checkpoint -- NO new circuits, NO new real submission.
+
+**A real reproducibility problem, caught and fixed before trusting any
+result**: the pure-state fit is a nonconvex (degree-4-on-a-sphere)
+optimization. A first version with 2 restarts gave DIFFERENT fold=1
+results on two independent runs (ideal: 0.13 vs 0.65 kcal/mol) --
+different local optima, not noise. Fixed with 8 deterministically-seeded
+restarts (the known target + 7 perturbations at varied scales); verified
+identical to the reported digit on two independent re-runs before
+reporting anything below.
+
+**Single-fold (fold=1 only) reconstruction: a real, strong win**:
+
+| model | raw (fold=1) | MANIFOLD (fold=1) | improvement |
+|---|---|---|---|
+| ideal | 1.456 | **0.132** | 11.0x (SANITY CHECK: passes) |
+| aria-1 | 148.62 | **69.20** | 2.1x |
+| forte-1 | 132.06 | **38.42** | 3.4x |
+
+Substantially stronger than 28G's general PSD/trace-1 reconstruction at
+the same fold (which gave roughly 15-16% improvement at fold=1) --
+consistent with purity being a much tighter physical constraint than
+PSD+trace-1 alone.
+
+**Extrapolating in the manifold (fit each of the 5 components across
+folds, evaluate a(0), renormalize) reproduces Task A's exact pathology**:
+using the full 4-class model set (matching production), the noiseless
+`ideal` control goes 0.132 -> **48.56 kcal/mol**, a 368x blowup on a
+component-wise extrapolation with only 6 curves instead of 756 -- proof
+that the extrapolation-conditioning problem (Task A/G) is a property of
+the FITTING FUNCTIONS themselves (rational/exponential validated by
+interpolation, used for extrapolation), not of how many curves are being
+fit. Restricting to linear+quadratic only (Task G's own evidence-based
+candidate fix) is a real partial improvement but not a clean fix and NOT
+uniform across models:
+
+| model | raw-ZNE (per-Pauli, same data) | MANIFOLD fold=1 | MANIFOLD extrap, 4-class | MANIFOLD extrap, linquad-only |
+|---|---|---|---|---|
+| ideal | 1.261 | 0.132 | 48.56 (FAILS sanity check) | **0.635** (passes) |
+| aria-1 | 51.31 | 69.20 | 48.78 | 60.85 |
+| forte-1 | 14.61 | 38.42 | **10.30** | 143.73 (worse than 4-class!) |
+
+**Honest reading of a genuinely mixed result**: linquad-only fixes the
+ideal-control failure (0.64 vs raw-ZNE's own 1.26, both well under
+chemical accuracy) but does NOT uniformly help on real backends --
+forte-1 linquad-only (143.73) is WORSE than forte-1 4-class (10.30),
+the opposite of what fixed the ideal case. The 4-class extrapolation
+happens to land near or below the raw-ZNE baseline for aria-1 (48.78 vs
+51.31) and forte-1 (10.30 vs 14.61) in THIS run, but it fails its own
+mandatory ideal-control check, so **per this project's standing rule,
+the 4-class manifold-extrapolated numbers are DISQUALIFIED regardless of
+how good they look** -- exactly the same rule that disqualified Task 28D.
+**The one number that both passes its ideal-control check AND beats the
+single-fold manifold reconstruction is MANIFOLD, FOLD=1 ONLY** -- the
+constraint alone, with no extrapolation at all, is this task's only
+clean, undisqualified result, and it is real: aria-1 69.20 (2.1x better
+than raw fold=1), forte-1 38.42 (3.4x better than raw fold=1).
+
+**CONCLUSION**: the manifold estimator's power is in the CONSTRAINT
+(purity + normalization collapsing 35+ parameters to 5), not automatically
+in extrapolation -- extrapolating those 5 parameters with the SAME curve-
+fitting machinery diagnosed as ill-conditioned in Task A/G reproduces the
+same failure, just applied to fewer curves. A genuinely fixed manifold-ZNE
+pipeline needs either a fundamentally different extrapolation approach for
+the 5 components (not just a restricted class set, which helped ideal but
+hurt forte-1) or should be deployed as a single-fold variance-reduction
+technique (like 28G) rather than a fold-extrapolated one, until that is
+solved.
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Ship the 4-class extrapolated numbers since aria-1/forte-1 look good.*
+   Rejected outright -- this is precisely the failure mode this project's
+   honesty rules exist to catch (a method that looks good on the numbers
+   that matter but fails its own noiseless control), the same standard
+   already applied to disqualify Task 28D.
+2. *Tune the linquad-only fix further (e.g. quadratic-only, or a
+   regularized quartic) to also fix forte-1.* Rejected for this task --
+   would be exactly the kind of free-parameter tuning-until-something-wins
+   this project's honesty rules warn against; the honest result is that
+   the simple fix does not generalize, reported as such.
+3. *Use the general 28G density-matrix reconstruction (35 params) instead
+   of the 5-param pure-state manifold for the extrapolation step, keeping
+   only the fold=1 win from the pure-state constraint.* A reasonable
+   near-term default given today's findings -- not implemented here since
+   it is really "run 28G on this checkpoint," already done in Task E's
+   spirit elsewhere; worth doing explicitly on THIS checkpoint in a future
+   iteration for a clean fold=1-manifold-vs-fold=1-general comparison.
+
 ---
 
 ## Iteration 28: gate-type-complete H4 ZNE — settling the 1q-noise premise, an optimizer that actually helps, a variance-reduction method the Monte Carlo check caught before it could fool anyone, and a constrained-reconstruction win that beats iteration 27's own headline

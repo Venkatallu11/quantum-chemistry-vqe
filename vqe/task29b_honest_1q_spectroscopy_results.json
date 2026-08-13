@@ -1,0 +1,332 @@
+{
+  "gate_name": "zz",
+  "n_pad_levels": [
+    50,
+    100
+  ],
+  "representative_slots": [
+    "u_0",
+    "u_1"
+  ],
+  "label_weight_kcal": {
+    "IIII": 2570.6729533076796,
+    "IIIZ": 464.2391320425497,
+    "IYZY": 97.11939909844948,
+    "IXZX": 97.11939909844948,
+    "IIZI": 342.1019683380847,
+    "YZYI": 103.5451408288418,
+    "XZXI": 103.5451408288418,
+    "IZII": 341.5083340778249,
+    "ZIII": 587.584386402383,
+    "IIZZ": 43.69820348651742,
+    "YZYZ": 6.457632470454538,
+    "XZXZ": 6.457632470454538,
+    "IYIY": 13.835927372928829,
+    "IXIX": 13.835927372928829,
+    "YXXY": 7.146149812630714,
+    "YYYY": 15.322669425889924,
+    "XXYY": 8.176519613259208,
+    "YYXX": 8.176519613259208,
+    "XXXX": 15.322669425889924,
+    "XYYX": 7.146149812630714,
+    "IZIZ": 53.0499597680716,
+    "ZIIZ": 66.81137217944213,
+    "ZYZY": 7.049731675789697,
+    "ZXZX": 7.049731675789697,
+    "IIYY": 140.90738540984066,
+    "IIXX": 140.90738540984066,
+    "YZZY": 73.44483242618949,
+    "XZZX": 73.44483242618949,
+    "IZZI": 48.70750017027962,
+    "YIYI": 16.029881156290664,
+    "XIXI": 16.029881156290664,
+    "ZIZI": 56.36603371181398,
+    "IYYI": 121.6147448227057,
+    "IXXI": 121.6147448227057,
+    "ZZII": 49.848405994579146,
+    "YYII": 142.26700329203368,
+    "XXII": 142.26700329203368
+  },
+  "dose_response": {
+    "ideal": {
+      "unoptimized|baseline|285": {
+        "pauli_mean": 0.0034174248051703267,
+        "energy_kcal_mean": 0.30277048260152084
+      },
+      "unoptimized|identical|335": {
+        "pauli_mean": 0.003248034012675643,
+        "energy_kcal_mean": 0.29775523228111006
+      },
+      "unoptimized|varied|335": {
+        "pauli_mean": 0.003268948401251585,
+        "energy_kcal_mean": 0.27994711613515644
+      },
+      "unoptimized|identical|385": {
+        "pauli_mean": 0.0031719391768283926,
+        "energy_kcal_mean": 0.31123818266388853
+      },
+      "unoptimized|varied|385": {
+        "pauli_mean": 0.003459438565416986,
+        "energy_kcal_mean": 0.30384821443245164
+      },
+      "optimized|baseline|54": {
+        "pauli_mean": 0.0032588726759275963,
+        "energy_kcal_mean": 0.26764768097910874
+      },
+      "optimized|identical|104": {
+        "pauli_mean": 0.003881787260756812,
+        "energy_kcal_mean": 0.2790769994249659
+      },
+      "optimized|varied|104": {
+        "pauli_mean": 0.0034127519794987194,
+        "energy_kcal_mean": 0.2551957874932966
+      },
+      "optimized|identical|154": {
+        "pauli_mean": 0.003337321626469446,
+        "energy_kcal_mean": 0.2579504096242615
+      },
+      "optimized|varied|154": {
+        "pauli_mean": 0.003554307669881208,
+        "energy_kcal_mean": 0.26346945126131627
+      },
+      "optimized|baseline|63": {
+        "pauli_mean": 0.0028583890701285625,
+        "energy_kcal_mean": 0.31969271618805833
+      },
+      "optimized|identical|113": {
+        "pauli_mean": 0.0030092773511726906,
+        "energy_kcal_mean": 0.3156898698749519
+      },
+      "optimized|varied|113": {
+        "pauli_mean": 0.0025608990387182857,
+        "energy_kcal_mean": 0.25960761971628676
+      },
+      "optimized|identical|163": {
+        "pauli_mean": 0.0023261067899458944,
+        "energy_kcal_mean": 0.24810810475218611
+      },
+      "optimized|varied|163": {
+        "pauli_mean": 0.0031501190354770886,
+        "energy_kcal_mean": 0.32722825677737055
+      }
+    },
+    "aria-1": {
+      "unoptimized|baseline|285": {
+        "pauli_mean": 0.06169583211050525,
+        "energy_kcal_mean": 7.705879337610117
+      },
+      "unoptimized|identical|335": {
+        "pauli_mean": 0.06516897983328865,
+        "energy_kcal_mean": 7.9840444314499415
+      },
+      "unoptimized|varied|335": {
+        "pauli_mean": 0.06426923755013968,
+        "energy_kcal_mean": 7.9338155116962445
+      },
+      "unoptimized|identical|385": {
+        "pauli_mean": 0.06755592083486597,
+        "energy_kcal_mean": 8.4210295700216
+      },
+      "unoptimized|varied|385": {
+        "pauli_mean": 0.06772781647951724,
+        "energy_kcal_mean": 8.409579321485053
+      },
+      "optimized|baseline|54": {
+        "pauli_mean": 0.02720929295504569,
+        "energy_kcal_mean": 4.503294789620275
+      },
+      "optimized|identical|104": {
+        "pauli_mean": 0.02969464917371314,
+        "energy_kcal_mean": 4.998062306058039
+      },
+      "optimized|varied|104": {
+        "pauli_mean": 0.029503352918321495,
+        "energy_kcal_mean": 4.899870805516342
+      },
+      "optimized|identical|154": {
+        "pauli_mean": 0.03154510637942371,
+        "energy_kcal_mean": 5.256604140371901
+      },
+      "optimized|varied|154": {
+        "pauli_mean": 0.032190000497996786,
+        "energy_kcal_mean": 5.291208881295733
+      },
+      "optimized|baseline|63": {
+        "pauli_mean": 0.02645794324794663,
+        "energy_kcal_mean": 3.101876103857863
+      },
+      "optimized|identical|113": {
+        "pauli_mean": 0.029667248803502022,
+        "energy_kcal_mean": 3.2453352849757966
+      },
+      "optimized|varied|113": {
+        "pauli_mean": 0.0303994710257246,
+        "energy_kcal_mean": 3.3619252790901375
+      },
+      "optimized|identical|163": {
+        "pauli_mean": 0.03511342935905742,
+        "energy_kcal_mean": 3.653877326782924
+      },
+      "optimized|varied|163": {
+        "pauli_mean": 0.03471766547016916,
+        "energy_kcal_mean": 3.634695949103465
+      }
+    },
+    "forte-1": {
+      "unoptimized|baseline|285": {
+        "pauli_mean": 0.04555113158742688,
+        "energy_kcal_mean": 5.895643759851089
+      },
+      "unoptimized|identical|335": {
+        "pauli_mean": 0.046490225226217236,
+        "energy_kcal_mean": 5.8547693520874695
+      },
+      "unoptimized|varied|335": {
+        "pauli_mean": 0.04640448597646735,
+        "energy_kcal_mean": 5.948559833527485
+      },
+      "unoptimized|identical|385": {
+        "pauli_mean": 0.04704821015393997,
+        "energy_kcal_mean": 6.076808111407512
+      },
+      "unoptimized|varied|385": {
+        "pauli_mean": 0.04653179017097072,
+        "energy_kcal_mean": 6.050740879134379
+      },
+      "optimized|baseline|54": {
+        "pauli_mean": 0.02455270616039654,
+        "energy_kcal_mean": 4.097253577204672
+      },
+      "optimized|identical|104": {
+        "pauli_mean": 0.02468586349488462,
+        "energy_kcal_mean": 4.12190910972918
+      },
+      "optimized|varied|104": {
+        "pauli_mean": 0.025103279620527677,
+        "energy_kcal_mean": 4.1897475134366475
+      },
+      "optimized|identical|154": {
+        "pauli_mean": 0.02565677806099575,
+        "energy_kcal_mean": 4.311180806917478
+      },
+      "optimized|varied|154": {
+        "pauli_mean": 0.026286023232339792,
+        "energy_kcal_mean": 4.318743677744684
+      },
+      "optimized|baseline|63": {
+        "pauli_mean": 0.021024054359057617,
+        "energy_kcal_mean": 2.4580786581951597
+      },
+      "optimized|identical|113": {
+        "pauli_mean": 0.021203429359057408,
+        "energy_kcal_mean": 2.3871064060877933
+      },
+      "optimized|varied|113": {
+        "pauli_mean": 0.022058221025724203,
+        "energy_kcal_mean": 2.5343648879023095
+      },
+      "optimized|identical|163": {
+        "pauli_mean": 0.02335412380350184,
+        "energy_kcal_mean": 2.7205987814267667
+      },
+      "optimized|varied|163": {
+        "pauli_mean": 0.022814262692391247,
+        "energy_kcal_mean": 2.4714895588221477
+      }
+    }
+  },
+  "slopes": {
+    "ideal": {
+      "unoptimized_identical": {
+        "slope_kcal_per_1q": 8.467700062367645e-05,
+        "intercept_kcal": 0.27555450397324155,
+        "n_points": 3
+      },
+      "unoptimized_varied": {
+        "slope_kcal_per_1q": 1.0777318309307705e-05,
+        "intercept_kcal": 0.2919115360894248,
+        "n_points": 3
+      },
+      "optimized_identical": {
+        "slope_kcal_per_1q": -0.00036648954562022446,
+        "intercept_kcal": 0.32112507917371624,
+        "n_points": 6
+      },
+      "optimized_varied": {
+        "slope_kcal_per_1q": 7.003270976060569e-05,
+        "intercept_kcal": 0.2745417030602137,
+        "n_points": 6
+      }
+    },
+    "aria-1": {
+      "unoptimized_identical": {
+        "slope_kcal_per_1q": 0.007151502324114844,
+        "intercept_kcal": 5.641231167782078,
+        "n_points": 3
+      },
+      "unoptimized_varied": {
+        "slope_kcal_per_1q": 0.007036999838749343,
+        "intercept_kcal": 5.659029777616109,
+        "n_points": 3
+      },
+      "optimized_identical": {
+        "slope_kcal_per_1q": 0.004333310511473879,
+        "intercept_kcal": 3.656344134782884,
+        "n_points": 6
+      },
+      "optimized_varied": {
+        "slope_kcal_per_1q": 0.00448107984946292,
+        "intercept_kcal": 3.6459481377472414,
+        "n_points": 6
+      }
+    },
+    "forte-1": {
+      "unoptimized_identical": {
+        "slope_kcal_per_1q": 0.0018116435155642405,
+        "intercept_kcal": 5.335506496734668,
+        "n_points": 3
+      },
+      "unoptimized_varied": {
+        "slope_kcal_per_1q": 0.0015509711928328937,
+        "intercept_kcal": 5.445406141238632,
+        "n_points": 3
+      },
+      "optimized_identical": {
+        "slope_kcal_per_1q": 0.0001464060890760633,
+        "intercept_kcal": 3.3334694959287536,
+        "n_points": 6
+      },
+      "optimized_varied": {
+        "slope_kcal_per_1q": -0.0011256337921502482,
+        "intercept_kcal": 3.4670775786659034,
+        "n_points": 6
+      }
+    }
+  },
+  "style_diff": {
+    "ideal_unoptimized": {
+      "ratio": 0.12727562655654892,
+      "diff_kcal": 7.389968231436875e-05
+    },
+    "ideal_optimized": {
+      "ratio": -0.19109060707880934,
+      "diff_kcal": 0.00043652225538083015
+    },
+    "aria-1_unoptimized": {
+      "ratio": 0.9839890305314732,
+      "diff_kcal": 0.0001145024853655011
+    },
+    "aria-1_optimized": {
+      "ratio": 1.0341007960536805,
+      "diff_kcal": 0.00014776933798904112
+    },
+    "forte-1_unoptimized": {
+      "ratio": 0.8561127945471326,
+      "diff_kcal": 0.00026067232273134684
+    },
+    "forte-1_optimized": {
+      "ratio": -7.688435633066057,
+      "diff_kcal": 0.0012720398812263115
+    }
+  }
+}
