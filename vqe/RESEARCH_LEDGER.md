@@ -6252,6 +6252,60 @@ circuit, not the measurement pipeline, not the bookkeeping.**
    support. This IS effectively what Task G's conditioning analysis
    (variance inflation factor at lambda=0) substitutes for.
 
+### Task E — the combination nobody had run: 28G's reconstruction on 28B's optimized circuit
+
+Task 28B (optimizer gate reduction: raw 132.49->89.19 kcal/mol) and Task
+28G (PSD/trace-1 constrained reconstruction: 13.86->12.78 kcal/mol) were
+measured on SEPARATE circuits and never combined. The genuinely free/
+immediate form of that combination: 28G's own SDP reconstruction
+(`build_P_S`/`reconstruct_rho_slot`, unchanged) applied directly to 28B's
+already-collected fold=1 optimized-circuit counts
+(`task28b_optimized_raw.json`) — no new circuits, no new real submission.
+There is no existing 2q-only FOLD SWEEP on the optimized circuit (28D's
+fold data is ALL-GATE folding, currently invalid per Task A), so this is
+a single-point (fold=1) combination, not a fold-ZNE combination — it
+answers the more basic question first.
+
+| model | RAW (28B optimized, no reconstruction) | PHYS (28B optimized + 28G reconstruction) |
+|---|---|---|
+| ideal | 1.27 +/- 0.29 | **0.70 +/- 0.14** (SANITY CHECK: improves, does not corrupt) |
+| aria-1 | 89.62 +/- 0.53 | **77.42 +/- 0.20** (13.6% better) |
+| forte-1 | 89.06 +/- 0.50 | **76.94 +/- 0.37** (13.6% better) |
+
+Cross-checked against 28B's own reported raw numbers (89.77/89.19): this
+run's raw values (89.62/89.06) match closely, small differences expected
+from independent bootstrap seeding. **A real, clean win, disclosed with
+its actual scope**: reconstruction stacks with gate-count reduction for a
+genuine 13.6% improvement at fold=1, and the mandatory ideal-control check
+passes (reconstruction makes the noiseless case BETTER, 1.27->0.70, not
+worse — unlike Task D's extrapolator). **But this does not unseat the
+project's best number (12.78 kcal/mol, Task G on the ORIGINAL circuit with
+full fold-ZNE)** — the ZNE fold-extrapolation, not reconstruction alone,
+was doing most of that result's work, and no fold sweep exists yet for the
+optimized circuit. The natural next real step (not free — requires a new
+2q-only fold-sweep submission on 28B's optimized circuit) is the true
+combination: optimizer + reconstruction + ZNE together, which could
+plausibly compound this 13.6% gain with Task G's own ZNE gain. Not run
+here — flagged for a future iteration, not silently assumed.
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Reuse Task 28D's ALL-GATE fold data (folds 1-9 DO exist for the
+   optimized circuit) and just skip the 1q-folding half.* Rejected —
+   28D's checkpoint folds 1q and 2q gates together at a fixed ratio
+   (lambda_1q=lambda_2q); there is no way to extract a "2q-only" curve
+   from data that was never collected that way. Would require a new
+   submission regardless, so it isn't actually free either.
+2. *Run full fold-ZNE now, spending the new submission this task's docstring
+   says isn't needed.* Rejected — Task 29E's brief specifically frames this
+   as the free/immediate combination; a paid-in-time fold sweep is a
+   reasonable next iteration, not a silent scope expansion of this one.
+3. *Apply Task 28F's floor-constrained shot reallocation on top, since it's
+   also "free" (reuses existing data).* Rejected for this task — 28F's
+   method was validated on a different (21-slot, non-optimized) circuit
+   design; combining three independent interventions in one pass makes it
+   harder to attribute the resulting number to any one of them. Worth
+   doing once the fold-sweep-on-optimized-circuit exists to combine with.
+
 ---
 
 ## Iteration 28: gate-type-complete H4 ZNE — settling the 1q-noise premise, an optimizer that actually helps, a variance-reduction method the Monte Carlo check caught before it could fool anyone, and a constrained-reconstruction win that beats iteration 27's own headline

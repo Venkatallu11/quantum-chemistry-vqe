@@ -1,0 +1,32 @@
+{
+  "results_by_model": {
+    "ideal": {
+      "raw_mean_kcal": 1.2740487988934834,
+      "raw_std_kcal": 0.2931120984109234,
+      "phys_mean_kcal": 0.6956601394105921,
+      "phys_std_kcal": 0.13759596552475437,
+      "n_sdp_fail": 0,
+      "n_total_slots": 168
+    },
+    "aria-1": {
+      "raw_mean_kcal": 89.61807066993529,
+      "raw_std_kcal": 0.5251390634466834,
+      "phys_mean_kcal": 77.41989458412542,
+      "phys_std_kcal": 0.20298003735201517,
+      "n_sdp_fail": 0,
+      "n_total_slots": 168
+    },
+    "forte-1": {
+      "raw_mean_kcal": 89.0562877528674,
+      "raw_std_kcal": 0.49775896268329595,
+      "phys_mean_kcal": 76.94019377838401,
+      "phys_std_kcal": 0.36963784660178045,
+      "n_sdp_fail": 0,
+      "n_total_slots": 168
+    }
+  },
+  "cited_28b_raw": {
+    "aria-1": 89.77,
+    "forte-1": 89.19
+  }
+}
