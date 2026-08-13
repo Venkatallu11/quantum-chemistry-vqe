@@ -1,0 +1,16 @@
+{
+  "n_curves": 756,
+  "stage1_mean_holdout_err": 0.0008194969490766515,
+  "stage2_mean_holdout_err": 0.0007503363754181127,
+  "stage2_class_counts": {
+    "rational": 207,
+    "exponential": 262,
+    "linear": 143,
+    "quadratic": 144
+  },
+  "n_excluded": 115,
+  "n_total": 756,
+  "err_raw_fold1_kcal": 0.06523679984332391,
+  "err_all_gate_zne_fold0_kcal": 33.48086269844202,
+  "reproduces_blowup": "True"
+}

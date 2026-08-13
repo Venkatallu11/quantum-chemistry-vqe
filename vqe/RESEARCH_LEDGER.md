@@ -3,11 +3,24 @@
 **STATUS UPDATE (iteration 28, LOCAL BRANCH `local/attack-base-problem`,
 pushed to the SIDE BRANCH only, `origin/main` untouched -- PASS gate not
 met, no real QPU submission): gate-type-complete H4 ZNE, simulator only.
-**Task A** (settle the premise first): real 1q-noise spectroscopy found a
-NON-TRIVIAL slope for aria-1 (0.000102 kcal/mol per 1q gate) but a SMALL,
-near-flat slope for forte-1 (0.000020) -- the 1q-noise hypothesis is only
-half-supported, and specifically weak on the backend that produced
-iteration 27's 14.28 headline. **Task B**: qiskit-ionq's
+**Task A** (settle the premise first) -- **CORRECTED, iteration 29**: real
+1q-noise spectroscopy found a NON-TRIVIAL slope for aria-1 (0.000102) but
+a SMALL, near-flat slope for forte-1 (0.000020). Two errors in how this
+was originally reported: (a) these units are Pauli-EXPECTATION error per
+1q gate (`mean|measured - exact ideal|`, dimensionless, bounded ~[0,2]),
+NOT kcal/mol as stated -- no Hamiltonian-coefficient weighting was ever
+applied to convert a per-Pauli slope into an energy-error contribution,
+so no conclusion about energy impact is actually supported by this number
+yet. (b) the padding baseline was Task 28B's OPTIMIZER-REDUCED circuit,
+padded with CANCELLING IDENTICAL-ANGLE GPi(0)-GPi(0) pairs -- the most
+benign possible 1q gate, structurally different from the ~234 varied-
+angle gates a real synthesis compiler would add to the UN-optimized
+original topology. The conclusion is narrower than stated: this measures
+the marginal cost of padding an already-optimized circuit with inert
+pairs, not the 1q-noise sensitivity of the original 285-gate native
+circuit. Redone honestly as iteration 29 Task B (kcal/mol units, both
+circuit arms, both padding styles compared directly) -- see below.
+**Task B**: qiskit-ionq's
 TrappedIonOptimizerPlugin, applied correctly (unfolded circuit, then
 frozen, then folded) and measured on the right metric, cuts N_1q by
 ~68-76% (aria 197->61.3 mean, forte 285->69.2 mean) AND N_2q (11->9.28
@@ -32,10 +45,32 @@ own mandatory ideal-control sanity check**: the noiseless `ideal` model's
 error went 1.83->39.31 kcal/mol under this same extrapolation (21x worse,
 on a circuit with no real noise to correct), so neither aria-1's apparent
 improvement (52.89->34.18) nor forte-1's apparent regression
-(14.28->63.97) is reported as physical. Task D is fully resolved, not
-blocked -- its answer is negative: all-gate ZNE, as built here, does not
-beat 2q-only ZNE. The 2q-only 14.28 kcal/mol baseline (iteration 27)
-stands, unchallenged and undefeated. **Task E**: classified iteration 27's
+(14.28->63.97) is reported as physical.
+
+**CORRECTED, iteration 29**: the sentence that stood here ("Task D is
+fully resolved... its answer is negative: all-gate ZNE does not beat
+2q-only ZNE") was WRONG and is retracted. An estimator that corrupts
+noiseless data cannot be used to compare noisy ones -- disqualification
+by the ideal-control check means the IMPLEMENTATION is invalid, not that
+the underlying physical question (does folding 1q gates too improve
+noise cancellation?) has been answered negatively. The correct status is
+**implementation invalid, method untested**. Iteration 29 Task A locates
+the exact failure (see "Iteration 29" below): it is NOT the circuit
+(unitary-equivalence still verified <1e-14), not the measurement/basis-
+rotation pipeline, not the off-diagonal synthesis bookkeeping, and not
+the extrapolator's math on exact input -- all four pass at 1e-10. The
+failure is the interaction between realistic shot noise and per-Pauli-
+curve extrapolation: held-out validation tests INTERPOLATION (predict
+fold=7/9 from fitted data) but never validates EXTRAPOLATION to fold=0,
+which sits outside the data on the opposite side. Reproduced directly:
+feeding pure statistical shot noise (no real hardware noise at all) for
+the noiseless `ideal` model through production's actual 756-curve
+extrapolation code turned a 0.065 kcal/mol raw error into 33.48 kcal/mol
+at fold=0 -- a 513x blowup, worse than the real run's 21x, from
+shot-noise-driven model selection alone. The 2q-only 14.28 kcal/mol
+baseline (iteration 27) stands, unchallenged -- but so does the original
+question of whether all-gate folding helps; it has not yet been given a
+valid test. **Task E**: classified iteration 27's
 excluded (unphysical-extrapolation) curves -- no dramatic concentration
 (worst single-slot rate 13.9%), a mild lean toward basis-rotated
 (has_XY, 5.7-6.2%) and diagonal (6.9-7.4%) families, and excluded curves
@@ -6122,6 +6157,103 @@ whichever number results from those before calling anything established.
 
 ---
 
+## Iteration 29: finding the ideal-control bug, and rebuilding the estimator around H4's known structure
+
+Run at the user's explicit direction. Simulator only, the $3,000 stays
+unspent. Local branch `local/attack-base-problem` only. Two corrections
+to iteration 28's own claims are applied above, in place, before any new
+work: Task 28D's status changes from "negative result" to "implementation
+invalid, method untested"; Task 28A's conclusion is narrowed to the
+optimizer-reduced circuit + cancelling-identical-angle padding it actually
+tested, and its units are corrected from a mistaken "kcal/mol" label to
+the Pauli-expectation-error units it was actually computed in.
+
+### Task A — locating the ideal-control failure (blocking; done first, per instruction)
+
+Four layers, smallest test first, ALL EXACT STATEVECTOR (no shots, no
+IonQ calls at all — this isolates any bug from shot noise entirely, since
+exact quantities must satisfy |E_lambda - E_1| < 1e-10 if the pipeline is
+mathematically correct). Reuses `optimized_native_circuit` / `fold_all_gates`
+UNCHANGED from `task28d_all_gate_zne.py` — no reimplementation, no risk
+of testing a different circuit than the one that actually failed.
+
+| layer | test | worst deviation | verdict |
+|---|---|---|---|
+| A | state-prep only, raw statevector vs fold=1, all 21 kept slots, folds 1-9 | 1.10e-14 | PASS |
+| B | +1 Pauli observable, exact expectation through the real measurement/basis-rotation/`pauli_expectation` code path | 1.03e-15 | PASS |
+| C1 | ONE off-diagonal (u_n-u_m) synthesis identity in isolation | 1.99e-14 | PASS |
+| C2 | full K=6 multi-slot energy assembly, exact, all folds | 7.99e-14 Ha | PASS |
+| D (aggregate) | exact per-fold TOTAL energy through the production two-stage held-out extrapolator | 6.13e-12 kcal/mol | PASS |
+
+All five pass at 1e-10. **This ruled out the circuit, the measurement
+pipeline, the off-diagonal bookkeeping, and the extrapolator's own math on
+exact input — but did not reproduce the bug**, because Layer D as first
+built tested the wrong granularity: production's real ZNE extrapolates
+~756 INDIVIDUAL Pauli-expectation curves separately (one held-out fit +
+model selection + exclusion check PER (slot, label) pair), not one
+aggregate total-energy curve. Task G's own ledger entry had already
+flagged this granularity difference in passing; it turned out to be the
+whole story.
+
+**Layer D2 — realistic shot noise, correct granularity, the actual bug,
+reproduced directly**: multinomial-sampled 100,000 shots x 8 seeds from
+this task's own exact `ideal` probabilities (statistically identical to a
+real `ionq_simulator` submission, zero IonQ calls, zero cost) fed through
+production's REAL 756-curve two-stage held-out extrapolation code,
+verbatim. Result: `raw(fold=1) = 0.0652 kcal/mol` -> `ALL-GATE-ZNE(0) =
+33.48 kcal/mol` — a **513x blowup from pure statistical shot noise alone**,
+on a model with zero real hardware noise, worse than the 21x seen in the
+actual Task 28D run. 115/756 curves (15%) were excluded for extrapolating
+to |value|>1 (worst: 17,295 and -8,214 for a quantity bounded to [-1,1]);
+model-class selection favored `rational` (207/756) and `exponential`
+(262/756) — the two flexible 3-parameter nonlinear classes — over
+`linear`/`quadratic` for 62% of all curves.
+
+**THE BUG, stated precisely: held-out validation tests INTERPOLATION
+(predict fold=7 from folds fit on 1,3,5; predict fold=9 from folds fit on
+1,3,5,7) but never validates EXTRAPOLATION to fold=0, which lies outside
+the data on the opposite side.** A rational or exponential fit can score
+well on the interpolation test — noisy near-flat data doesn't distinguish
+model classes much inside the fitted range — while diverging arbitrarily
+once evaluated at 0. The existing `|value|>1` exclusion catches only the
+most extreme 15%; moderate but still-large overfitting in the rest
+corrupts the energy sum silently. This is not a code defect (no line of
+code computes something other than what it was written to compute); it is
+a genuine statistical-conditioning failure of validating a curve-fit
+family by interpolation accuracy and then using it for extrapolation.
+This is exactly the mechanism iteration 29 Task G (below) was asked to
+quantify, and Task A's finding motivates Task C's manifold estimator
+directly: 5 smooth, physically-constrained curves instead of 756
+independent, unconstrained ones.
+
+**FIRST FAILING LAYER: D — specifically the per-Pauli-curve extrapolator's
+interpolation-validated-but-extrapolation-blind model selection, not the
+circuit, not the measurement pipeline, not the bookkeeping.**
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Tighten the `|value|>1` exclusion threshold (e.g. reject anything that
+   moves more than some small multiple of the fold=1 value).* Rejected —
+   an arbitrary tightened threshold is exactly the kind of undisclosed
+   free-parameter tuning this project's own honesty rules warn against;
+   it would also only hide the conditioning problem, not fix it. Revisit
+   only as a stopgap if Task C's manifold estimator is abandoned entirely.
+2. *Restrict the per-curve model classes to linear/quadratic only,
+   dropping rational/exponential.* Rejected without testing — plausible
+   and cheap, but treats the symptom (which model classes get picked)
+   rather than the cause (validating by interpolation, using by
+   extrapolation). Revisit if Task C's timeline slips and a quick partial
+   fix is needed for Task D's pipeline comparison (29D).
+3. *Add a second held-out check AT an extrapolated point (e.g. hold out
+   fold=1 itself and check the fold=0-direction prediction).* Rejected
+   for this task — fold=1 is required data (it is what "raw" is measured
+   against), and folds only go down to 1 (no fold=-1 to test extrapolation
+   symmetrically); a real extrapolation-side validation would need
+   sub-unity fold factors, which this project's fold circuits do not
+   support. This IS effectively what Task G's conditioning analysis
+   (variance inflation factor at lambda=0) substitutes for.
+
+---
+
 ## Iteration 28: gate-type-complete H4 ZNE — settling the 1q-noise premise, an optimizer that actually helps, a variance-reduction method the Monte Carlo check caught before it could fool anyone, and a constrained-reconstruction win that beats iteration 27's own headline
 
 Run at the user's explicit direction, simulator only. NO real QPU
@@ -6286,16 +6418,34 @@ aria-1/forte-1 either, regardless of whether one number looks better.
 **Per this project's standing rule, BOTH real-hardware numbers from this
 task are DISQUALIFIED, not adopted** — neither aria-1's apparent
 improvement nor forte-1's apparent regression is reported as physical.
-Likely mechanism: all-gate-folded energy grows far more steeply with fold
-than 2q-only folding (aria-1 88→573, forte-1 85→563 kcal/mol from fold
-1→9 — roughly 5x steeper growth than iteration 27's 2q-only curves),
-pushing the held-out model-selection into an unstable regime (111/756 and
-100/756 curves excluded as unphysical extrapolations for ideal and
-forte-1 respectively, the highest exclusion rates of any task this
-session, vs Task G's 36-39/756 baseline). **Iteration 27's forte-1 14.28
-kcal/mol headline stands, unchallenged and undefeated** — Task D is now
-fully resolved (not blocked, not unresolved) and its answer is negative:
-all-gate ZNE, as built here, does not beat 2q-only ZNE.
+Likely mechanism (CORRECTED and CONFIRMED, iteration 29 Task A): all-gate-
+folded energy grows far more steeply with fold than 2q-only folding
+(aria-1 88→573, forte-1 85→563 kcal/mol from fold 1→9 — roughly 5x
+steeper growth than iteration 27's 2q-only curves), pushing the held-out
+model-selection into an unstable regime (111/756 and 100/756 curves
+excluded as unphysical extrapolations for ideal and forte-1 respectively,
+the highest exclusion rates of any task this session, vs Task G's 36-39/756
+baseline). **Iteration 27's forte-1 14.28 kcal/mol headline stands,
+unchallenged.**
+
+**RETRACTED (iteration 29): the sentence that stood here — "Task D is now
+fully resolved... its answer is negative: all-gate ZNE, as built here,
+does not beat 2q-only ZNE" — overclaimed.** Disqualification by the
+ideal-control check means the IMPLEMENTATION is invalid, not that the
+underlying physical question is answered. The correct status is
+**implementation invalid, method untested**, and iteration 29 Task A
+found and confirmed the exact cause by direct reproduction: it is not the
+circuit, the measurement pipeline, or the off-diagonal synthesis
+bookkeeping (all verified to pass at 1e-10 on exact statevector data) --
+it is the per-Pauli-curve extrapolator's held-out selection validating
+INTERPOLATION (predict fold=7/9) while never validating EXTRAPOLATION to
+fold=0, which sits outside the data on the opposite side. Feeding pure
+statistical shot noise (zero real hardware noise, multinomial-sampled
+from the exact `ideal` probabilities) through this exact production code
+turned a 0.065 kcal/mol raw error into a 33.48 kcal/mol fold=0 value on
+its own -- a 513x blowup from shot noise alone, worse than the 21x seen
+in the real run. Full analysis and a redesigned estimator: see
+"Iteration 29" below.
 
 Classified every curve iteration 27 excluded as an unphysical
 fold→0 extrapolation (36/756 aria-1, 39/756 forte-1 — reproduced exactly,
