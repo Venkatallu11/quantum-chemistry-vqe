@@ -1,0 +1,34 @@
+{
+  "linear_quadratic": {
+    "linear": {
+      "design_cond_number": 11.937042435650493,
+      "vif_at_0": 0.8250000000000033,
+      "vif_at_9": 0.6000000000000004,
+      "ratio_0_over_9": 1.3750000000000044
+    },
+    "quadratic": {
+      "design_cond_number": 156.84653082565842,
+      "vif_at_0": 2.1151785714280438,
+      "vif_at_9": 0.8857142857142657,
+      "ratio_0_over_9": 2.3881048387091357
+    }
+  },
+  "rational_exponential": {
+    "exponential": {
+      "mean_vif_at_0": 69421655.75253038,
+      "mean_vif_at_9": 0.5160622087629302,
+      "ratio_0_over_9": 134521874.63783354,
+      "median_vif_at_0": 4.008222576515385,
+      "median_vif_at_9": 0.5768312330823762,
+      "n_curves": 28
+    },
+    "rational": {
+      "mean_vif_at_0": 1.7145457966774098e+20,
+      "mean_vif_at_9": 2385.239820467513,
+      "ratio_0_over_9": 7.188148470292411e+16,
+      "median_vif_at_0": 903.4829404272095,
+      "median_vif_at_9": 0.4600104951546046,
+      "n_curves": 28
+    }
+  }
+}

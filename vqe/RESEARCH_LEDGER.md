@@ -6306,6 +6306,69 @@ here — flagged for a future iteration, not silently assumed.
    harder to attribute the resulting number to any one of them. Worth
    doing once the fold-sweep-on-optimized-circuit exists to combine with.
 
+### Task G — quantifying WHY the extrapolator is ill-conditioned at lambda=0
+
+Held-out fold validation (used throughout iterations 27-28) tests
+INTERPOLATION: fit on [1,3,5], predict fold=7; fit on [1,3,5,7], predict
+fold=9 -- both targets INSIDE the fitted range. The zero-noise limit is
+EXTRAPOLATION to lambda=0, outside the data, on the opposite side from
+every held-out test this project has ever run. This quantifies exactly
+how much worse-conditioned that extrapolation is, per fit family.
+
+**Linear/quadratic (closed-form OLS leverage, a property of the 5 fold
+x-values only, independent of any y-data)**: design matrix condition
+number 11.9 (linear) / 156.8 (quadratic) for the real fold set
+[1,3,5,7,9]. Prediction-variance amplification factor: linear
+VIF(0)=0.825 vs VIF(9)=0.600 (1.4x worse); quadratic VIF(0)=2.115 vs
+VIF(9)=0.886 (2.4x worse). Real, but modest.
+
+**Rational/exponential (delta-method Jacobian VIF, measured on 28 real
+noisy `ideal`-model curves — same realistic-shot-noise methodology as
+Task A's Layer D2)**: catastrophic. Mean VIF(0)/VIF(9) ratio: exponential
+134,521,875x, rational 71,881,484,702,924,112x — both means dominated by
+rare near-singular curves (a rational fit's denominator passing near zero
+for some fitted parameter combination). The MEDIAN is far more moderate
+but still real: exponential median VIF(0)=4.01 vs VIF(9)=0.58 (~7x);
+rational median VIF(0)=903.5 vs VIF(9)=0.46 (~2000x). Reporting both mean
+and median deliberately — the mean alone would overstate every curve's
+risk, the median alone would hide the heavy tail that actually produces
+occasional 17,000+ -magnitude excluded extrapolations (Task A's own
+Layer D2 numbers).
+
+**CONCLUSION: held-out validation at fold=7/9 provably does not certify
+the fold=0 value for any of the four model classes production selects
+from.** Extrapolation is structurally worse-conditioned than interpolation
+for every class tested, by construction of where lambda=0 sits relative
+to the fitted data — this is the quantitative version of Task A's finding,
+and it is the direct, evidence-based argument for Task C's manifold
+estimator: 5 smooth, physically-constrained curves fit jointly, instead of
+up to 756 independently-conditioned free extrapolations each one fit
+class away from a near-singular denominator.
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Report only the mean VIF ratio.* Rejected — the mean is so dominated
+   by rare near-singular fits (ratios in the billions/quintillions) that
+   reporting it alone would misrepresent the typical curve's risk; both
+   mean and median are reported together, deliberately.
+2. *Compute the nonlinear VIF via the analytic Gauss-Newton covariance
+   (J^T J)^-1 from `curve_fit`'s own returned covariance matrix instead of
+   finite-difference perturbation.* Rejected as the primary method — it
+   requires trusting `curve_fit`'s convergence and Jacobian at the fitted
+   optimum, which is exactly what's suspect for near-singular fits (the
+   covariance can be ill-defined at a solution curve_fit still reports as
+   converged); the direct data-perturbation method used here answers the
+   actual question ("how much does the fold=0 prediction move if the data
+   moves a little") without that dependency. Worth cross-checking in a
+   future iteration if the manifold estimator's own uncertainty bars need
+   a faster method than finite differences.
+3. *Extend the sample from 28 representative curves to the full 756.*
+   Rejected for this task — 28 curves across 4 slots x up to 3 labels
+   already shows both the typical (median) and tail (mean-dominating)
+   behavior clearly; the full 756-curve sweep is exactly what Task A's
+   Layer D2 already ran (with the actual per-curve extrapolated values,
+   not just their conditioning), so re-running it here would duplicate
+   rather than add information.
+
 ---
 
 ## Iteration 28: gate-type-complete H4 ZNE — settling the 1q-noise premise, an optimizer that actually helps, a variance-reduction method the Monte Carlo check caught before it could fool anyone, and a constrained-reconstruction win that beats iteration 27's own headline
