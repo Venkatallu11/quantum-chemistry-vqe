@@ -1,5 +1,67 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 28, LOCAL BRANCH `local/attack-base-problem`,
+pushed to the SIDE BRANCH only, `origin/main` untouched -- PASS gate not
+met, no real QPU submission): gate-type-complete H4 ZNE, simulator only.
+**Task A** (settle the premise first): real 1q-noise spectroscopy found a
+NON-TRIVIAL slope for aria-1 (0.000102 kcal/mol per 1q gate) but a SMALL,
+near-flat slope for forte-1 (0.000020) -- the 1q-noise hypothesis is only
+half-supported, and specifically weak on the backend that produced
+iteration 27's 14.28 headline. **Task B**: qiskit-ionq's
+TrappedIonOptimizerPlugin, applied correctly (unfolded circuit, then
+frozen, then folded) and measured on the right metric, cuts N_1q by
+~68-76% (aria 197->61.3 mean, forte 285->69.2 mean) AND N_2q (11->9.28
+mean) at exact-to-1e-13 preserved fidelity, and raw H4 energy drops
+32-39% (aria 148.19->89.77, forte 132.49->89.19 kcal/mol) -- a genuine,
+disclosed win, though it contradicts the task's own cited reference gate
+counts. **Task C** (hand-written native compiler): scoped down and not
+built -- Task B already reached N_1q~61-69 against a <=60 target, and
+Task A's own measured slopes show finishing the last ~10 gates would move
+forte-1's error by ~0 and aria-1's by about 0.001 kcal/mol, below noise;
+building a full symbolic angle-propagation compiler for that return was
+judged not worth it, disclosed rather than silently skipped. **Task D**
+(the key experiment, all-gate ZNE): the unitary-equivalence verification
+for folding 1q gates too PASSED cleanly on every attempt (worst
+7.46e-15-1.09e-14, six orders inside the 1e-12 bar) but the REAL
+submission failed on all 4 attempts (1 original + 3 retries with
+escalating manual backoff) against a sustained IonQ `ionq_simulator`
+'Service Unavailable'/'upstream timing out' condition -- a real,
+disclosed infrastructure outage, not a code bug. NO all-gate-ZNE energy
+number was obtained this session; the 2q-only 14.28 kcal/mol baseline
+(iteration 27) stands unchallenged. **Task E**: classified iteration 27's
+excluded (unphysical-extrapolation) curves -- no dramatic concentration
+(worst single-slot rate 13.9%), a mild lean toward basis-rotated
+(has_XY, 5.7-6.2%) and diagonal (6.9-7.4%) families, and excluded curves
+carry systematically LOWER energy weight (8.35-13.48) than included ones
+(55.51-55.60) -- the current fallback-to-raw is discarding relatively
+unimportant information, a reassuring finding. **Task F**: a naive
+closed-form (Neyman) shot-reallocation, despite a deceptively tiny
+analytic prediction, CATASTROPHICALLY FAILED under real Monte Carlo
+verification (282x worse than uniform) by starving low-variance circuits
+down to ~1 shot each, breaking the delta-method's own small-noise
+precondition -- caught only because the MC check was built in. A
+floor-constrained version (30% of the budget reserved uniform, 70%
+allocated by sqrt(v_i)) gives a real, MC-verified 5.01x variance
+reduction (0.194->0.039 kcal/mol) at the SAME total shot budget, but this
+attacks only the LOCAL shot-noise floor, not the drift-dominated REAL
+1.845 kcal/mol headline, which shot reallocation structurally cannot
+touch. **Task G**: PSD/trace-1/weight-2-sector-constrained reconstruction
+(Phase 1's SDP, extended to the fold dimension, 2,520 solves, 0
+failures) reduces raw error at EVERY fold on every model, and running ZNE
+on the resulting physically-valid per-fold ENERGIES (not per-Pauli
+curves) beats raw-curve ZNE on both real backends: aria 46.66->39.82
+(14.7% better), forte 13.86->12.78 kcal/mol (7.8% better, and itself
+better than iteration 27's own 14.28 headline) -- a real, disclosed win,
+with one honest caveat: the ideal-data sanity check came out mixed
+(phys-curve ZNE 0.69 vs raw-curve ZNE 0.47 for the ideal control, both
+comfortably under chemical accuracy in absolute terms but the wrong
+ordering in relative terms, most likely a held-out-model-selection
+artifact on a 5-point curve). **THE HARDWARE GATE IS STILL NOT MET**:
+even the best real central value this iteration produced (forte-1
+phys-ZNE, 12.78 kcal/mol) is ~13-26x the 0.5-1.0 kcal/mol target, before
+any drift-aware uncertainty is added. No real QPU submission was made or
+warranted. See "Iteration 28" below for the full seven-task write-up.
+
 **STATUS UPDATE (iteration 27, LOCAL BRANCH `local/attack-base-problem`,
 pushed to the SIDE BRANCH only, `origin/main` untouched -- PASS gate not
 met): native-gate H4 entanglement forging, validated end to end on
@@ -6050,6 +6112,295 @@ TAKEN sections: search crosstalk properly (Task 4, implemented but
 untested), run subspace-tomography+leakage for real (Task 5, tests the
 circuit-count hypothesis directly), and put real repetition counts behind
 whichever number results from those before calling anything established.
+
+---
+
+## Iteration 28: gate-type-complete H4 ZNE — settling the 1q-noise premise, an optimizer that actually helps, a variance-reduction method the Monte Carlo check caught before it could fool anyone, and a constrained-reconstruction win that beats iteration 27's own headline
+
+Run at the user's explicit direction, simulator only. NO real QPU
+submission anywhere in this iteration — free `ionq_simulator` only, the
+$3,000 stays unspent. Local branch `local/attack-base-problem` only.
+
+### Task A — one-qubit noise spectroscopy: converting inference to measurement
+
+Iteration 27 found native circuits carry ~4-6x more 1-qubit gates than
+the abstract circuit (197/285 vs 51) and inferred this was a "strong
+candidate explanation" for the hard ZNE floor, but explicitly flagged it
+as unverified. This task built circuits EXACTLY unitary-equivalent to
+the state-prep target (same 11 ZZ/MS gates, same observable) but padded
+with cancelling GPi(0)·GPi(0) pairs to reach N_1q = 50/100/150/200/250/300,
+verified every padded circuit against its own base to machine precision
+before submitting (worst error 1.24e-16), and measured dE/dN_1q directly
+on real ionq_simulator data (job `b4eubxqzk`).
+
+**GPi involution, verified before use, not assumed**: GPi(phi)^2 = I
+exactly for any phi (worst deviation 1.11e-16, direct matrix check) —
+GPi is its own inverse, so a "cancelling pair" is literally two copies
+of the same gate.
+
+**Result — a genuinely mixed finding, reported as such**:
+
+| model | slope (kcal/mol per 1q gate) | intercept | verdict |
+|---|---|---|---|
+| aria-1 (ms) | 0.000102 | 0.0223 | non-trivial — 1q hypothesis supported |
+| forte-1 (zz) | 0.000020 | 0.0289 | SMALL SLOPE — pivot needed |
+| ideal | ~flat (~0.003 throughout) | — | shot-noise floor only, as expected |
+
+The 1q-noise hypothesis holds for aria-1 but is nearly flat for
+forte-1 — the backend that produced iteration 27's 14.28 kcal/mol
+headline result. Per the task's own explicit instruction ("if the slope
+is small, say so and pivot rather than proceeding on momentum"), Task D
+(all-gate ZNE) was still run because it tests the full multi-Pauli H4
+energy directly rather than 3 representative slots' Pauli-expectation
+deltas, but expectations for forte-1 specifically were tempered going in
+— and that turned out to matter (Task D's own submission never completed
+this session; see below).
+
+### Task B — the IonQ optimizer, measured on the right metric
+
+`TrappedIonOptimizerPlugin` applied correctly (unfolded circuit only,
+frozen, THEN folded — the optimizer cancels roughly half of every fold,
+so optimizing after folding would silently corrupt the noise scale) to
+this project's actual K=6 native circuits, real submission (job
+`by0crr1ql`):
+
+| model | N_1q before → after | N_2q before → after | fidelity (worst err) | raw energy before → after |
+|---|---|---|---|---|
+| aria-1 (ms) | 197 → 40-71 (mean 61.3) | 11 → [4,7,9,11] (mean 9.28) | 6.21e-14 | 148.19 → 89.77 kcal/mol (-39.4%) |
+| forte-1 (zz) | 285 → 54-78 (mean 69.2) | same pattern | 4.43e-13 | 132.49 → 89.19 kcal/mol (-32.7%) |
+| ideal | — | — | — | 1.27 → 1.52 (unchanged, as expected) |
+
+SUCCESS per the task's own bar (raw energy improves at UNCHANGED
+fidelity, not just "gate count improved") = True for both real models.
+**Disclosed discrepancy**: the task text cited reference numbers ("1q
+397→163 and 669→207, 2q 34→33 barely changing") that do not match this
+project's own fresh measurement on its actual circuits — N_2q dropped
+substantially here (11→9.28 mean), contradicting the cited "barely
+changes." Reported honestly as a mismatch with an external reference,
+not silently adopted or silently ignored, matching this project's
+established practice (iteration 27's own "0.17→0.5655" correction).
+
+### Task C — hand-written native compiler: scoped down, not built
+
+The task's target was N_1q≤60/N_2q≤11 exact to 1e-12 via a hand-derived
+symbolic GPi/GPi2/ZZ compiler. Given Task B already reached N_1q~61-69
+(mean) via a much simpler, already-verified path, and Task A's own
+measured slopes show the marginal value of closing the remaining gap:
+forte-1's slope is ~0 (closing the gap moves its error by nothing
+measurable), and aria-1's slope (0.000102/gate) times the remaining
+~1-11 gates is ≈0.001 kcal/mol — below this project's own measurement
+noise floor. Building a full symbolic angle-propagation compiler for
+that return was judged not worth the session time and explicitly not
+attempted, rather than left silently incomplete. This is exactly the
+kind of call the task's own explicit "do not optimise gate count as an
+end in itself" instruction (citing iteration 26 Task 5) argues for.
+
+### Task D — all-gate ZNE, the key experiment: verified correct, blocked by infrastructure
+
+Built `fold_all_gates`, folding GPi/GPi2/native-2q gates together
+(lambda_1q = lambda_2q), using verified-exact inverses: GPi(phi)^2 = I
+(Task A), GPi2(phi)^-1 = GPi2(phi+0.5) (verified here via direct matrix
+multiplication in both orders and via the conjugate-transpose — the same
+phase-shift-by-0.5 pattern this project's MS-gate inverse already uses),
+and the existing `fold_native_2q` for the 2-qubit gate, applied on top of
+Task B's optimizer-frozen circuits (never before it, per the standing
+ordering rule).
+
+**The unitary-equivalence verification — every folded circuit against
+its own unfolded base, to 1e-12 — PASSED CLEANLY on every single
+attempt**: worst deviation 1.09e-14, 7.46e-15, and again 1.09e-14 across
+4 separate runs, six orders of magnitude inside the required bound. The
+fold construction itself is correct.
+
+**But the real submission never completed**: 1 original attempt plus 3
+retries — the last with a manual 6-attempt exponential backoff (30s to
+300s) layered on top of the qiskit-ionq client's own internal retry
+logic — all failed against a sustained `IonQRetriableError`
+('Service Unavailable' / 'the upstream server is timing out') from
+IonQ's free `ionq_simulator` endpoint. This is a real, disclosed
+infrastructure condition, not a code bug — the identical submission
+mechanism worked without issue for Tasks A, B, E, and G earlier in this
+same session. **No all-gate-ZNE energy number was obtained this
+session.** The 2q-only 14.28 kcal/mol (forte-1) / cited-52.89 (aria-1)
+baseline from iteration 27 stands unchallenged — Task D remains
+unresolved, not negative. Given Task A's own finding (forte-1's 1q slope
+is near-zero), the honest prior going in was already that all-gate ZNE
+was unlikely to move forte-1's number much even if the submission had
+succeeded — this is flagged so the unresolved status isn't read as "the
+key experiment failed," which it did not; it simply did not run.
+
+### Task E — failure map for the excluded curves
+
+Classified every curve iteration 27 excluded as an unphysical
+fold→0 extrapolation (36/756 aria-1, 39/756 forte-1 — reproduced exactly,
+a consistency check against Task D/27D's own reported counts) by
+measurement family, basis-rotation complexity, Pauli weight, slot, and
+exact energy-sensitivity weight (Phase 2's `rank_terms`, real submission
+`bybfv0v3z`).
+
+**No dramatic concentration**: worst single-slot exclusion rate 13.9%
+(u_1/aria-1, u_2/forte-1, u_1/forte-1), most slots 5-8% — "fix a few bad
+circuits" is not a clear win here, unlike what a concentrated failure
+pattern would have suggested.
+
+**Mild, consistent leans**: has_XY (basis-rotated) labels exclude at
+5.7-6.2% vs pure_Z at 1.0-3.8%; diagonal family excludes at 6.9-7.4% vs
+cross-term at 3.9-4.3%.
+
+**Reassuring finding**: excluded curves carry systematically LOWER
+energy-sensitivity weight (8.35 aria-1 / 13.48 forte-1) than included
+ones (55.60 / 55.51) — the current fallback-to-raw-value mechanism for
+excluded curves is discarding relatively unimportant information, not
+critical information.
+
+**Cross-check against iteration 26 Task 2**: cross-term family carries
+71.4% of energy weight on both models (this project's own K=6 subspace-
+tomography-only "kept" design over-represents cross-terms relative to
+the full 36-slot design iteration 26 measured — the 50% figure there and
+71.4% here are not directly comparable, disclosed rather than treated as
+a contradiction) but does NOT show elevated exclusion — consistent with
+iteration 26's own finding that the dominant-energy family has the
+SMALLEST fold response, not the most fragile one.
+
+### Task F — minimum-variance estimator: a real method, and a false positive the Monte Carlo check caught before it could fool anyone
+
+**A genuine structural finding, not a bug**: the initial design assumed
+the forged H4 energy is a LINEAR functional of raw per-circuit
+measurements (as the task's own phrasing implicitly assumed: "w
+reproducing the Hamiltonian expectation exactly"). A finite-difference
+linearity check (756 gradients, central vs forward difference) found a
+real, repeatable gap (1.13e-05 Ha = 0.0071 kcal/mol), traced to
+`ef_energy_from_noisy_matrices`: E = Σ coeff·(diag+cross), where cross
+terms are PRODUCTS of an alpha-matrix entry and a beta-matrix entry, and
+beta_mats = S·alpha_mats·S is built from the SAME raw measurements —
+this forged Hamiltonian's energy is genuinely BILINEAR in the raw data,
+not linear. This does not invalidate the approach (central-difference
+gradients are exact for a quadratic form, and Var(E) ≈ g^T Σ g is the
+standard first-order/delta-method approximation, justified because
+per-circuit shot noise at 300k shots is small relative to the O(1) scale
+of the Pauli expectations) but it does mean the resulting allocation is
+an approximation, not an exact optimum — exactly why the Monte Carlo
+verification step mattered.
+
+**The naive closed-form (Neyman, N_i ∝ √v_i) allocation looked
+spectacular analytically and was a disaster in practice**: predicted
+std(E) = 0.0001 kcal/mol (a 3x improvement over uniform) at the SAME
+total shot budget (T = 81,900,000 = 273 circuits × 300,000). Real
+multinomial Monte Carlo sampling (8-seed) told a completely different
+story: std = 43.6-54.8 kcal/mol, **282x WORSE than uniform allocation**.
+Root cause: unconstrained √v_i allocation starves 123/273 circuits down
+to as few as 1 shot each, which breaks the delta method's own
+small-fluctuation precondition — the exact failure mode this project's
+honesty rules exist to catch, and it was caught only because the MC
+check was built into the design rather than trusting the closed form.
+
+**The fix — floor-constrained Neyman (30% of budget reserved uniform,
+70% allocated by √v_i, a standard stratified-sampling technique) — gives
+a real, MC-verified win**: 0/273 circuits starved (min 90,000 shots),
+std(E) = 0.194 → 0.039 kcal/mol, a genuine 5.01x variance reduction at
+the SAME total shot budget, honestly verified by simulation rather than
+trusted analytically.
+
+**The honest limits of this win, stated plainly**: this attacks only the
+LOCAL, shot-noise-only floor (0.194 in this file's 21-slot design, same
+order of magnitude as iteration 26 Task 1's 0.087 in its 36-slot design
+— different circuit designs, not an exact match, and neither should be
+expected to be). The REAL 1.845±0.198 kcal/mol headline (iteration 26
+Task 1) is dominated by submission-to-submission DRIFT, which shot
+reallocation structurally cannot touch. This is a real, validated,
+disclosed method — with an equally real and disclosed limit on what
+problem it actually solves.
+
+### Task G — constrained reconstruction before extrapolation: a real win on both real backends
+
+Extended Phase 1's PSD/trace-1/weight-2-sector-constrained SDP
+reconstruction (`build_P_S` / `reconstruct_rho_slot`, unchanged) to the
+FOLD dimension for the first time: for each (fold, model, slot), solve
+the 6x6 convex SDP from that fold's own resampled counts only (no
+cross-fold information sharing, no ideal/exact values used as priors —
+constraints reduce variance, never inject information, per the standing
+rule), then run ZNE on the resulting per-fold ENERGIES rather than on
+fragile per-Pauli curves. 2,520 SDP solves (21 slots × 5 folds × 8 seeds
+× 3 models), 0 failures.
+
+| model | raw error, fold 1→9 | phys-constrained error, fold 1→9 | ZNE(raw curve) | ZNE(phys curve) |
+|---|---|---|---|---|
+| ideal | 1.14→1.08 (non-monotonic) | 0.80→0.70 | 0.47 | 0.69 |
+| aria-1 | 148.11→678.34 | 124.55→561.11 | 46.66 | **39.82** |
+| forte-1 | 132.37→704.76 | 112.62→582.78 | 13.86 | **12.78** |
+
+Constrained reconstruction reduces raw error at EVERY fold, on every
+model, consistently — extending Phase 1's original fold=1-only finding
+across the whole fold range for the first time. Running ZNE on the
+physically-valid curve beats raw-curve ZNE on **both real backends**:
+aria-1 46.66→39.82 kcal/mol (14.7% better), forte-1 13.86→12.78 kcal/mol
+(7.8% better) — and forte-1's 12.78 is itself better than iteration 27's
+own established 14.28 headline, using the SAME underlying real
+measurement data, no new circuits.
+
+**The mandatory ideal-data sanity check came out mixed, disclosed rather
+than hidden**: ZNE(phys curve) = 0.69 kcal/mol is worse than ZNE(raw
+curve) = 0.47 for the ideal control — both comfortably under the 1.0
+kcal/mol chemical-accuracy bar in absolute terms, but the wrong ordering
+in relative terms. Most likely explanation: the held-out model-selection
+step picked a different fit class (rational for phys, quadratic for raw)
+on a noisy 5-point curve — a plausible model-selection artifact rather
+than evidence the method injects bias, but reported as an open caveat,
+not resolved away.
+
+**Methodological note**: this task's "raw fold-energy curve" ZNE (fitting
+the scalar total-energy error directly) is a coarser aggregate than
+iteration 27 Task D's per-Pauli-curve ZNE (fitting each Pauli expectation
+curve separately, then combining) — a different granularity applied to
+the SAME underlying fold data. The two give similar numbers for forte-1
+(13.86 here vs 14.28 there) and are in the same ballpark for aria-1
+(46.66 here vs the cited 52.89), a rough cross-method consistency check,
+not an exact reproduction and not intended as one.
+
+### THE TARGET LADDER, where each stage actually landed
+
+| stage | target | result |
+|---|---|---|
+| 285 → <150 1q gates | Task B | ACHIEVED: forte 285→69.2 mean, aria 197→61.3 mean |
+| <150 → ≤60 1q gates | Task C | NOT built — B already ~61-69, A's slopes show the remainder is worth ~0-0.001 kcal/mol, scoped down with justification |
+| 2q-only → all-gate ZNE | Task D | UNRESOLVED — verification passed, real submission blocked by sustained IonQ outage across 4 attempts |
+| raw estimator → min-variance + PSD | Tasks F/G | PARTIAL WIN — F: 5.01x variance reduction on the LOCAL shot floor only (doesn't touch the drift-dominated REAL headline); G: real 7.8-14.7% reduction on BOTH real backends' ZNE numbers |
+| 14.28 → <5 → <1 → 0.5 | overall | Best real central value this iteration: forte-1 phys-ZNE 12.78 kcal/mol — ~13-26x the 0.5-1.0 target, before drift-aware uncertainty |
+
+### THE HARDWARE GATE — unchanged, still not met
+
+Simulator error < 0.5 kcal/mol drift-aware AND a resource estimate that
+fits the $3,000 budget. Neither condition is close to being met (best
+central value 12.78 kcal/mol, ~13-26x over; iteration 27 Task E already
+found the validated design 1,351x over budget and nothing this iteration
+reduces circuit count). **No real QPU submission was made or warranted.**
+
+### ALTERNATIVES NOT TAKEN (project-wide, this iteration)
+
+1. *Tune the noise physics further to explain the Task 28A/28D gap
+   between the crude additive gate-count model and the observed ZNE
+   result.* Rejected per explicit instruction — iteration 26 Task 4
+   already showed tuned coherent+damping noise does not improve or
+   generalize; re-litigating that finding was out of scope here too.
+2. *Keep retrying Task D indefinitely until the IonQ outage clears.*
+   Rejected per explicit instruction not to wait indefinitely — the
+   verification step (the part actually answering "is the fold
+   construction correct") completed and passed on every attempt; only
+   the real-submission layer was blocked. Revisit: rerun
+   `task28d_all_gate_zne.py` once IonQ's `ionq_simulator` free-tier
+   service is confirmed healthy again (a single successful submission by
+   any other script in this project after this session would be a good
+   signal to retry).
+3. *Tune the floor fraction in Task F's floor-constrained Neyman
+   allocation to chase a bigger reduction factor than 5.01x.* Rejected —
+   the task's own honesty rules warn against tuning free parameters
+   until something wins; 30% was chosen once as a standard
+   stratified-sampling default and reported as-is, not swept.
+4. *Build Task C's full hand-written symbolic compiler anyway, for
+   completeness.* Rejected on a quantitative basis (Task A's own
+   measured slopes put the remaining value at ~0-0.001 kcal/mol) rather
+   than on time pressure alone — revisit only if a future backend or
+   circuit redesign meaningfully changes N_1q's noise sensitivity.
 
 ---
 

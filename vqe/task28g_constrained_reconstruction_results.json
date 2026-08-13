@@ -1,0 +1,100 @@
+{
+  "results_by_model": {
+    "ideal": {
+      "raw_fold_mean": {
+        "1": 1.1426458080884276,
+        "3": 1.2638114656056267,
+        "5": 1.9872365704110937,
+        "7": 2.0823905520186816,
+        "9": 1.084415383403144
+      },
+      "phys_fold_mean": {
+        "1": 0.7979557144093923,
+        "3": 0.7958170104886392,
+        "5": 0.8037084349779835,
+        "7": 1.3680698859698022,
+        "9": 0.7041790150586583
+      },
+      "n_sdp_fail": 0,
+      "n_total_slots": 840,
+      "zne_raw": {
+        "stage1_holdout_err": 0.2266681706133351,
+        "stage2_holdout_err": 1.3877559548898561,
+        "selected_class": "quadratic",
+        "extrapolated_val0": 0.4663668755219657,
+        "excluded": false
+      },
+      "zne_phys": {
+        "stage1_holdout_err": 0.5464398980923774,
+        "stage2_holdout_err": 0.07793817113149293,
+        "selected_class": "rational",
+        "extrapolated_val0": 0.6883549631742226,
+        "excluded": false
+      }
+    },
+    "aria-1": {
+      "raw_fold_mean": {
+        "1": 148.10742729332688,
+        "3": 318.84501816939144,
+        "5": 462.09452137395624,
+        "7": 578.6677051887957,
+        "9": 678.3378866443791
+      },
+      "phys_fold_mean": {
+        "1": 124.55337779123641,
+        "3": 265.8609132597785,
+        "5": 384.5024724813785,
+        "7": 479.81196410233497,
+        "9": 561.1065494978682
+      },
+      "n_sdp_fail": 0,
+      "n_total_slots": 840,
+      "zne_raw": {
+        "stage1_holdout_err": 0.8117682817728564,
+        "stage2_holdout_err": 0.9952373529404213,
+        "selected_class": "rational",
+        "extrapolated_val0": 46.66138628455985,
+        "excluded": false
+      },
+      "zne_phys": {
+        "stage1_holdout_err": 0.6660913537026545,
+        "stage2_holdout_err": 1.1485454926871626,
+        "selected_class": "rational",
+        "extrapolated_val0": 39.81515719277399,
+        "excluded": false
+      }
+    },
+    "forte-1": {
+      "raw_fold_mean": {
+        "1": 132.37115694299405,
+        "3": 325.44038516977105,
+        "5": 482.0936984786294,
+        "7": 598.8312081400759,
+        "9": 704.7581836177496
+      },
+      "phys_fold_mean": {
+        "1": 112.61621745231238,
+        "3": 273.37960084867984,
+        "5": 402.28759321421734,
+        "7": 497.0287773535554,
+        "9": 582.784531793461
+      },
+      "n_sdp_fail": 0,
+      "n_total_slots": 840,
+      "zne_raw": {
+        "stage1_holdout_err": 3.499888729494728,
+        "stage2_holdout_err": 6.268275842719959,
+        "selected_class": "rational",
+        "extrapolated_val0": 13.863589626579493,
+        "excluded": false
+      },
+      "zne_phys": {
+        "stage1_holdout_err": 2.3114171953708365,
+        "stage2_holdout_err": 5.310380222665799,
+        "selected_class": "rational",
+        "extrapolated_val0": 12.78026716992982,
+        "excluded": false
+      }
+    }
+  }
+}

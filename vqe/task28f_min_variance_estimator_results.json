@@ -1,0 +1,36 @@
+{
+  "T_total_shots": 81900000,
+  "n_circuits": 273,
+  "chosen_shots_per_circuit_uniform": 300000,
+  "linearity_check_max_gap": 1.1339857941550235e-05,
+  "analytic": {
+    "std_uniform": 0.00038074744917663276,
+    "std_optimal_naive": 0.000126899103363166,
+    "T_needed_for_target_uniform": 47.4917199298583,
+    "T_needed_for_target_optimal_naive": 5.2754680855014096
+  },
+  "monte_carlo": {
+    "uniform": {
+      "mean": 0.2463299226868956,
+      "std": 0.19441281709927016
+    },
+    "naive_neyman_unconstrained": {
+      "mean": 63.96472640091203,
+      "std": 54.80307851169366,
+      "n_starved_lt_1000shots": 123,
+      "verdict": "CATASTROPHIC_FAILURE"
+    },
+    "floor_constrained_neyman": {
+      "mean": 0.10072534622074204,
+      "std": 0.038770678782969706,
+      "floor_fraction": 0.3,
+      "n_starved_lt_1000shots": 0,
+      "beats_uniform": true
+    }
+  },
+  "v_i_stats": {
+    "min": 0.0,
+    "max": 0.005941781783147904,
+    "mean": 0.0001593061758840797
+  }
+}
