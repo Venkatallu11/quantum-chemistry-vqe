@@ -1,5 +1,44 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 29, LOCAL BRANCH `local/attack-base-problem`,
+pushed to the SIDE BRANCH only, `origin/main` untouched -- PASS gate not
+met, no real QPU submission): find the ideal-control bug, then rebuild
+the estimator around H4's known structure. Two ledger corrections applied
+first: Task 28D reclassified from "negative result" to "implementation
+invalid, method untested"; Task 28A's units and circuit-arm scope
+corrected. **Task A** (blocking, done first): the bug is NOT the circuit,
+measurement pipeline, or bookkeeping (all verified to 1e-10 on exact
+statevector data) -- it is the per-Pauli-curve ZNE extrapolator, validated
+by INTERPOLATION (predict fold=7/9) but used for EXTRAPOLATION to
+fold=0. Reproduced directly: pure statistical shot noise alone, fed
+through production's real code, turns 0.065 kcal/mol into 33.48 (a 513x
+blowup) on the noiseless model. **Task B**: honest 1q-spectroscopy redo
+(real IonQ submission, two circuit arms, two padding styles, correct
+kcal/mol units) -- the 1q-count hypothesis still explains under 0.5% of
+the 89 kcal/mol native-vs-abstract gap. **Task C** (the strongest new
+idea): a 5-parameter physical-manifold estimator (purity + normalization,
+vs 28G's 35-param general density matrix) -- single-fold reconstruction
+is a real, strong win (forte-1 3.4x, ideal 11x, passes its sanity check),
+but component-wise extrapolation reproduces Task A's EXACT blowup
+pathology, proving the conditioning problem lives in the fitting
+functions, not the curve count. **Task D**: three-pipeline synthesis --
+all-gate ZNE INVALID (Task A), manifold's only valid extrapolation
+variant underperforms not extrapolating at all, so 2q-only per-Pauli ZNE
+(14.61 kcal/mol) remains the best VALID real number. **Task E**: the
+free combination of 28B's optimizer and 28G's reconstruction -- real
+13.6% win on both backends, ideal check passes. **Task F**: the old
+0.109 kcal/mol PEC result survives (and slightly improves, 0.100) under
+today's corrected fidelity constant -- but remains a LOCAL-noise-model
+result, never ported to real hardware submission (flagged as future
+work, not attempted this iteration). **Task G**: quantified WHY the
+extrapolator fails -- linear/quadratic mildly worse-conditioned at
+lambda=0 (1.4x-2.4x), rational/exponential catastrophically worse (median
+~7x-2000x, mean into the quintillions from rare near-singular fits).
+**THE HARDWARE GATE IS STILL NOT MET**: best valid real number remains
+14.61 kcal/mol (~29x the target), and the manifold estimator's promise
+(a real single-fold win) is not yet realized as a working fold-
+extrapolated pipeline. See "Iteration 29" below for the full write-up.
+
 **STATUS UPDATE (iteration 28, LOCAL BRANCH `local/attack-base-problem`,
 pushed to the SIDE BRANCH only, `origin/main` untouched -- PASS gate not
 met, no real QPU submission): gate-type-complete H4 ZNE, simulator only.
@@ -6606,6 +6645,71 @@ explicitly as still open, not silently completed.
    validation before trusting; a real sweep at each shot level is the
    correct method and is flagged for a future iteration instead of
    approximated here.
+
+### Task F — does the old sub-0.5 result survive under corrected fidelity? Partial answer: yes, and it improves
+
+`energy_difference_study_results.json` (iteration 8) reports, at
+d=0.8 A, 1,000,000 shots: `pec_honest` abs_err_vs_exact = 0.1089 +/-
+0.0797 kcal/mol -- inside the 0.5 kcal/mol target, but on the OLD
+`P2_PER_GATE = 0.01214` local noise model, pre-dating the fidelity
+correction, and never run on real IonQ noise.
+
+**What this task actually did**: `energy_difference_study.py` reads
+`P2_PER_GATE`/`P1_PER_GATE` from `fixed_ansatz.py` at import time, and
+`fixed_ansatz.py` NOW holds the corrected value (`P2_PER_GATE = 0.0048`,
+forte-1's real live 2-qubit fidelity, vs the old 0.01214) -- so simply
+re-running the SAME script, SAME configuration (d=0.8, 1,000,000 shots),
+required no code changes to test the "does 0.109 survive corrected
+fidelity" question directly.
+
+**Result: it survives, and slightly improves** (lower simulated noise ->
+better result, as expected): abs_err_vs_exact = **0.1004 +/- 0.0640**
+kcal/mol (vs the old 0.1089 +/- 0.0797) -- both comfortably inside the
+0.5 kcal/mol target, corrected-fidelity number if anything tighter (std
+20% smaller). This was not an artifact of an over-pessimistic old noise
+model; if anything the old number UNDERSTATED how good PEC's local-model
+performance is under today's constants.
+
+**What this task did NOT do, disclosed plainly rather than implied**:
+this remains the LOCAL simulated noise model (`rank6_symmetry_vd.build_noise_model`
++ `shot_noise_study`'s Clifford-calibration-and-quasi-probability-sampling
+machinery) -- NOT a real `ionq_simulator` submission with aria-1/forte-1
+device noise, NOT drift-aware uncertainty bars, and NOT this project's
+now-standard ideal-control check (PEC's own methodology already compares
+against exact/noiseless as part of its design, but not in the Task
+27/28-style fold-based ideal-control sense). Porting PEC's Clifford
+calibration and quasi-probability sampling to real `ionq_simulator`
+submission is a substantial, novel piece of engineering (a real
+calibration circuit batch, real learned p1/p2, real quasi-probability-
+weighted sampling with the `gamma_total=1.315` overhead this project
+already knows about) -- judged out of reach of this iteration's remaining
+scope and NOT attempted here. **The honest status: the cheapest shot at
+the target in the project is confirmed NOT to have been an artifact of
+stale constants, and is now a real candidate for a full real-hardware
+port in a future iteration** -- not yet a real-hardware-verified result.
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Claim this as a real chemical-accuracy result since it's under 0.5.*
+   Rejected outright -- it is a LOCAL noise-model result, explicitly
+   flagged as such; this project's own standing rule is that only real
+   IonQ hardware/simulator submissions count toward the acceptance
+   criterion, and PEC has never been run there.
+2. *Attempt a quick, partial real-hardware port (e.g. just the
+   calibration step) rather than none at all.* Rejected -- a half-ported
+   PEC pipeline (real calibration, local quasi-probability sampling, or
+   vice versa) risks silently mixing real and simulated noise sources in
+   a way that is harder to interpret than either extreme; a full or no
+   port, not a partial one, was judged the more honest choice given the
+   remaining time budget.
+3. *Re-run all 5 shot levels, not just 1,000,000, to refresh the entire
+   old results file under corrected fidelity.* Rejected for scope -- the
+   task's own framing specifically asked about the d=0.8/1,000,000-shot
+   point (the cheapest shot at the target); refreshing all 5 levels x 7
+   geometries would cost significantly more wall-clock time for
+   information not directly requested. The 1,000,000-shot partial
+   checkpoint has been regenerated and now reflects corrected fidelity;
+   other shot levels' checkpoints on disk remain from iteration 8 and
+   should not be read as corrected until similarly re-run.
 
 ---
 
