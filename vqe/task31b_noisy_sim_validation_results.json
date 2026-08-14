@@ -1,0 +1,8 @@
+{
+  "exact": 0.9613297826935462,
+  "raw": 0.8624953982884822,
+  "analytic": 0.9613297826935415,
+  "literal_final": 0.9674434947614331,
+  "n_mc": 400,
+  "verdict": "literal twirling matches analytic (both correct)"
+}

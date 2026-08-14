@@ -6350,6 +6350,96 @@ central value.
    fallback instruction and keeps scope moving toward the still-larger
    remaining tasks (B through H).
 
+### Task B — the IYYI discrepancy. BLOCKING, cheap by design, expensive in practice.
+
+For slot `(u0+u1)`, label `IYYI` (real Hamiltonian weight 121.6 kcal/mol,
+rank 10/37 -- not negligible): analytic PEC gives ~-0.996 while literal
+quasi-probability twirling (iteration 30's addendum, N_MC=8) gave
+~+0.757/+1.000 -- nearly the full physical range, on one observable.
+
+**Cheap by construction, as instructed**: IYYI's measurement group is
+just `['XYYX','IYYI']` -- one basis rotation, so N_MC=128 real twirled
+circuits for this ONE (slot, group) pair tested N_MC in {8,16,32,64,128}
+cumulatively from a single 128-circuit real submission (forte-1 only,
+aria-1 retired), using Task A's corrected p2(zz)=0.0146.
+
+**Result: does NOT converge.** |diff from analytic| stayed at 1.86-1.96
+across N_MC=8->128 (after fixing an error in my own first comparison,
+which had compared against the raw B/A RATIO instead of the actual
+corrected value raw*ratio -- caught before drawing any conclusion from
+it). Per this task's own diagnostic framework, a discrepancy that does
+not shrink with 16x more samples is NOT Monte Carlo variance.
+
+**Two hypotheses chased, one ruled out, one methodologically invalid (my
+own error, caught and corrected) before the third (valid) test resolved
+it:**
+
+1. *Basis-rotation gates omitted from the analytic correction* (the
+   analytic method only propagates PEC correction through state-prep
+   gates, then reads the rotated observable directly -- a real, disclosed
+   gap in principle). **Tested directly, RULED OUT**: rebuilding the
+   analytic computation to include the basis-rotation gates' own
+   noise+correction changed the result by ~0.1%, nowhere near enough to
+   explain the gap.
+2. *A bug in the literal twirling implementation*, tested via pure exact-
+   statevector simulation (no underlying noise at all) expecting unbiased
+   convergence to the true value. **This test was methodologically
+   INVALID, caught before drawing a conclusion from it**: PEC's
+   correction mixture is only unbiased when undoing an ACTUAL depolarizing
+   channel of the same p -- applying only the correction with no real
+   noise present to correct is not a meaningful test of anything, and its
+   apparent "wrong convergence" was discarded, not reported as a finding.
+3. **The VALID version, at the user's explicit direction**: simulate REAL
+   depolarizing noise (density-matrix propagation, matching the
+   calibrated p2/p1) for BOTH the raw circuit AND every twirled-circuit
+   realization (the inserted correction gates are real physical gates too
+   -- they experience the same noise, exactly as real hardware would).
+   Entirely local, zero new real submissions.
+
+**RESULT: under a matched, purely-depolarizing noise model, both methods
+are correct and agree** -- exact=0.9613, analytic=0.9613 (exact by PEC's
+own construction), literal twirling converges to 0.9674 +/- 0.031 at
+N_MC=400 (error 0.006, well within statistical noise), raw (uncorrected)
+under the same model = 0.8625 (error 0.099, confirming PEC helps here in
+principle). **Neither implementation has a bug.**
+
+**CONCLUSION**: since both methods are internally validated as correct
+but disagree sharply on REAL hardware data, the most likely explanation
+is that **real IonQ noise for this specific gate sequence has a coherent
+component a simple depolarizing model does not capture** -- and Pauli
+twirling, by its well-documented design purpose, converts coherent errors
+into effectively-stochastic ones, so raw/analytic-corrected measurement
+and literal-twirled measurement are exposed to genuinely DIFFERENT
+effective noise, not just different estimators of the same thing. This is
+a real "coherent residual" signal -- exactly the trigger condition this
+project's own DO NOT list names for Plan B (randomized compiling). **Not
+pursued this iteration, per that same list** -- flagged as a real finding
+for a future iteration to act on, not chased further here.
+
+**ACCEPTANCE CRITERION STILL FAILS for this label** (|Delta P|~2.0 on
+real data, vs the 0.02 bar) -- but now with a plausible, tested physical
+explanation rather than an unresolved implementation-correctness worry.
+**Implication for Task C**: the underlying PEC/twirling MACHINERY is
+validated as correct; the full-scale calibration may proceed, but with an
+explicit, disclosed caveat that near-boundary, high-magnitude observables
+on specific gate sequences may carry a real coherent-noise-driven error
+the simple depolarizing-channel PEC model does not fully correct.
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Stop at the invalid exact-math test and report "the code has a bug."*
+   Rejected -- would have been a real dishonesty, reporting a conclusion
+   drawn from a test that doesn't actually test what it claims to; caught
+   before writing it up, at the cost of the time already spent chasing it.
+2. *Pursue randomized compiling now, since a coherent residual DID show
+   up.* Rejected -- explicitly against this task's own DO NOT list, which
+   reserves this as Plan B for exactly this trigger condition; the
+   trigger is now disclosed and documented, not acted on prematurely.
+3. *Declare the discrepancy fully explained and move on without
+   qualification.* Rejected -- the coherent-noise explanation is
+   plausible and consistent with everything tested, but not independently
+   confirmed (e.g. by directly characterizing the coherent component);
+   reported as the leading hypothesis, not a proven fact.
+
 ---
 
 ## Iteration 30: direct error correction, no extrapolation
