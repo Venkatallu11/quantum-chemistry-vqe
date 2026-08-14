@@ -6582,6 +6582,79 @@ evidence that the sensitivity is real, not a hypothetical worry.
    explicit (bias decreases AND ideal control holds) and both conditions
    failed. The simpler, uniform-weighted fit remains the one in use.
 
+### Task E — sensitivity-optimal shot allocation, MC-verified: a genuine surprise
+
+Iteration 30's 30/70 floor-constrained allocation was DESIGNED but never
+Monte-Carlo-verified. Verified it here, and improved it: full-Jacobian
+per-slot sensitivity (`||J_slot||`, finite difference on the assembled
+energy across all 6 manifold components, not just the max-component proxy
+iteration 30 used) instead of a single dominant direction. Fixed total
+budget (2,100,000 shots across 21 slots, matching the current uniform
+default), 3 schemes compared via 12 local MC trials each (exact ideal
+probabilities, the established real-hardware-equivalent multinomial
+technique -- no new real submission).
+
+**A real bug caught before trusting the first result**: the initial run
+gave a nonsense ~14.7-14.8 kcal/mol plateau for ALL THREE schemes --
+immediately suspicious, and traced to the SAME mistake as Task 30D's own
+bug (raw multinomial counts passed directly to `pauli_expectation`
+instead of the normalizing `expectation_from_counts` wrapper). Fixed,
+re-verified sane output (0.05-0.5 kcal/mol range, matching this
+project's other ideal-control results) before reporting anything.
+
+| scheme | mean\|err\| | std | std/uniform |
+|---|---|---|---|
+| uniform (current default) | 0.157 | 0.099 | 1.00x |
+| unconstrained Neyman (full-Jacobian) | 0.097 | 0.062 | **0.63x** |
+| floor-constrained 30/70 (full-Jacobian) | 0.077 | 0.064 | **0.64x** |
+
+**A genuine surprise, reported honestly rather than forced to match the
+expected "Neyman always fails" narrative**: unlike iteration 28 Task F's
+PER-CHANNEL Neyman allocation (which catastrophically failed, 282x worse,
+by starving individual Pauli channels down to ~1 shot), THIS per-SLOT
+Neyman allocation does NOT fail -- even its minimum allocation (83 shots)
+stays far above the danger zone, and both unconstrained and floor-
+constrained schemes give essentially the SAME ~35-37% real variance
+reduction over uniform. Two plausible reasons, disclosed as likely rather
+than proven: (1) slot-level sensitivity spread (5-10x across 21 slots) is
+far more moderate than the extreme per-channel variance spread that broke
+the old raw estimator; (2) the manifold's own physical constraint pools
+information across all labels within a slot, making the final energy
+inherently less sensitive to any single slot's shot count than the old
+independent-Pauli-channel estimator was.
+
+**RECOMMENDATION**: deploy the floor-constrained scheme anyway, not
+unconstrained Neyman, even though both performed equally well here -- the
+floor is a general-purpose safety margin against a FUTURE scenario with a
+more extreme sensitivity spread (e.g. a slot whose contribution is much
+smaller still), which this particular 21-slot topology happens not to
+exhibit but cannot be guaranteed to avoid in general. Costs nothing here
+(0.64x vs 0.63x, statistically indistinguishable at n=12 trials) and
+removes the risk this project's own honesty rules exist to guard against.
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Report unconstrained Neyman as the recommended scheme, since it
+   performed marginally better in this specific test.* Rejected -- a
+   0.63x vs 0.64x difference at n=12 MC trials is not a meaningful
+   distinction, and unconstrained allocation carries unbounded downside
+   risk in principle (this test's moderate sensitivity spread is a
+   property of THIS topology, not a guarantee); the floor-constrained
+   scheme is the safer default with no measured cost.
+2. *Re-run iteration 28 Task F's own per-channel Neyman test to directly
+   confirm it still fails under the CURRENT (manifold) pipeline, for a
+   clean apples-to-apples comparison.* Rejected for this pass -- the
+   per-channel approach is not how the current pipeline allocates shots
+   at all (slot-level, not individual-Pauli-channel-level), so re-testing
+   it would answer a question this project no longer asks; the original
+   iteration 28 finding stands as historical context, not something this
+   task needed to reproduce.
+3. *Increase N_MC_TRIALS beyond 12 for a tighter confidence interval on
+   the std ratios.* A reasonable refinement -- rejected for this pass
+   given each trial requires a full 21-slot x 8-restart manifold refit
+   per scheme (63 total fits already); 12 trials is enough to establish
+   the qualitative finding (per-slot Neyman doesn't catastrophically fail
+   here) even if the exact 0.63x vs 0.64x distinction isn't fully resolved.
+
 ---
 
 ## Iteration 30: direct error correction, no extrapolation
