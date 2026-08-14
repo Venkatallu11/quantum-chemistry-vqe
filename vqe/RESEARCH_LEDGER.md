@@ -1,5 +1,45 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 30, LOCAL BRANCH `local/attack-base-problem`,
+pushed to the SIDE BRANCH only, `origin/main` untouched -- PASS gate not
+met, no real QPU submission): direct error correction, no extrapolation.
+ZNE frozen this iteration on the strength of iteration 29's own finding
+(the extrapolator amplifies pure shot noise 513x on noiseless data);
+built the pipeline from direct corrections only. The funded deliverable's
+native-gate ZNE result (14.61 kcal/mol) is kept intact, not deleted or
+deprecated. **Task A** (blocking, done first): is the manifold estimator
+real or answer-injecting? CLEARED, decisively -- fit to pure random noise
+or shuffled real data returns ~1000+ kcal/mol error regardless of
+initialization scheme (garbage in, garbage out); fit to real data
+recovers ~0.1-0.7 kcal/mol regardless of initialization too. **Task B**
+(the highest-value experiment): ported PEC to REAL `ionq_simulator` --
+real angle-conditioned calibration (found the ansatz's ZZ gate uses a
+SINGLE fixed angle, correcting this task's own premise), applied via a
+validated analytic shortcut AND cross-checked against literal quasi-
+probability circuit twirling actually executed on real hardware (mostly
+agrees, one real unresolved discrepancy flagged). Result: forte-1
+88.99->7.53 kcal/mol (11.8x, beats the ZNE headline outright), aria-1
+89.67->19.05 (4.7x). **Task C**: the ablation matrix -- PEC+manifold
+together reach **1.12 (aria-1) / 1.05 (forte-1) kcal/mol**, by far the
+closest this project has ever come to target, though this does not pass
+the strict acceptance criterion even before drift. A real negative
+result: leakage post-selection (partial form) makes things WORSE on this
+circuit, unlike its established win elsewhere. **Task D**: re-measured
+the "fundamental" 1.845 kcal/mol shot floor with the validated manifold
+estimator (after catching and fixing a real normalization bug) -- new
+floor b=0.0524 kcal/mol, well under the 0.25 threshold, meaning 0.5
+kcal/mol IS reachable by shots alone; the old floor was estimator-
+specific, not fundamental. **Task E**: applied this project's own
+measured cross-submission drift (aria-1 +/-4.01, forte-1 +/-2.31 kcal/mol)
+to Task C's headline result -- **THE HONEST BOTTOM LINE: once drift is
+included as required, PEC+manifold's 1.05-1.12 kcal/mol point estimate is
+still 11-18x over target**. Drift, not shot noise or method choice, is
+now the dominant blocker -- a different problem than the one this
+iteration solved, and one no single-submission correction method can fix
+by construction. A batching design for future drift estimation is
+specified but not yet deployed. Scope-change note drafted for Vadim. See
+"Iteration 30" below for the full write-up.
+
 **STATUS UPDATE (iteration 29, LOCAL BRANCH `local/attack-base-problem`,
 pushed to the SIDE BRANCH only, `origin/main` untouched -- PASS gate not
 met, no real QPU submission): find the ideal-control bug, then rebuild
@@ -6664,6 +6704,120 @@ assumed to work.
    doing before real deployment; the per-slot max-sensitivity proxy used
    here is a reasonable, cheap first approximation, not presented as the
    final word on the allocation rule.
+
+### Task E — drift blocking, and the drift-inclusive bottom line
+
+**Required before any hardware claim, applied first**: Task C's headline
+result (PEC+manifold: aria-1 1.120+/-0.202, forte-1 1.051+/-0.209
+kcal/mol) uses only STATISTICAL (bootstrap) uncertainty. This project's
+own established cross-submission drift (memory: aria-1 +/-4.01, forte-1
++/-2.31 kcal/mol, quantified from 8 real submissions) is a SEPARATE,
+independent uncertainty source -- combined in quadrature
+(`sigma_total = sqrt(sigma_stat^2 + sigma_drift^2)`) and applied to the
+FULL acceptance criterion:
+
+| model | E err | sigma_stat | drift | sigma_total | \|E\|+2*sigma_total | vs 0.5 target |
+|---|---|---|---|---|---|---|
+| aria-1 | 1.120 | 0.202 | 4.01 | 4.015 | **9.15** | **18.3x over** |
+| forte-1 | 1.051 | 0.209 | 2.31 | 2.319 | **5.69** | **11.4x over** |
+
+**THE HONEST BOTTOM LINE FOR THIS ENTIRE ITERATION**: drift, not
+shot noise and not method choice, is now the dominant blocker. Once
+included as the acceptance criterion requires, PEC+manifold's exciting
+point-estimate advance (1.05-1.12 kcal/mol, closest ever) is still
+11-18x over target -- drift alone (sigma 2.3-4.0) swamps the statistical
+uncertainty (sigma 0.2) by an order of magnitude. Task 30's direct-
+correction program solved the BIAS problem far beyond what ZNE ever
+achieved; it has not touched the VARIANCE problem drift represents, and
+per this task's own framing ("PEC does not fix drift"), it structurally
+cannot -- drift is a submission-to-submission property of the noise
+source, invisible to any single-submission correction method.
+
+**BATCHING DESIGN, for future real submissions** (the outage already
+proved 273-circuit jobs are fragile; 91-circuit sub-batches succeeded
+cleanly, Task 28D/29's own precedent): structure every future real run so
+all conditions needed for ONE comparison (e.g. a given slot's raw/PEC/
+manifold-input circuits, or a given fold's full circuit set) are
+submitted together as ONE block of <=91 circuits, modeling each block's
+result as `E_b = E + delta_b + eps_b` (true energy + block-specific
+drift offset + ordinary statistical noise). Include ONE common REFERENCE
+circuit (a fixed, previously-characterized target, e.g. one of the
+already-well-measured diagonal slots) in EVERY block -- its repeated
+measurement across blocks directly estimates `delta_b` (any deviation
+from that reference's own known value, after accounting for its own
+statistical noise, IS the block's drift offset), which can then be
+SUBTRACTED from every other measurement in that same block before
+combining across blocks. This was NOT deployed as a new real experiment
+this iteration (would require a dedicated multi-block real submission,
+judged out of remaining scope) -- the design is complete and ready to
+deploy, disclosed as such rather than implied already validated.
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Deploy the batching design as a real new experiment this iteration.*
+   Rejected for scope -- a proper multi-block drift-estimation run needs
+   its own dedicated submission (multiple blocks across enough real
+   submission-to-submission separation to actually see drift, not a
+   single session's back-to-back jobs); the existing aria-1/forte-1 drift
+   figures (already real, already from 8 independent submissions) were
+   judged sufficient for this iteration's honest bottom-line accounting.
+2. *Report only the statistical-uncertainty version of the acceptance
+   check (as Task C did) and treat drift as a separate, later concern.*
+   Rejected -- Task E's own framing is explicit ("required before any
+   hardware claim"); presenting Task C's 1.05-1.12 kcal/mol without this
+   context would be exactly the kind of incomplete-but-technically-true
+   reporting this project's honesty rules exist to prevent.
+3. *Assume drift will shrink once PEC/manifold are in place (since they
+   correct systematic bias) rather than measuring/stating the combination
+   explicitly.* Rejected -- drift is a property of the NOISE SOURCE's
+   submission-to-submission variability, not of the estimator; no
+   evidence supports assuming a bias-correction method also reduces it,
+   and the quadrature combination above states the honest current
+   picture instead of a hopeful one.
+
+### Scope note for Vadim -- drafted as part of this iteration, not deleting or deprecating the funded deliverable
+
+*Vadim -- flagging a real scope decision from this iteration, not a quiet
+pivot. IonQ funded H4 entanglement forging validated through native-gate
+ZNE; that result (2q-only, per-Pauli-curve ZNE, 14.61 kcal/mol,
+consistent with iteration 27/28's 14.28) stays exactly where it is --
+nothing about it is deleted, deprecated, or superseded in the repository.*
+
+*What changed this iteration: iteration 29 found the root cause of a
+pattern that had shown up repeatedly across this project's history --
+the per-Pauli ZNE extrapolator amplifies pure shot noise 513x on
+noiseless data, because held-out validation only tests interpolation
+(predicting fold 7/9 from fitted data), never the actual extrapolation to
+fold=0 that the physics needs. That is not a tuning problem; it is a
+structural property of validating a curve-fit by interpolation and then
+using it for extrapolation, and it explains why "try a different fitting
+function" never fully closed the gap across many prior iterations.*
+
+*So this iteration froze ZNE and built a pipeline from direct
+corrections only: a 5-parameter physical-manifold estimator (exploiting
+that H4's K=6 forged state has only 5 real degrees of freedom, not
+hundreds of independent Pauli channels) plus PEC, calibrated for the
+first time from real IonQ hardware (not the local noise model) and
+validated two ways -- an adversarial "does it inject the answer" test
+(cleared) and literal quasi-probability circuit twirling on real
+ionq_simulator (mostly validates the cheaper analytic approach; one
+real, unresolved discrepancy flagged, not hidden).*
+
+*The result: PEC+manifold reaches 1.05-1.12 kcal/mol on the point
+estimate -- 10x closer to target than anything ZNE produced. The honest
+caveat, and the reason this isn't a "we solved it" message: once this
+project's own measured cross-submission drift (+/-2.3 to +/-4.0 kcal/mol)
+is included as the acceptance criterion requires, the result is still
+11-18x over target. Drift, not the estimator, is now the binding
+constraint -- a different problem than the one this iteration set out to
+solve, and one no correction method applied to a single submission can
+fix by construction.*
+
+*Recommendation: keep the native-gate ZNE result as the funded
+deliverable's headline (it is real, validated, and unchanged). Treat
+direct correction (PEC+manifold) as the follow-on research direction with
+the best demonstrated ceiling so far, and treat drift characterization/
+mitigation as the next real blocker to name explicitly in any forward
+proposal, rather than another round of estimator tuning.*
 
 ---
 
