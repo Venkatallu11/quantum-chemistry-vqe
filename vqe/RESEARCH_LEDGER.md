@@ -6440,6 +6440,83 @@ the simple depolarizing-channel PEC model does not fully correct.
    confirmed (e.g. by directly characterizing the coherent component);
    reported as the leading hypothesis, not a proven fact.
 
+### Task C — full PEC calibration, all 21 slots, real literal twirling at scale
+
+With 31A/31B clearing the machinery, scaled literal quasi-probability
+twirling from Task 30B's 4 representative slots to all 21 H4 measurement
+slots, N_MC=16, forte-1 only (aria-1 retired). 21 slots x 13 groups x 16
+draws = 4,368 real circuits, batched at <=91/job (48 batches) per this
+project's own outage-tested limit. Used Task 31A's corrected p2(zz)=0.0146
+consensus. `ideal` reused directly from existing real data rather than
+resubmitted: p=0 means `pec_inverse_weights` puts all probability mass on
+"insert identity," so every one of 4,368 "twirled" ideal circuits would
+have been identical to the untwirled one -- a real, justified efficiency,
+not a shortcut on rigor.
+
+**Real submission**: 48 batches, ~14,623s (~4.1 hours) wall clock,
+including one real network timeout and one retriable API error, both
+handled cleanly by the existing retry logic with zero manual intervention.
+
+| pipeline | forte-1 (kcal/mol) |
+|---|---|
+| raw (reference, same checkpoint) | 88.78 |
+| literal PEC (full 21-slot twirling) | **4.50** |
+| literal PEC + manifold (uniform-weighted fit) | **0.115** |
+
+**Ideal-control check, done PROPERLY for this specific pipeline** (not
+just inherited from "PEC=raw for ideal," which is trivially true and
+tests nothing about the manifold step): ideal's own raw data run through
+the SAME manifold fit gives **0.042 kcal/mol -- PASS**, consistent with
+this project's established manifold-alone floor.
+
+**Literal PEC alone (4.50) beats the earlier analytic-shortcut result
+(7.53, single-fold, old p2=0.0048) by 40%, and lands cleanly inside Task
+30B's own pre-committed decision rule's "continue" range (14.6->3-5)** --
+a real, meaningful validation that the fuller, more expensive twirling
+approach outperforms the cheaper analytic approximation, consistent with
+Task B's finding that the analytic method can miss coherent-noise effects
+the literal approach naturally captures.
+
+**The 0.115 kcal/mol combined number is striking -- and reported with the
+caution it requires, not as an established result.** It is INSIDE the 0.5
+kcal/mol chemical-accuracy target on the point estimate alone -- the best
+number this entire project has ever produced, nearly 10x better than the
+previous best (1.05-1.12, analytic-PEC+manifold, iteration 30). But it
+comes from ONE run at N_MC=16, not yet independently replicated, and this
+project's own honesty rules are explicit: never treat one good-looking
+number as proven. No statistical uncertainty is reported here YET beyond
+the single 8-seed bootstrap already folded into the point estimate --
+genuine run-to-run reproducibility (does a SECOND independent N_MC=16
+submission land near 0.115, or was this a favorable statistical
+fluctuation?) is exactly what Task F's 128-submission convergence study
+is for, and this number should be read as "the first real data point in
+that study," not a final answer. **NOT YET applying the drift-inclusive
+acceptance criterion or claiming PASS** -- that requires Task 31F's
+convergence data and the drift figure this iteration's own error budget
+demands.
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Report 0.115 as a PASS against the 0.5 kcal/mol target immediately.*
+   Rejected outright -- a single unreplicated point estimate, however
+   good, is exactly the situation this project's "floor_test() every free
+   parameter" and "never choose a model by the answer it gives" rules
+   exist to guard against; reported as a striking first data point, not a
+   result.
+2. *Also submit N_MC=32 immediately, since the task allowed it "if the
+   service handles it."* Rejected for this pass -- the service handled
+   N_MC=16 with only two minor retriable hiccups over ~4 hours; doubling
+   to N_MC=32 would roughly double an already-long real submission before
+   the FIRST result has even been reported and reviewed. Flagged as a
+   natural next step, not done reflexively.
+3. *Use the covariance-aware manifold fit (Task D) for this combination
+   instead of the current uniform-weighted one, to report the "best"
+   number available.* Rejected -- Task C's job is to establish literal
+   PEC at scale using the CURRENT, already-validated manifold fit; Task D
+   is a separate, explicit upgrade with its own pass/fail criterion
+   (bias decreases AND ideal control holds) that should be evaluated on
+   its own terms, not silently folded in here to make this section's
+   number look even better.
+
 ---
 
 ## Iteration 30: direct error correction, no extrapolation
