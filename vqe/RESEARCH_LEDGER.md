@@ -6574,6 +6574,97 @@ propagated PEC uncertainty in a future iteration.
    precisely above as ~2.9-3.0x over, before drift. Point estimates alone
    do not pass, exactly as this iteration's own acceptance section says.
 
+### Task D — revisiting the shot floor with the validated manifold estimator
+
+The cited 1.845 kcal/mol "fundamental" shot floor (iteration 26 Task 1)
+was measured with the OLD per-Pauli estimator. Re-measured with the
+manifold estimator (cleared, Task A): 5 shot levels (10k/25k/50k/100k/
+300k), 8 seeds each, ideal model, exact statevector probabilities
+multinomial-sampled (the same real-hardware-equivalent technique
+established in iteration 29), single-fold (no ZNE -- this iteration
+freezes extrapolation).
+
+**A real bug caught before trusting any result**: the first attempt gave
+a mean error STUCK at ~14.7-14.85 kcal/mol across ALL 5 shot levels --
+constant with N, not shrinking, immediately suspicious for a supposedly
+shot-noise-driven quantity. Traced to a real implementation error: raw
+multinomial-sampled COUNTS (unnormalized integers, e.g. -6142, 6002) were
+passed directly to `pauli_expectation`, which expects a normalized
+probability dict -- silently producing meaningless huge "expectation
+values." (Not a repeat of the same bug elsewhere: checked, iteration 29's
+scripts always used the properly-normalizing `expectation_from_counts`
+wrapper; this was a fresh mistake isolated to this file.) Fixed by
+normalizing via `expectation_from_counts`. Verified the fix on a
+noiseless single-slot case first (exact recovery, residual ~1e-28) before
+re-running the full sweep.
+
+**Corrected result**: mean error now properly shrinks with shots (0.312
+-> 0.357 -> 0.222 -> 0.141 -> 0.060 kcal/mol from 10k to 300k -- the
+25k point's small non-monotonicity is expected 8-seed sampling noise, not
+a new bug, given each shot level's own std is 0.04-0.30). Fit
+`sigma_E(N) = 19.43/sqrt(N) + 0.0524`:
+
+**b = 0.0524 kcal/mol.**
+
+**VERDICT, stated explicitly as instructed: b < 0.25 kcal/mol -- 0.5
+kcal/mol chemical accuracy IS reachable by shots alone with the manifold
+estimator.** The earlier "counting statistics make this impossible"
+conclusion (1.845 kcal/mol floor) was **estimator-specific, not
+fundamental** -- the raw per-Pauli estimator's floor came from
+propagating independent shot noise through ~756 loosely-constrained
+channels; the manifold's 5-parameter constraint removes most of that
+propagated noise by construction, not by averaging it away.
+
+**Sensitivity-based shot allocation, designed and computed, not yet
+Monte-Carlo-verified**: `|dE/da_j|` computed by finite difference (central
+difference, eps=1e-5, renormalizing after each perturbation) for every
+kept slot's own manifold parameters, on the real optimized-circuit energy
+functional:
+
+| slot | max |dE/da_j| | slot | max |dE/da_j| |
+|---|---|---|---|
+| u_1 | 0.1408 | (u0+u3) | 0.0199 |
+| (u0+u2) | 0.1369 | u_3 | 0.0149 |
+| (u0+u1) | 0.1352 | u_4 | 0.0051 |
+| u_0 | 0.1314 | (u2+u3) | 0.0008 |
+| u_2 | 0.0940 | (u4+u5) | 0.00003 |
+
+**A 4,325x spread between the most- and least-sensitive slots** -- a
+huge, real justification for sensitivity-weighted allocation over uniform
+shots per slot. Per this task's explicit instruction, the allocation
+RULE (not yet deployed or MC-verified) follows Task 28F's own
+floor-constrained structure exactly (30% of the shot budget reserved
+uniform across all 21 slots, 70% allocated proportional to each slot's
+own `max|dE/da_j|` sensitivity) -- NOT unconstrained proportional
+allocation, which Task 28F's own iteration already found catastrophic
+(282x worse under Monte Carlo verification) when applied without a floor.
+**This design is NOT yet Monte-Carlo-verified the way Task 28F's own
+scheme was** -- flagged explicitly as the natural next step, not silently
+assumed to work.
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Trust the first (buggy) result and report a 14.7 kcal/mol floor as
+   the manifold's own limitation.* The bug was caught specifically
+   because a floor that doesn't shrink with 30x more shots is
+   structurally implausible for a shot-noise-driven quantity -- this
+   project's own standing skepticism toward suspiciously flat curves
+   (the same instinct that caught Task A's original extrapolation bug)
+   is what triggered the investigation here too.
+2. *Skip the Monte Carlo verification of the sensitivity-allocation
+   scheme entirely and present it as validated.* Rejected -- explicitly
+   labeled "designed, not yet verified" rather than implied complete;
+   Task 28F's own history (a closed-form allocation that looked perfect
+   analytically and was 282x worse in practice) is the direct reason this
+   project never treats an allocation formula as trustworthy before MC
+   verification.
+3. *Re-derive the allocation weights from the FULL 21x6=126-parameter
+   joint sensitivity (a proper gradient of the assembled energy w.r.t.
+   every slot's full manifold vector simultaneously) rather than each
+   slot's own max-component sensitivity.* A more rigorous version worth
+   doing before real deployment; the per-slot max-sensitivity proxy used
+   here is a reasonable, cheap first approximation, not presented as the
+   final word on the allocation rule.
+
 ---
 
 ## Iteration 29: finding the ideal-control bug, and rebuilding the estimator around H4's known structure
