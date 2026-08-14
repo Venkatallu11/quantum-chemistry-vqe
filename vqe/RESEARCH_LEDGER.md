@@ -6482,6 +6482,98 @@ resolved away.
    submission time already spent this iteration; explicitly left open
    for a future iteration rather than assumed to resolve itself.
 
+### Task C — the ablation matrix: PEC and manifold together reach the closest this project has ever come to the target, and one real negative result
+
+Same real data (Task 28B's optimizer-reduced circuit checkpoint), same
+8-seed bootstrap, ideal/aria-1/forte-1, six rows. **LEAKAGE SCOPED
+HONESTLY**: full 13-group leakage post-selection needs an ancilla-
+augmented circuit (a new real submission, out of reach this iteration);
+what's used here is the free, already-collected-data version (iteration
+18 Part 1's own precedent) -- post-selecting on Hamming-weight==2 for the
+ONE measurement group with no basis rotation (`IIZZ`/`ZIIZ`/`ZZII`, 3 of
+37 labels). **The last row uses general PSD/trace-1 reconstruction (28G's
+SDP) INSTEAD of the pure-state manifold, not stacked with it** -- a pure
+state is automatically PSD (rank-1), so "+manifold+PSD" is a no-op;
+disclosed and reinterpreted as a genuine comparison (manifold vs general-
+PSD as alternative final reconstruction steps after the same leakage+PEC
+upstream corrections) rather than built as a meaningless extra step.
+
+| row | ideal | aria-1 | forte-1 |
+|---|---|---|---|
+| raw | 1.467 | 89.837 | 89.069 |
+| raw + leakage (partial) | 1.467 | 92.158 | 91.604 |
+| raw + PEC | 1.467 | 19.249 | 7.626 |
+| raw + PEC + manifold | 0.138 | **1.120 +/- 0.202** | **1.051 +/- 0.209** |
+| raw + PEC + manifold + leakage | 0.138 | 1.145 +/- 0.202 | 1.078 +/- 0.210 |
+| raw + PEC + leakage + general PSD | 0.966 | 1.628 +/- 0.226 | 2.050 +/- 0.323 |
+
+**Every row passes the mandatory ideal-control check** (the loosest
+possible reasonable bound: no row exceeds 2x raw's own ideal error + 0.5
+kcal/mol; every row is in fact well under it).
+
+**THE HEADLINE, stated precisely**: PEC + manifold reaches **1.12
+kcal/mol (aria-1) and 1.05 kcal/mol (forte-1)** -- by a wide margin the
+closest this project has ever come to the 0.5-1.0 kcal/mol target
+(previous best: 12.78 kcal/mol, Task 28G). **This does NOT pass the
+strict acceptance criterion**, checked precisely: `|E_hat-E_exact| +
+2*sigma` = 1.120 + 2(0.202) = **1.524** (aria-1, ~3.0x over) and 1.051 +
+2(0.209) = **1.469** (forte-1, ~2.9x over) -- both fail, and this is
+BEFORE Task E's mandatory drift inclusion, which will only widen sigma
+further. A massive advance on the point estimate, honestly reported as
+still short of PASS.
+
+**A REAL NEGATIVE RESULT, not hidden**: leakage post-selection, in this
+scoped/partial form, makes things WORSE -- raw+leakage (92.16/91.60) is
+higher error than plain raw (89.84/89.07) on both real backends. Likely
+explanation, disclosed as plausible not proven: resampling only 100,000
+shots then discarding the weight!=2 subset shrinks the EFFECTIVE sample
+size for that one group substantially, and the resulting increase in shot
+noise outweighs the leakage-removal benefit at this shot count -- a
+different regime than iteration 18's own result (measured on the
+ORIGINAL, un-optimized circuit, with different gate counts and therefore
+plausibly different leakage rates). **Leakage's established win (iteration
+18) does not straightforwardly transfer to the optimizer-reduced circuit
+in this partial form** -- not re-litigated further here, flagged as a
+real, unresolved regression.
+
+**DOES COMPOUNDING HELP? Real, and largely additive, not simply
+multiplicative or redundant.** PEC alone: 70.6/81.4 kcal/mol of gain.
+Manifold ON TOP OF PEC: an ADDITIONAL 18.1/6.6 kcal/mol of gain -- a
+large, clearly independent contribution rather than PEC and manifold
+fighting over the same error budget. Leakage on top of PEC+manifold:
+essentially zero (-0.02/-0.03, consistent with the negative standalone
+result above). Manifold beats general PSD as the final reconstruction
+step in every comparison (1.12 vs 1.63 aria-1; 1.05 vs 2.05 forte-1) --
+the tighter, purity-constrained manifold outperforms the weaker,
+mixed-state-allowing PSD constraint here, consistent with Task A's
+finding that the manifold's power comes from a genuinely stronger
+physical constraint, not from injecting the answer.
+
+**A disclosed methodological simplification**: the manifold fits in this
+task use UNIFORM (not inverse-variance) per-label weights, since a
+well-defined per-label variance for a PEC-RATIO-corrected point estimate
+isn't the same object as the bootstrap-derived variance used for raw
+values elsewhere in this project. Worth revisiting with a properly
+propagated PEC uncertainty in a future iteration.
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Build the full ancilla-augmented leakage post-selection (a new real
+   submission) instead of the partial, free version.* Rejected for scope
+   -- judged lower priority than completing the full 6-row matrix within
+   this iteration; the partial version already answered the more basic
+   question (does leakage help AT ALL on this circuit) with a real,
+   informative negative result.
+2. *Drop the leakage rows entirely since they show a negative result.*
+   Rejected -- a negative result reported honestly is exactly what this
+   matrix is for; omitting it would hide a real, useful finding (leakage's
+   established win does not automatically transfer to a different,
+   gate-count-reduced circuit).
+3. *Claim PASS since the point estimate (1.05-1.12) looks close to the
+   0.5-1.0 target range.* Rejected outright -- the acceptance criterion
+   explicitly requires `|E_hat-E_exact|+2*sigma`, computed and reported
+   precisely above as ~2.9-3.0x over, before drift. Point estimates alone
+   do not pass, exactly as this iteration's own acceptance section says.
+
 ---
 
 ## Iteration 29: finding the ideal-control bug, and rebuilding the estimator around H4's known structure
