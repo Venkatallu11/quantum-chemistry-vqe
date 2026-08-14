@@ -6236,6 +6236,122 @@ whichever number results from those before calling anything established.
 
 ---
 
+## Iteration 31: calibrated PEC + covariance manifold + drift control
+
+Run at the user's explicit direction. Simulator only, the $3,000 stays
+unspent. Local branch `local/attack-base-problem` only. **FORTE ONLY from
+here** -- aria-1 retired per IonQ's current documentation; ideal remains
+the correctness control. **TERMINOLOGY FIX, applied from this point
+forward**: the 2.31 kcal/mol figure previously called forte-1 "drift" is
+retired as that word. IonQ documents its simulator noise models as STATIC
+characterization snapshots -- submission-to-submission variation there is
+not demonstrated temporal hardware drift. Called **"submission-to-
+submission variability under the Forte noise model"** until Task 31F
+actually characterizes its autocorrelation structure.
+
+**WHERE WE ARE**: PEC+manifold (forte-1) = 1.051+/-0.209 kcal/mol is the
+current champion. `|E-exact|+2*sigma_stat` = 1.469, ~3x over target.
+Adding submission-to-submission variability (2.31) gives 5.69, ~11x over.
+**BIAS REDUCTION COMES FIRST** -- averaging cannot fix bias; this
+iteration's target is 1.05 -> 0.25-0.30 kcal/mol bias, not 0.5.
+
+### Task A — resolve the ZZ calibration. BLOCKING.
+
+**PART 1 — the fidelity-to-depolarizing-parameter conversion, verified
+before touching any code.** `fixed_ansatz.P2_PER_GATE = 1 - 0.9952 =
+0.0048` is defined as raw INFIDELITY and passed DIRECTLY as the
+depolarizing channel parameter to both `qiskit_aer.noise.depolarizing_error`
+(confirmed via its own docstring: `E(rho)=(1-lambda)rho+lambda*I/2^n`,
+lambda IS the parameter passed in) and this project's own
+`loop_pec.py::depolarizing_weights` (confirmed algebraically identical).
+For this channel, average gate fidelity `F_avg = 1 - lambda*(d-1)/d`,
+d=4 for 2 qubits -- so the CORRECT depolarizing parameter is
+`lambda = (1-F_avg)*d/(d-1) = 0.0048*4/3 = 0.0064`, not 0.0048 directly.
+**A real, confirmed 1.333x error**, present in every local-noise-model
+script that has imported `P2_PER_GATE` since it was defined (`cdr_mitigation.py`,
+`energy_difference_study.py`, `leakage_zne_floor_tested.py`,
+`loop_pauli_lindblad_pec.py`, `loop_pec.py`, and others). **NOT silently
+rewritten into `fixed_ansatz.py`** -- doing so would retroactively alter
+the documented meaning of every historical result that used it, without
+those results being re-run; reported explicitly here, with the corrected
+value used in any new work. The correction explains PART of the earlier-
+observed 2.9x gap between the assumed constant and Task 30B's real
+measurement (0.014), narrowing it to 2.19x -- not all of it, stated
+precisely rather than implied resolved.
+
+**PART 2 — re-measured p2(zz) IN CONTEXT, per gate position, not an
+isolated probe** (iteration 9 already showed reduced probes
+under-characterize the full circuit). Used slot `u_2` -- the one kept
+slot with exactly 11 ZZ gates, matching this task's own topology
+reference exactly (most other slots were optimizer-reduced to 4-9).
+**Verified at the OPERATOR level before use, not assumed from one input
+state**: `ZZGate(0.25)^4 = I` up to global phase (direct matrix-power
+check) -- meaning substituting ANY ONE gate occurrence with N repetitions
+for N in {1,5,9,13} preserves the exact final circuit state regardless of
+what real, non-trivial state precedes that position, a stronger guarantee
+than the earlier single-input-state check. 11 positions x 4 N-values = 44
+real circuits, forte-1 + ideal, 16 seeds for real 95% confidence
+intervals (double Task 30B's 8).
+
+**Result -- position-dependent, and informative about WHY**:
+
+| positions | p_ZZ (forte-1) |
+|---|---|
+| 6, 16, 26, 47, 54, 58, 65, 75, 82 (9 of 11) | **0.0143-0.0148**, tight 95% CIs (e.g. [0.0142,0.0148]) |
+| 30, 37 (2 of 11) | **~0.0000**, CI includes zero |
+
+**9 of 11 positions cluster tightly around 0.0146 -- an excellent,
+now-confidence-interval-backed cross-validation of Task 30B's original
+single-point estimate (0.014).** The 2 exceptions are a real, disclosed
+open question, not resolved here: most likely explanation is an
+observable-blind-spot effect (the automatically-selected best observable
+at those specific positions, `IZIZ`, may happen to commute with or be
+insensitive to whatever error channel actually acts there) rather than
+those two gate positions being genuinely error-free -- plausible, not
+proven. **VERDICT: position-dependent (the two outliers alone make the
+naive max/min ratio meaningless, but the real finding is "9/11 agree
+tightly, 2/11 need a different observable to characterize properly") --
+PEC should use the 0.0146 typical value for 9 of 11 positions and flag
+positions 30/37 as needing re-measurement with a different observable
+before their own contribution is trusted.**
+
+**GPi2 -- STILL UNRESOLVED, now with more evidence it's a methodology
+problem, not a shot-count problem.** Retried at 3.3x more shots
+(1,000,000 vs 300,000) and 2x more seeds (16 vs 8) at the same 4 real phi
+bins. **Still 0/4 bins physical**, and critically, the IDEAL (zero-noise)
+control ALSO shows large scatter (std 0.08-0.19) that barely shrank
+despite 3.3x more shots -- this rules out "just need more shots" as the
+explanation. **The real cause: log-linear decay fitting on only 4 points
+is ill-conditioned when the true decay is tiny** -- the same near-flat-
+curve-fitting instability theme that has run through this entire
+project's ZNE investigation (iteration 29 Tasks A/G), now showing up in a
+calibration context instead of an extrapolation one. Per this task's own
+instruction ("get it with more shots OR put an explicit error bar"):
+**explicit bound reported, not a silently-substituted point estimate**:
+`|p1(gpi2)| < 0.21` (95% CI bound across the 4 bins) -- carried forward
+as an uncertainty CONTRIBUTION to any pipeline using GPi2, not as a
+central value.
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Silently apply the 0.0064 conversion fix to `fixed_ansatz.py` and
+   move on.* Rejected -- would retroactively change the documented
+   meaning of every historical local-model result without those results
+   being re-validated; the fix is reported and used going forward,
+   existing history is left interpretable as "used the old constant."
+2. *Re-measure positions 30/37 with a different observable before
+   reporting anything.* Rejected for this pass -- the 9/11 agreement is
+   already a strong, useful, CI-backed result; chasing the 2 outliers to
+   full resolution is flagged as the natural next step, not blocking this
+   task's other deliverables.
+3. *Try a non-log-linear fitting method for GPi2 (e.g. a Bayesian
+   estimator with a physical p>=0 prior) instead of reporting a bound.*
+   A reasonable future improvement -- rejected for this pass given the
+   explicit-bound approach directly satisfies this task's own stated
+   fallback instruction and keeps scope moving toward the still-larger
+   remaining tasks (B through H).
+
+---
+
 ## Iteration 30: direct error correction, no extrapolation
 
 Run at the user's explicit direction. Simulator only, the $3,000 stays
