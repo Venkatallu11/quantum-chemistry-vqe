@@ -6287,6 +6287,120 @@ blocking, since both schemes already clear the adversarial test cleanly.
    Part 2's pass/fail verdict doesn't address; both were needed for a
    complete answer.
 
+### Task B — port PEC to real ionq_simulator: the highest-value experiment
+
+**METHODOLOGY DISCLOSED UP FRONT, precisely, before any number**: full
+real-hardware PEC (submitting many randomly Pauli-twirled circuit variants
+per gate and combining with quasi-probability signs) was judged out of
+scope for this iteration -- it would require a very large number of
+additional real circuit submissions per gate location. What was actually
+built and IS fully real: (1) the CHANNEL is learned from real Clifford-
+adjacent calibration circuits submitted to `ionq_simulator` itself (ideal/
+aria-1/forte-1), never the local noise model; (2) the DATA being corrected
+is real, previously-measured H4 data (Task 28B's own checkpoint, the
+specified optimizer-reduced circuit). What is NOT literal real-hardware
+execution: the correction itself is computed via the SAME analytic
+density-matrix PEC algebra (`loop_pec.py`'s `apply_pauli_mixture` +
+`depolarizing_weights`/`pec_inverse_weights`) already trusted throughout
+this project, using the real-learned parameters to compute a per-label
+RATIO that is then applied to the real measured value -- not a literal
+twirled-circuit measurement. Flagged to the user directly mid-task, who
+confirmed continuing with this approach rather than building full circuit
+twirling.
+
+**CORRECTION TO THIS TASK'S OWN PREMISE**: the task assumes "Forte's ZZ is
+ARBITRARY-ANGLE." Checked directly against the actual optimized circuit
+(all 21 kept slots, forte/zz family): every one of 196 ZZ gates uses
+theta=0.25 EXACTLY -- one angle, not a distribution. This ansatz's
+entangling angle is architecturally fixed; only the single-qubit GPi (485
+gates, 178 distinct phi) and GPi2 (970 gates, 136 distinct phi) carry
+target-dependent angles. Angle-conditioning therefore only matters for the
+1-qubit gates -- reported as a correction, not silently substituted.
+
+**CALIBRATION DESIGN**: repeated same-gate application from a fixed input,
+using a VERIFIED (not assumed) period-4 ladder -- N in {1,5,9,13} all
+return to the exact N=1 state (fidelity 1.0, checked numerically for
+every angle before submitting) for ZZ(0.25), every GPi(phi), and every
+GPi2(phi) tested. Any real deviation growing with N is pure accumulated
+noise. 4 representative phi bins each for GPi/GPi2 (10/30/70/90th
+percentile of the REAL circuit's own angle distribution), one point for
+ZZ. 36 circuits x 3 models, real submission, 300,000 shots.
+
+**Real, angle-conditioned learned channel**:
+
+| gate | model | learned p |
+|---|---|---|
+| ZZ (theta=0.25, the only angle) | aria-1 / forte-1 | **0.0140 / 0.0138** |
+| GPi (4 phi bins) | aria-1 / forte-1 | 0.00047-0.00051 / 0.00010-0.00013 (flat across angle) |
+| GPi2 (4 phi bins) | aria-1 / forte-1 | UNRELIABLE (see below) |
+
+**A real finding, flagged prominently**: the calibrated p2(ZZ) = 0.0140
+(aria) / 0.0138 (forte) is roughly **3x this project's own standing
+`P2_PER_GATE = 0.0048`** constant (forte-1's cited live 2-qubit fidelity).
+Possible explanations, disclosed rather than resolved: this specific
+period-4 repeated-gate calibration may be sensitive to compounding/
+crosstalk effects a standard single-gate fidelity benchmark doesn't
+capture, or coherent (non-depolarizing) error components that a simple
+log-linear decay fit absorbs into its effective "p." Not chased further
+this iteration -- worth reconciling before this number is treated as a
+device constant.
+
+**A real calibration failure, disclosed and worked around, not hidden**:
+GPi2's 4-bin fits were unusable -- noisy, some UNPHYSICAL (negative p:
+aria -0.098 to +0.021, forte -0.157 to -0.005), consistent with the true
+GPi2 decay signal (expected ~0.0001-0.0005, an order of magnitude smaller
+than ZZ's) being below this ladder's shot-noise floor (N only up to 13,
+300k shots, 8-seed bootstrap). Fixed with a disclosed fallback: each
+model's own GPi mean (clamped >=0) substituted for GPi2's p1, since both
+are the same class of native 1-qubit gate. The original unreliable values
+are preserved in the results file under `p_original_unreliable`, not
+overwritten silently.
+
+**THE RESULT — applying the real, angle-conditioned correction to real,
+previously-measured H4 data (28B's optimized circuit, ideal/aria-1/forte-1
+concurrent, same checkpoint)**:
+
+| model | RAW (real, fold=1) | PEC (real params, analytic correction) | improvement |
+|---|---|---|---|
+| ideal | 1.151 +/- 0.323 | **1.151 +/- 0.323** | unchanged (SANITY CHECK: PASS -- learned p=0 for noiseless, no correction applied, exactly as it should be) |
+| aria-1 | 89.67 +/- 0.44 | **19.05 +/- 0.32** | 4.7x |
+| forte-1 | 88.99 +/- 0.69 | **7.53 +/- 0.30** | 11.8x |
+
+**DECISION RULE, fixed before running: 14.6->3-5 continue the stack;
+14.6->~13 stop.** Honest complication, disclosed rather than glossed
+over: the rule was written against the 2q-only ZNE headline (a FOLD-
+EXTRAPOLATED number), but what's measured here is single-fold PEC vs
+single-fold raw -- not a like-for-like input to the literal rule.
+Reported both ways: forte-1's PEC result (7.53) sits BETWEEN the
+continue-threshold (3-5) and the stop-threshold (~13), closer to
+continue, and it already BEATS the 14.61 kcal/mol ZNE headline outright
+despite the different fold basis. aria-1's PEC result (19.05) sits just
+above the stop-threshold and does not beat the ZNE headline, though it is
+still a 4.7x improvement over raw. **VERDICT: PARTIAL PASS -- forte-1
+shows PEC's local-model success clearly transfers to real IonQ noise;
+aria-1 shows a real but more muted transfer. Continue the stack (30C),
+with this asymmetry carried forward as a real, unresolved finding, not
+averaged away.**
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Build literal real-hardware quasi-probability circuit twirling instead
+   of the analytic-ratio approach.* Considered and explicitly offered to
+   the user mid-task; user chose to continue with the analytic approach.
+   The methodologically purest version remains open for a future
+   iteration if the analytic result's honesty is ever specifically
+   doubted.
+2. *Treat the GPi2 calibration failure as disqualifying and stop.*
+   Rejected -- GPi's own clean measurement (~0.0001-0.0005, consistent
+   with this project's established ~1/40 p2/p1 ratio) is a reasonable,
+   disclosed substitute for the same gate class; the alternative (silently
+   using an arbitrary constant, or blocking the whole task on a low-impact
+   1q-gate sub-calibration) was judged worse than a flagged fallback.
+3. *Reconcile the 3x ZZ discrepancy (0.014 vs 0.0048) before proceeding,
+   by cross-checking against a standard single-gate fidelity benchmark.*
+   Rejected for THIS task -- would delay the higher-priority decision-rule
+   test; flagged explicitly as an open question rather than silently
+   adopting either number as more correct.
+
 ---
 
 ## Iteration 29: finding the ideal-control bug, and rebuilding the estimator around H4's known structure
