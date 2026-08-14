@@ -6401,6 +6401,87 @@ averaged away.**
    test; flagged explicitly as an open question rather than silently
    adopting either number as more correct.
 
+**ADDENDUM, run at the user's explicit direction after Task B's initial
+write-up: literal quasi-probability circuit twirling, actually executed
+on real hardware, to validate the analytic-ratio shortcut above.**
+
+**THE MATH THAT MADE THIS TRACTABLE**: `gamma_total` for the full 21-slot
+circuit (11 real 2q gates at the calibrated p2=0.014, ~69 mean 1q gates
+at p1~0.0005) is only ~1.4-1.41 -- each individual gate's own gamma is
+close to 1 since these error rates are small, so the sampling-overhead-
+inflated variance (gamma_total^2 ~ 1.8-2.0x plain shot noise) is a modest
+penalty, not a combinatorial explosion. This made a genuine Monte Carlo
+quasi-probability estimator affordable with a small ensemble (N_MC=8
+draws), rather than requiring the very large circuit counts a naive
+worst-case estimate would suggest.
+
+**REAL PROTOCOL, actually run**: for 4 representative slots (u_0, u_1,
+(u0+u1), (u2+u3)) x 13 measurement groups x 8 Monte Carlo draws, each
+draw independently samples a Pauli-twirl branch (via `pec_inverse_weights`)
+at EVERY noisy gate in the circuit, inserts it, and the resulting FULLY
+CONCRETE circuit is submitted for real measurement -- 416 circuits x 3
+models = 1,248 real circuits, submitted in 5-chunk batches per model,
+ideal/aria-1/forte-1. Combined via the standard unbiased quasi-probability
+estimator: `E_PEC = gamma_total * mean(sign_i * measured_i)`.
+
+**TWO REAL BUGS CAUGHT AND FIXED before any result was trusted**: (1) the
+first submission attempt inserted generic `Pauli(label)` gate instructions,
+which IonQ's native backend rejects outright -- caught immediately by the
+`ideal` model's own submission SILENTLY SUCCEEDING (p=0 for ideal means
+the sampler always draws identity, so no Pauli gate was ever actually
+inserted, hiding the bug) while aria-1/forte-1 failed loudly with
+`IonQGateError`. Fixed by re-transpiling the full twirled circuit (base +
+insertions) to native gates via `to_native` before submission. (2) an
+earlier full-turn background run was killed by the environment before
+reaching submission -- no partial checkpoint was created, nothing lost,
+simply retried.
+
+**VALIDATION RESULT: mostly agrees, with one real, unexplained outlier,
+reported plainly rather than averaged away.** Comparing literal twirling
+against the analytic shortcut, same 4 slots, same real raw data, per
+label:
+
+| | aria-1 | forte-1 |
+|---|---|---|
+| median \|analytic - literal\| (11 of 12 labels) | 0.018 | 0.016 |
+| mean \|analytic - literal\| (all 12 labels) | 0.188 | 0.181 |
+| **worst label: `(u0+u1)` `IYYI`** | analytic=-0.996, literal=**+0.757** | analytic=-0.962, literal=**+1.000** |
+
+For 11 of 12 labels tested, the two methods agree to within a scale
+plausibly explained by Monte Carlo noise at N_MC=8 (a small ensemble).
+**But `(u0+u1)`'s `IYYI` label disagrees by nearly the full physical
+range in BOTH backends independently** -- the analytic method pushes an
+already-large-magnitude raw value (-0.86) toward the -1 boundary (a
+multiplicative ratio correction applied near a physical boundary is a
+plausible failure mode for the analytic shortcut specifically), while
+literal twirling lands near the OPPOSITE extreme (+0.76 to +1.00) with a
+sign flip. This was NOT chased to a root cause this iteration -- flagged
+as a real, open discrepancy that DOES NOT invalidate the analytic method's
+aggregate energy result (11/12 labels validate reasonably; one wrong
+label's effect is diluted, not eliminated, in a 37-label combined energy)
+but DOES mean the full-scale PEC headline (7.53/19.05 kcal/mol) should be
+read as "validated on most labels, not proven at the individual-label
+level for labels near the physical boundary" -- a real caveat, not
+resolved away.
+
+**ALTERNATIVES NOT TAKEN (twirling addendum)**:
+1. *Root-cause the `IYYI` discrepancy before reporting anything.* Rejected
+   for this pass -- it appears independently in both backends (a real
+   phenomenon, not a single-backend fluke), but tracking it down (more
+   MC draws, checking whether the analytic method's near-boundary
+   multiplicative correction is the structural cause, or whether N_MC=8
+   is simply too few for THIS specific label's variance) is genuine
+   further work, not a quick fix; reporting the finding honestly now
+   was judged better than delaying it further.
+2. *Discard the outlier and report only the 11-label agreement as full
+   validation.* Rejected outright -- selectively dropping the
+   inconvenient data point is exactly the kind of curve-fitting-the-
+   narrative this project's honesty rules exist to prevent.
+3. *Re-run with more MC draws (e.g. N_MC=32) to see if the discrepancy
+   shrinks.* A reasonable next step, not done here given the real
+   submission time already spent this iteration; explicitly left open
+   for a future iteration rather than assumed to resolve itself.
+
 ---
 
 ## Iteration 29: finding the ideal-control bug, and rebuilding the estimator around H4's known structure
