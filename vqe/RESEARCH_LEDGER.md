@@ -6517,6 +6517,71 @@ demands.
    its own terms, not silently folded in here to make this section's
    number look even better.
 
+### Task D — covariance-aware manifold fit: a clean FAIL, and a valuable robustness side-finding
+
+The current manifold fit uses uniform per-label weighting (flagged as a
+simplification in Task 30C). Built the covariance-aware alternative:
+bootstrap the FULL per-slot covariance matrix Sigma_y (36 labels x 32
+seeds per slot, rebuilt from Task 31C's already-collected real counts --
+no new submission), regularize (Tikhonov, eps = 1% of mean diagonal
+variance) to keep the inverse well-defined despite `n_seeds=32 < n_labels=36`,
+then minimize `chi^2(a) = (y-f(a))^T Sigma_y^-1 (y-f(a))` subject to
+`|a|=1` instead of the uniform-weighted sum of squares.
+
+| pipeline | forte-1 | ideal |
+|---|---|---|
+| uniform-weighted (this task's own re-run, 32 seeds) | 0.317 | 0.047 |
+| covariance-aware | **16.987** | **0.448** |
+
+**VERDICT, per this task's own explicit rule (bias decreases AND ideal
+control holds = PASS): FAIL, cleanly and on both counts** -- bias got
+53x WORSE (0.317->16.99), and the ideal control degraded nearly 10x
+(0.047->0.448). Not a borderline call.
+
+**Likely cause, disclosed as the leading explanation not a proven
+diagnosis**: with 32 bootstrap seeds and up to 36 labels per slot, the
+covariance-estimation problem is in the classic small-sample regime
+(`n_seeds < n_labels`) where the sample covariance matrix's OFF-DIAGONAL
+structure is known to be dominated by estimation noise, not real
+correlation -- Tikhonov regularization on the diagonal does not fix this,
+since it leaves the noisy off-diagonal entries untouched, and chi^2
+weighting by an unreliable inverse covariance actively exploits (rather
+than averages out) that noise. Condition numbers of the regularized
+Sigma_y (368-468 across all 21 slots) were moderate, not pathological --
+this is NOT primarily a numerical-inversion failure, it is a statistical
+estimation failure with too few samples for the dimensionality.
+
+**A valuable, unplanned robustness side-finding, disclosed prominently**:
+re-running the CURRENT uniform-weighted fit with 32 seeds (this task) gave
+0.317 kcal/mol for forte-1 -- NOT the 0.115 kcal/mol reported in Task C
+using the SAME underlying real data with only 8 seeds. Same real circuits,
+same pipeline, different seed count -- nearly a 3x difference in the final
+number. This is exactly the kind of run-to-run/methodological-choice
+sensitivity Task C's own caution flagged as needing Task F's replication
+study before trusting any single number -- now with direct, concrete
+evidence that the sensitivity is real, not a hypothetical worry.
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Try a shrinkage estimator (e.g. Ledoit-Wolf) for Sigma_y instead of a
+   flat Tikhonov diagonal regularizer, to see if a better-conditioned
+   covariance estimate rescues the method.* A reasonable next step for a
+   future iteration if covariance-aware fitting is revisited -- rejected
+   for this pass since the failure margin (53x worse bias) is large enough
+   that a better regularizer is unlikely to be the whole story, and this
+   task's own criterion already gives a clean, actionable answer (FAIL,
+   keep the uniform-weighted fit) without needing to chase a fix.
+2. *Increase N_SEEDS_COV further (e.g. to 64 or 128) to fix the
+   n_seeds<n_labels problem directly.* Rejected as a quick patch here --
+   would require re-processing already-collected counts at higher seed
+   count (cheap) but doesn't change this task's verdict on the CURRENT
+   evidence, and 128 seeds is exactly what Task F's convergence study is
+   already set up to explore properly with its own acceptance framework.
+3. *Report only the covariance-aware number since chi^2 weighting is the
+   more sophisticated the method.* Rejected outright -- "more
+   sophisticated" is not this task's pass criterion; the criterion is
+   explicit (bias decreases AND ideal control holds) and both conditions
+   failed. The simpler, uniform-weighted fit remains the one in use.
+
 ---
 
 ## Iteration 30: direct error correction, no extrapolation
