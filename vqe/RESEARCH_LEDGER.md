@@ -6655,6 +6655,124 @@ removes the risk this project's own honesty rules exist to guard against.
    the qualitative finding (per-slot Neyman doesn't catastrophically fail
    here) even if the exact 0.63x vs 0.64x distinction isn't fully resolved.
 
+### Task F, part 1 — redo the shot floor: now properly determined, with a confidence interval
+
+Task 30D's b=0.0524 kcal/mol used only 8 seeds and showed non-monotonic
+scatter (10k->0.312+/-0.179, 25k->0.357+/-0.295 -- WORSE at more shots) --
+under-determined, not established, exactly as this task's own framing
+said. Re-ran with 4x more seeds (32) and added a bootstrap 95% CI on b
+(2,000 resamples of the per-seed errors at each shot level, refit each
+time) instead of a bare point estimate. Entirely local, no new real
+submission.
+
+| N shots | mean\|err\| | std (32 seeds) |
+|---|---|---|
+| 10,000 | 0.312 | 0.294 |
+| 25,000 | 0.246 | 0.206 |
+| 50,000 | 0.176 | 0.108 |
+| 100,000 | 0.114 | 0.110 |
+| 300,000 | 0.086 | 0.067 |
+
+**Now cleanly monotonic** (vs the earlier non-monotonic scatter) --
+already a real, disclosed improvement in data quality from more seeds
+alone, before even looking at the fit. `sigma_E(N) = 28.34/sqrt(N) +
+0.0110`. **b = 0.0110 kcal/mol, 95% CI = [0.000, 0.056]** -- the ENTIRE
+confidence interval sits below the 0.25 threshold. **VERDICT: 0.5
+kcal/mol chemical accuracy IS reachable by shots alone, now established
+WITH CONFIDENCE**, not just a point estimate that happened to look good.
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Report only the point estimate (0.0110), matching Task 30D's own
+   format.* Rejected -- the entire reason this re-run was commissioned was
+   that a bare point estimate at low seed count was not trustworthy;
+   reporting another bare point estimate without the CI would repeat the
+   exact mistake being corrected.
+2. *Increase seeds further (64, 128) for an even tighter CI.* Rejected for
+   this pass -- the CI already sits entirely below the decision threshold
+   with real margin (upper bound 0.056 vs threshold 0.25, more than 4x
+   headroom); further tightening would not change the verdict.
+
+### Task F, part 2 — the 128-submission convergence study: scoped down, disclosed explicitly
+
+**Why 128 full real submissions, as literally specified, is not
+achievable in reasonable time**: Task C's single N_MC=16 literal-twirling
+run (4,368 circuits, 48 batches) took ~4.1 hours of real wall-clock time.
+128 independent repetitions of that SAME full pipeline would take
+~128 x 4.1 ~= 525 hours (~22 days) -- not a scope reduction question, a
+hard infeasibility given this session's actual constraints.
+
+**Scoped alternative, disclosed as a real scope decision, not a silent
+substitution**: use the cheaper ANALYTIC-PEC+manifold pipeline (validated
+against literal twirling in Task B for most labels) instead of full
+literal twirling for this convergence study specifically -- each
+"submission" needs only the RAW 273-circuit measurement set (calibration
+parameters are already established, reused unchanged across trials, not
+re-measured each time), batched at <=91/job (3 batches/submission).
+N_SUBMISSIONS=8, scoped down from 128, disclosed explicitly.
+
+**Real result, 8 independent real submissions, forte-1**:
+
+`E_1..E_8 = [0.0345, 0.1994, 0.7483, 0.3025, 0.6479, 0.4581, 0.3548, 0.7568]`
+kcal/mol. mean=0.438, std=0.264 (n=8, ddof=1). One submission (#3) hit a
+real, sustained sequence of retriable API errors before completing
+(14,446s vs a typical ~700s) -- handled entirely by the existing retry
+logic, no manual intervention, no data lost.
+
+**A genuinely important, sobering finding, exactly the failure mode this
+task's own framing anticipated**: fit `log(SE_N) = -1.887 + (-0.154)*log(N)`
+across the running mean's standard error at each cumulative N. **alpha =
+-0.154, far from the -0.5 genuine-sqrt(N)-convergence would require** --
+less than a third of the expected exponent. Lag-1 autocorrelation
+`rho_1 = -0.148` (small and, at n=8, not statistically distinguishable
+from zero -- the standard error on a correlation estimate at n=8 is
+roughly 0.4, larger than the estimate itself). **Per this task's own
+explicit instruction: alpha this far from -0.5 means the "more submissions
+closes the gap" reasoning (the b=0.40->~2135, b=0.10->~134 table this
+task itself opened with) is NOT established as valid at face value and
+must be treated with real skepticism until a larger N confirms or refutes
+the slow-convergence signal** -- an 8-point log-log fit has enormous
+uncertainty in its own slope, so this is reported as a real warning, not
+a proven sub-sqrt(N) scaling law.
+
+**Applying the acceptance criterion's own form
+(`b + 2*sigma_total/sqrt(N)`) to this real 8-submission data**:
+0.438 + 2(0.264)/sqrt(8) = **0.624 kcal/mol -- still ~1.25x over the 0.5
+target**, even with real averaging across 8 independent submissions.
+
+**This directly confirms, with real independent-submission data, the
+caution Task C and Task D's side-finding already raised**: Task C's
+striking 0.115 kcal/mol (literal twirling, ONE run) sits well below this
+8-submission analytic-PEC study's mean (0.438) and even below its
+minimum (0.035 was the smallest of 8, but most of the 8 landed well above
+0.115) -- consistent with 0.115 being a favorable single-sample outcome
+from a distribution whose TYPICAL real value, across independent
+submissions, is closer to 0.4-0.5 kcal/mol with real spread (std~0.26).
+Not proof the two pipelines (literal vs analytic) differ systematically --
+different methods, not a controlled comparison -- but a real, concrete
+reason the champion number should not yet be treated as representative.
+
+**ALTERNATIVES NOT TAKEN (Task F, part 2)**:
+1. *Use literal twirling (Task C's pipeline) for this convergence study
+   too, for a true apples-to-apples comparison with the 0.115 result.*
+   Rejected for scope -- 8 literal-twirling submissions at Task C's own
+   scale (4,368 circuits, ~4 hours each) would take ~32 hours, not
+   achievable this session; the cheaper analytic-PEC pipeline was already
+   independently validated against literal twirling (Task B) for most
+   labels, making it a reasonable (not perfect) proxy for this specific
+   convergence-rate question.
+2. *Discard submission 3's outlier-slow real-world timing (14,446s) as
+   an anomaly and re-run it.* Rejected -- the retry logic handled it
+   correctly and it produced a real, valid result (0.7483); excluding a
+   real data point because its INFRASTRUCTURE behavior was unusual (not
+   its DATA) would be exactly the kind of selective reporting this
+   project's honesty rules forbid.
+3. *Treat alpha=-0.154 as definitively proving convergence is broken and
+   halt further averaging-based strategies.* Rejected -- explicitly
+   flagged as a warning requiring more data (n=8 is too few for a
+   trustworthy log-log slope), not a proven law; the honest position is
+   "this needs Task G/H's further work and eventually a larger N," not a
+   premature verdict either way.
+
 ---
 
 ## Iteration 30: direct error correction, no extrapolation
