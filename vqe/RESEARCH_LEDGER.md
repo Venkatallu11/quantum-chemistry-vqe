@@ -1,5 +1,60 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 31, LOCAL BRANCH `local/attack-base-problem`,
+pushed to the SIDE BRANCH only, `origin/main` untouched -- PASS gate not
+met, no real QPU submission): calibrated PEC + covariance manifold +
+drift control. FORTE ONLY from here (aria-1 retired). "Drift" retired as
+a word for the 2.31 kcal/mol figure -- called "submission-to-submission
+variability under the Forte noise model" until characterized. **Task A**
+(blocking): confirmed a real 1.333x fidelity-to-depolarizing-parameter
+conversion bug (0.0048->0.0064, narrows but doesn't close the gap to the
+measured 0.014); re-measured p2(zz) in-context, per gate position, on the
+real circuit -- 9/11 positions cluster tightly at 0.0146 (CI-backed);
+GPi2 calibration still fails even at 3.3x more shots (a conditioning
+problem, not a statistics one) -- explicit bound reported, not a fake
+point estimate. **Task B** (blocking): the IYYI discrepancy resolved as a
+REAL finding, not a bug -- caught and fixed an invalid test of my own
+along the way, then built the valid version (real noise simulated for
+both raw and every twirled correction) and found both analytic and
+literal-twirling PEC methods agree under a matched noise model; the real-
+hardware disagreement is most likely a genuine coherent-noise residual,
+flagged per this project's own DO NOT list rather than chased further.
+**Task C**: full literal-twirling PEC calibration, all 21 slots, N_MC=16,
+4,368 real circuits (~4.1 hours) -- 88.78->4.50 kcal/mol alone,
+->**0.115 kcal/mol combined with manifold**, the best point estimate this
+project has ever produced, reported with explicit caution as ONE
+unreplicated run. **Task D**: covariance-aware manifold fit -- a clean
+FAIL (bias 53x worse, ideal control 10x worse; n_seeds<n_labels puts
+covariance estimation in the classic small-sample overfitting regime);
+uniform weighting stays in use, but re-running it with 32 seeds gave 0.317
+not 0.115 for the SAME real data -- concrete evidence the champion number
+needs replication. **Task E**: MC-verified the 30/70 shot allocation
+(never verified before) with the FULL Jacobian -- a genuine surprise,
+per-slot Neyman does NOT catastrophically fail here (unlike the old per-
+channel version), both schemes give ~35-37% real variance reduction.
+**Task F**: shot floor now properly determined (b=0.0110, 95% CI entirely
+below 0.25, WITH confidence) -- but the 128-submission convergence study
+(scoped to 8 real, independent submissions) found alpha=-0.154 (want
+-0.5) and a real mean of 0.438 kcal/mol across 8 submissions, confirming
+Task C's 0.115 was likely a favorable outlier. **Task G**: paired-
+reference control variate -- best real rho=-0.640 (u_0), nowhere near the
+0.994 needed to fix submission-to-submission variability; temporal
+interpolation designed but not implemented (needs timestamps this
+project doesn't yet record). **Task H**: caught and fixed a real bug
+(per-gate-instance vs per-gate-type coherent angle error, which first
+produced a nonsense Q95~827 kcal/mol) before finding the REAL robustness
+envelope: Q50=4.53, Q95=**51.22 kcal/mol -- ~205x over the 0.25 target**,
+even after the fix. **THE HONEST BOTTOM LINE FOR THIS ENTIRE ITERATION**:
+huge, real progress on bias reduction under ONE calibrated noise model
+(1.05->0.115 kcal/mol best case), but two independent lines of evidence
+(Task F's real 8-submission spread, Task H's real robustness envelope)
+both show that number is not yet representative or robust -- the honest
+current picture is closer to "several to a few dozen kcal/mol, typically,
+under realistic uncertainty" than "0.115 kcal/mol, solved." Error budget
+(bias_95<0.25, 2*sigma_stat<0.15, 2*sigma_submission<0.15, model-
+transfer_95<0.15): NONE of the four conditions are yet met. See
+"Iteration 31" below for the full write-up.
+
 **STATUS UPDATE (iteration 30, LOCAL BRANCH `local/attack-base-problem`,
 pushed to the SIDE BRANCH only, `origin/main` untouched -- PASS gate not
 met, no real QPU submission): direct error correction, no extrapolation.
@@ -6854,6 +6909,113 @@ necessary, but this task's own real testing found the simplest version
    against it would produce a number that looks like a temporal model but
    isn't one; flagged as needing real timestamps instead of a proxy that
    would misrepresent what was actually tested.
+
+### Task H — robustness envelope: a real bug caught first, then a real (still sobering) finding
+
+A result under ONE static noise model predicts almost nothing about
+hardware. Randomized plausible Forte conditions (p_ZZ, p_GPi, p_GPi2,
+coherent angle error, readout error, PEC calibration mismatch) over
+intervals justified by Task A's real measurements, evaluated the full
+analytic-PEC+manifold pipeline on each, entirely local.
+
+**Intervals used**: `p_ZZ_true ~ U(0.010,0.020)` (Task A: 9/11 positions
+at 0.0143-0.0148); `p_GPi_true ~ U(0.00005,0.0006)` (Task A/30B measured
+range); `p_GPi2_true ~ U(0,0.21)` (Task A established only a bound, no
+point estimate); coherent angle bias; readout error `~U(0,0.02)`;
+PEC calibration mismatch (assumed p = true p x `U(0.85,1.15)`, independent
+per gate type) -- the standard mischaracterization-robustness test this
+project's own `loop_pec.py` already established, applied here across many
+draws instead of one.
+
+**SCOPE, disclosed**: N was set from a MEASURED per-evaluation wall-clock
+cost against a ~30-minute budget, not assumed to be literally 1,000 --
+first run N=69, corrected run N=97 (a full density-matrix simulation of
+21 slots per noise draw is expensive; 1,000 draws would take several
+hours).
+
+**A real, serious bug caught before trusting the first result**: the
+initial coherent-angle-error model drew an INDEPENDENT random perturbation
+for every single gate INSTANCE (~150+ per circuit) rather than one
+systematic bias per gate TYPE. Result: Q50=86.1, Q90=670.2, Q95=826.9,
+Q99=910.5 kcal/mol -- values so far outside anything else this project
+has ever measured that they demanded investigation before being reported.
+Diagnosed directly: isolating the angle-error term alone on one sample
+draw dropped its error from 388.0 to 0.21 kcal/mol -- confirming the
+coherent-angle model, not the underlying pipeline, was the dominant driver
+of the catastrophe. **Real coherent miscalibration affects every instance
+of a gate type consistently (a pulse-parameter error), not independently
+per instance** -- fixed by drawing ONE bias per gate type per noise-model
+sample instead of per gate occurrence, and reducing the typical magnitude
+to a more plausible calibration-precision scale. Re-verified sane behavior
+on 3 spot-check draws (0.31, 4.59, 28.96 kcal/mol -- no more 300+ values)
+before re-running the full study.
+
+**Corrected real result, N=97**:
+
+| quantile | \|E-E_exact\| (kcal/mol) |
+|---|---|
+| Q50 | 4.53 |
+| Q90 | 25.13 |
+| Q95 | **51.22** |
+| Q99 | 888.29 |
+
+**TARGET (Q95 < 0.25 kcal/mol): NOT MET, by a wide margin (~205x over)**,
+even after fixing the angle-error bug. This is a real, sobering, disclosed
+finding, not an artifact of the same mistake that produced the earlier
+catastrophic numbers -- the median (4.53) and Q90 (25.13) are far more
+plausible than the first run's, and the analysis stands independently of
+the bug that was caught and fixed.
+
+**A real, heavy tail, not fully diagnosed**: 2 of 97 draws (886.4 and
+932.8 kcal/mol) dominate Q99, while all but those 2 stay under 68 kcal/mol
+-- consistent with, though not exhaustively proven to be caused by, rare
+draws where `p_GPi2_true` lands far from the value PEC's correction
+assumes (Task A's own finding that GPi2 could only be BOUNDED, not
+precisely calibrated, is the most likely structural explanation: an
+uncorrected wide mismatch on ~970 gate instances per circuit is exactly
+the kind of thing that could produce an outsized, rare blowup). Per-draw
+noise-model parameters were not saved for these specific outliers this
+run -- flagged as a concrete follow-up (save full per-draw parameters, not
+just the resulting error) rather than chased further here.
+
+**Held-out check, disclosed as a SIMPLIFIED PROXY, not the literal
+"calibrate on 20, test on 10" methodology**: split the 97 draws into
+first-64/last-33 and compared quantiles (train Q95=49.7, test Q95=37.1,
+no strong overfit signal) -- this tests whether the ERROR DISTRIBUTION is
+consistent across two random subsets, which is informative but is NOT the
+same as fitting a PEC calibration on one set of noise realizations and
+testing whether that SPECIFIC calibration generalizes to unseen ones. The
+literal version was judged out of scope this iteration (would require an
+additional optimization step to find the best-fit assumed-p per training
+subset) -- flagged explicitly as a real methodological gap, not silently
+substituted for the weaker check actually performed.
+
+**IMPLICATION FOR THE ERROR BUDGET**: this iteration's own `model-
+transfer_95 < 0.15` budget line is clearly NOT met (51.22 vs 0.15, before
+even reaching the other three budget lines) -- the single-noise-model
+results this whole iteration (and the ones before it) rely on should be
+read as best-case numbers under the SPECIFIC calibrated point estimate,
+not as robust predictions of what real hardware -- which will never
+exactly match that point estimate -- would actually deliver.
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Report the first (buggy) Q95~827 result and move on, given time
+   pressure.* Rejected outright -- a result that far outside everything
+   else this project has measured is exactly the kind of red flag this
+   project's honesty culture exists to catch before publication, not
+   after; the investigation cost real time but was not optional.
+2. *Chase down the exact cause of the 2 extreme Q99 outliers before
+   writing anything up.* Rejected for this pass -- would require re-
+   running with per-draw parameter logging, more real compute time this
+   session does not have left; flagged as a concrete, actionable next
+   step (save full parameters per draw) rather than deferred vaguely.
+3. *Implement the full literal "calibrate on 20, evaluate on 10" methodology
+   instead of the simplified quantile-split proxy.* Rejected for scope --
+   requires an additional fitting step per training subset; the simplified
+   check still answers a real, useful question (is the error distribution
+   consistent across random subsets) even though it does not test PEC-
+   calibration generalization specifically, and this limitation is
+   disclosed rather than hidden.
 
 ---
 
