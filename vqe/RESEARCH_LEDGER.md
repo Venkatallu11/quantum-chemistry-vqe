@@ -6773,6 +6773,88 @@ reason the champion number should not yet be treated as representative.
    "this needs Task G/H's further work and eventually a larger N," not a
    premature verdict either way.
 
+### Task G — paired-reference control variate: a real, modest win, far short of what's needed
+
+To reduce 2.31 kcal/mol submission-to-submission variability to 0.25
+kcal/mol via a control variate, `rho > 0.994` is required. Tested using
+Task F's own 8 real independent submissions -- no new real submission
+needed, since every one of those 8 jobs already measured all 21 H4 slots
+together (exactly the "reference interleaved with target in the same
+block" structure this task asks for). Reference X = a well-characterized
+slot's own energy-weighted deviation from its known-exact Pauli values
+(the same real bootstrap methodology used throughout); target Y = Task
+F's own recorded full-energy error for that submission.
+
+| reference slot | rho |
+|---|---|
+| u_0 | **-0.640** |
+| u_1 | -0.398 |
+| (u0+u1) | -0.029 |
+
+**None come remotely close to 0.994.** u_0 (the best of the three) gives
+a real but modest variance reduction: `Var(Y_cv) = Var(Y)*(1-rho^2)` =
+0.0696 -> 0.0411 (41% reduction), std 0.264 -> 0.203 kcal/mol (~23%
+reduction) -- genuinely useful as a variance-reduction technique, nowhere
+near sufficient to solve the submission-to-submission variability problem
+on its own.
+
+**Interpretation**: the negative correlations across all three references
+(and their inconsistent magnitude, -0.64 to -0.03) suggest submission-to-
+submission variability affects different parts of the Hilbert space
+largely INDEPENDENTLY, not as a single shared "drift" factor any one
+reference observable could fully capture -- a real physical finding, not
+a failure of the method. **DISCLOSED, real caveat**: n=8 is a small
+sample for estimating a correlation coefficient reliably; these rho
+values themselves carry substantial uncertainty (a correlation's own
+standard error at n=8 is roughly 0.4), so "u_0 achieves -0.64" should be
+read as "u_0 shows a real, moderate negative association," not a
+precisely pinned-down number.
+
+**Local affine interpolation, delta_b(t) = a_b + b_b*t: DESIGNED, not
+implemented this iteration.** Per this task's own fallback, since no
+single reference meets the bar, the next candidate mechanism models a
+SLOWLY-VARYING, block-level time-dependent offset shared across ALL
+measurements within a submission (rather than expecting one specific
+observable's fluctuation to predict another's, pointwise). **This was NOT
+tested this iteration**: it requires actual submission TIMESTAMPS to fit
+`t`, which Task F's checkpoints do not record (only relative sequence
+order and total wall-clock duration per submission, not calibrated
+absolute timing suitable for a temporal regression). Flagged explicitly
+as a real, concrete infrastructure gap -- future real submissions should
+record wall-clock timestamps per batch specifically to make this testable,
+not just a data-analysis choice deferred for convenience.
+
+**Implication for the real QPU run this project is ultimately funded
+for**: neither tested mechanism (single-reference control variate,
+untested affine interpolation) is currently validated to bring real
+hardware variability down to the 0.25 kcal/mol budget. 342 real hardware
+submissions (this iteration's own opening table, at b=0.25) is not
+affordable; drift/variability cancellation via SOME mechanism remains
+necessary, but this task's own real testing found the simplest version
+(single reference) insufficient, and the more promising alternative
+(temporal interpolation) is designed but unverified.
+
+**ALTERNATIVES NOT TAKEN**:
+1. *Run a genuine multi-reference joint regression (all 21 slots as
+   simultaneous predictors of Y).* Rejected -- with only 8 real data
+   points and up to 21 potential predictors, a joint regression is
+   severely overparametrized (n<<p) and would overfit perfectly and
+   meaninglessly; tested 3 individual references sequentially instead,
+   an honest use of the available real data.
+2. *Submit new, dedicated reference circuits (the literal R, target x4, R
+   pattern this task describes) rather than reusing Task F's data.*
+   Rejected for scope -- would require yet more real submission time on
+   top of an already very long real-submission session; reusing Task F's
+   already-collected real data (which happens to have the needed
+   structure) answers the same question without new cost.
+3. *Implement the affine-interpolation fallback anyway, treating
+   submission SEQUENCE ORDER as a crude proxy for time.* Rejected --
+   sequence order is not real elapsed time (submissions took wildly
+   different real durations, 580s to 14,446s in Task F), so fitting
+   against it would produce a number that looks like a temporal model but
+   isn't one; flagged as needing real timestamps instead of a proxy that
+   would misrepresent what was actually tested.
+
 ---
 
 ## Iteration 30: direct error correction, no extrapolation
