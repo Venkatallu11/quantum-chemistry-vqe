@@ -1,0 +1,65 @@
+
+================================================================================================
+  task35bc_stratified_control_variate_pec.py -- sign-stratified PEC + sign control variate
+================================================================================================
+
+  === IYYI (known atypical, coherent-noise case) ===
+    exact=-0.9613  gamma=1.3751
+    PILOT (N=4000, sign-only, no DM sim): p_plus=0.8725 +/- 0.0053
+    PILOT variance: sigma(m|+)=0.0000 (n=48)  sigma(m|-)=0.6731 (n=48)
+    allocation (N=16): proportional n+=14 n-=2  Neyman n+=1 n-=15
+    running 60 independent production trials (N=16 each)...
+    iid        bias=-0.0072  std=0.1394  MSE=0.0195
+    cv         bias=-0.0456  std=0.1016  MSE=0.0124
+    strat      bias=-0.0239  std=0.0886  MSE=0.0084
+    strat_cv   bias=-0.0239  std=0.0886  MSE=0.0084
+    cv std reduction vs IID: +27.1%
+    strat std reduction vs IID: +36.4%
+
+  === u_0/YIYI (well-conditioned per Task 33D, mean_sign near +1.0) ===
+    exact=-0.0095  gamma=1.2284
+    PILOT (N=4000, sign-only, no DM sim): p_plus=0.9100 +/- 0.0045
+    PILOT variance: sigma(m|+)=0.0000 (n=48)  sigma(m|-)=0.0061 (n=48)
+    allocation (N=16): proportional n+=15 n-=1  Neyman n+=1 n-=15
+    running 60 independent production trials (N=16 each)...
+    iid        bias=-0.0002  std=0.0011  MSE=0.0000
+    cv         bias=-0.0003  std=0.0007  MSE=0.0000
+    strat      bias=-0.0002  std=0.0007  MSE=0.0000
+    strat_cv   bias=-0.0002  std=0.0007  MSE=0.0000
+    cv std reduction vs IID: +36.4%
+    strat std reduction vs IID: +35.2%
+
+  === (u3+u5)/IIIZ (Task 33D-flagged high sign-noise group, mean_sign=+0.25) ===
+    exact=+0.7786  gamma=1.3722
+    PILOT (N=4000, sign-only, no DM sim): p_plus=0.8662 +/- 0.0054
+    PILOT variance: sigma(m|+)=0.2070 (n=48)  sigma(m|-)=0.6925 (n=48)
+    allocation (N=16): proportional n+=14 n-=2  Neyman n+=11 n-=5
+    running 60 independent production trials (N=16 each)...
+    iid        bias=+0.0214  std=0.1384  MSE=0.0196
+    cv         bias=+0.0207  std=0.1113  MSE=0.0128
+    strat      bias=+0.0229  std=0.0971  MSE=0.0099
+    strat_cv   bias=+0.0229  std=0.0971  MSE=0.0099
+    cv std reduction vs IID: +19.6%
+    strat std reduction vs IID: +29.9%
+
+  === (u0+u3)/YZYI (Task 33D-flagged high sign-noise group, mean_sign=+0.375) ===
+    exact=-0.0051  gamma=1.3737
+    PILOT (N=4000, sign-only, no DM sim): p_plus=0.8640 +/- 0.0054
+    PILOT variance: sigma(m|+)=0.0000 (n=48)  sigma(m|-)=0.0034 (n=48)
+    allocation (N=16): proportional n+=14 n-=2  Neyman n+=1 n-=15
+    running 60 independent production trials (N=16 each)...
+    iid        bias=-0.0000  std=0.0007  MSE=0.0000
+    cv         bias=-0.0004  std=0.0021  MSE=0.0000
+    strat      bias=+0.0000  std=0.0028  MSE=0.0000
+    strat_cv   bias=+0.0000  std=0.0028  MSE=0.0000
+    cv std reduction vs IID: -206.9%
+    strat std reduction vs IID: -310.0%
+
+  -- CROSS-CASE SUMMARY --
+    IYYI (known atypical, coherent-noise case): p_plus=0.8725  CV std reduction=+27.1%  Strat std reduction=+36.4%
+    u_0/YIYI (well-conditioned per Task 33D, mean_sign near +1.0): p_plus=0.9100  CV std reduction=+36.4%  Strat std reduction=+35.2%
+    (u3+u5)/IIIZ (Task 33D-flagged high sign-noise group, mean_sign=+0.25): p_plus=0.8662  CV std reduction=+19.6%  Strat std reduction=+29.9%
+    (u0+u3)/YZYI (Task 33D-flagged high sign-noise group, mean_sign=+0.375): p_plus=0.8640  CV std reduction=-206.9%  Strat std reduction=-310.0%
+
+  Results saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task35bc_stratified_control_variate_pec_results.json
+

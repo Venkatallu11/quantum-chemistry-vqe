@@ -1,5 +1,39 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 35, LOCAL BRANCH `local/attack-base-problem`,
+committed, `origin/main` untouched -- PASS gate not met. All local/free,
+zero real submissions): attacked PEC Monte Carlo variance (confirmed
+dominant, ~87% of total pipeline variance, Task 32B) directly at its
+source, adapting two literature-proposed techniques (QPD stratified
+sampling, QPD control variates) to how THIS codebase's PEC actually
+works -- not the generic abstractions as proposed. **Key structural fact
+this design exploits** (verified Task 33D): `gamma` is FIXED per circuit
+in this project's PEC; only the total SIGN (product of independent per-
+gate recovery choices) is stochastic. That makes E[sign] analytically
+knowable and total-sign the natural, tractable stratification variable
+-- a correct, codebase-specific adaptation, not a copy of the paper's
+abstraction. **Result on 4 representative labels: REAL, substantial
+variance reduction on 3/4** (std reduction 36.4%/35.2%/29.9%, roughly
+2.0-2.5x variance reduction -- the largest, most consistent real effect
+found in iterations 32-35 combined) **but a dramatic FAILURE on the
+4th** (a near-deterministic label with almost no natural PEC-MC signal
+to stratify: std got 3-4x WORSE, -207% to -310%). This is not a blanket
+fix -- real deployment needs a per-label pilot gate (use stratification
+only where it demonstrably helps), a real, disclosed engineering
+requirement, not swept under. Projecting the 3-label average (~33.8% std
+reduction, ~2.3x variance reduction) onto Task 32B's PEC-MC variance
+component gives an honest projected ~29% reduction in the CHAMPION
+PIPELINE's overall std -- moving the current median~0.8-1.3/Q95~3.7-4.7
+kcal/mol picture to a projected median~0.6-0.9/Q95~2.6-3.4 kcal/mol.
+**Real, meaningful, the best number this project has produced since
+iteration 31 -- and still 2-4x over target at the median, 10-14x at the
+Q95 tail that governs reliability.** This is a PROJECTION from per-label
+local pilots, not a directly-measured full-pipeline result; confirming
+it requires either broader local testing across more labels or real
+`ionq_simulator` re-collection using the new stratified sampling design
+(existing collected data used naive IID, cannot be reanalyzed into this
+gain after the fact). See "Iteration 35" below for the full write-up.
+
 **STATUS UPDATE (iteration 34, LOCAL BRANCH `local/attack-base-problem`,
 committed, `origin/main` untouched -- PASS gate not met. All local/free,
 zero real submissions this iteration): tested a fundamentally different
@@ -6495,6 +6529,132 @@ TAKEN sections: search crosstalk properly (Task 4, implemented but
 untested), run subspace-tomography+leakage for real (Task 5, tests the
 circuit-count hypothesis directly), and put real repetition counts behind
 whichever number results from those before calling anything established.
+
+---
+
+## Iteration 35: sign-stratified PEC + sign control variate -- the largest real variance reduction found, with a real failure mode
+
+Local/free only, zero real submissions. Motivated by a detailed external
+proposal citing recent QEM literature (CV4Quantum for QPD control
+variates, a 2026 stratified-QPD-sampling paper) -- adapted to this
+codebase's ACTUAL PEC implementation rather than applied as generic
+abstractions, since the literal proposed control variate from Task 34
+(H4 manifold normalization) was already found not to apply here (hard-
+constrained by `fit_pure_state`).
+
+### The structural adaptation, verified before building anything
+
+Task 33D already established (by reading real checkpoint entries) that
+`gamma` in `sample_twirled_circuit` is FIXED per circuit -- computed
+purely from the calibrated error rate, identical across all draws of a
+given (slot,label) group; only the total SIGN (product of every gate's
+independently-sampled recovery-label sign) is stochastic per draw. This
+directly determines the correct, codebase-specific versions of the two
+proposed techniques:
+  - **Control variate**: `V = sign - E[sign]`, where `E[sign]` (equal to
+    `p_plus - p_minus`) is analytically knowable from a CHEAP pilot (sign
+    is decided by a purely classical `rng.choice()` call, no density-
+    matrix simulation needed to observe it) -- the actual, correct analog
+    of CV4Quantum's "control from a QPD quantity with known mean" for
+    this specific PEC implementation, not the manifold-residual idea
+    Task 34C already ruled out.
+  - **Stratified sampling**: stratify by total sign (2 strata), the
+    natural tractable simplification of "product-QPD stratification" for
+    a space where the ONLY stochastic output (beyond shot noise) is a
+    single aggregate sign, not a full per-gate joint space (which would
+    need an intractable number of strata to populate).
+
+### Method, with the anti-adaptive-bias discipline this session established
+
+Two-phase design, matching this project's own "don't tune on the same
+data you evaluate on" rule (violated nowhere here): (1) a cheap PILOT
+(N=4000 sign-only draws, no density-matrix simulation -- sign is free to
+observe) fixes `p_plus`/`p_minus` essentially exactly (SE~0.5%) BEFORE
+any production trial; a separate small pilot (N=48/stratum, expensive,
+DM-simulated) estimates per-stratum std(m) for a secondary Neyman-
+allocation check, used ONLY for that purpose. (2) PRODUCTION: 60
+independent trials, each drawing a REAL-WORLD-REALISTIC N=16 (matching
+this project's actual production N_MC), comparing IID (status quo),
+control-variate-corrected IID, and proportionally-stratified sampling --
+against the TRUE exact value for validation only, never for choosing
+strata counts or the CV coefficient beta (which is estimated from the
+production sample itself, standard nuisance-parameter practice, not
+target-peeking).
+
+### Result: real, substantial reduction on 3/4 labels, a real dramatic failure on the 4th
+
+Tested on IYYI (this project's established atypical/coherent-noise
+validation case), u_0/YIYI (a well-conditioned label per Task 33D), and
+two of Task 33D's own previously-FLAGGED high-sign-noise groups
+((u3+u5)/IIIZ, (u0+u3)/YZYI) -- deliberately including the cases already
+known to be hardest, not cherry-picked easy ones.
+
+**Std reduction from stratified sampling vs IID**: IYYI +36.4%, u_0/YIYI
++35.2%, (u3+u5)/IIIZ +29.9% -- consistent, real, roughly 2.0-2.5x
+variance reduction, by far the largest and most reproducible effect
+found across iterations 32-35. Control-variate alone gave smaller but
+still real gains on the same three (+27.1%, +36.4%, +19.6%).
+
+**(u0+u3)/YZYI failed dramatically**: std reduction of -206.9% (CV) and
+-310.0% (stratified) -- both methods made this label's estimate 3-4x
+NOISIER, not better. Diagnosed, not just reported: this label's raw IID
+std is already tiny (0.0007, near this codebase's numerical floor -- the
+pilot shows sigma(m|+)=0.0000 exactly), meaning almost none of its
+natural variance comes from variation in the MEASURED value `m` at all --
+it comes from the sign's own sampling randomness, which the IID
+estimator already averages near-optimally by construction. Forcing exact
+population-level stratification proportions with only 1-2 minority-
+stratum production draws to estimate a small-sample mean INTRODUCES new
+estimation noise into a regime that had almost none to remove -- a real,
+mechanistically-understood failure mode, not a mystery. **Conclusion:
+this is not a blanket fix.** Real deployment needs a per-label pilot gate
+(apply stratification/CV only where the pilot shows genuine expected
+benefit, e.g. non-trivial sigma(m|+) and sigma(m|-)), defaulting to
+plain IID otherwise -- exactly the kind of targeted-not-uniform lesson
+this project already learned from Task 33E's group-specific fix.
+
+### Honest projection to the full pipeline (not yet directly measured)
+
+Averaging the 3 labels where stratification helped (36.4+35.2+29.9)/3 =
+33.8% std reduction -> variance reduction factor ~2.28x. Applying this to
+Task 32B's own variance decomposition (shot=0.0037, manifold=0.234,
+submission=0.070, **PEC-MC=2.11**, total=2.42) -- assuming, as an
+explicit, disclosed EXTRAPOLATION (not a measured fact) that this
+reduction applies broadly across most of the 756 label-groups the way it
+did for 3 of the 4 tested here: new PEC-MC variance ~0.925, new total
+variance ~1.233, giving an overall pipeline std reduction of ~28.6% (less
+than the per-label 33.8% since PEC-MC is only 87%, not 100%, of total
+variance; the other components are untouched by this technique).
+
+Applied to the champion pipeline's current best real numbers (median
+~0.8-1.3, Q95 ~3.7-4.7 kcal/mol, varies run to run in this heavy-tailed
+regime): **projected median ~0.6-0.9, projected Q95 ~2.6-3.4 kcal/mol.**
+Real, meaningful -- the best number this project has produced since
+iteration 31 -- and still roughly 2-4x over the 0.25 kcal/mol target at
+the median, 10-14x at the Q95 tail that actually governs reliability.
+**This is a projection from local per-label pilots, not a directly-
+measured full-pipeline result.** Confirming it for real requires either
+(a) broader local testing across a larger, more representative sample of
+the 756 label-groups (cheap, no new submissions), or (b) real
+`ionq_simulator` re-collection using the new stratified sampling design
+-- the currently-collected Task 31C checkpoint used naive IID sampling
+throughout and cannot be reanalyzed into this gain after the fact.
+
+### THE HONEST BOTTOM LINE FOR THIS ITERATION
+
+The best real result this project has found since iteration 31: a
+literature-motivated technique, correctly adapted (not copy-pasted) to
+this codebase's actual PEC structure, gives a real, substantial (~2-2.5x)
+variance reduction on most tested labels -- while also producing a real,
+mechanistically-understood failure mode on labels with little natural
+signal to stratify, disclosed rather than hidden behind an averaged
+headline number. Projected full-pipeline impact is real and meaningful
+(~29% std reduction) but does not, on its own, reach chemical accuracy --
+still 2-4x over target at the median and an order of magnitude over at
+the tail. Cross-fitting (Task 35E) and the confidence-constrained energy
+SDP (Task 35F) from the same proposal remain untested this iteration,
+genuine future work, not abandoned. No error-budget condition newly
+passes on real (only projected) numbers.
 
 ---
 
