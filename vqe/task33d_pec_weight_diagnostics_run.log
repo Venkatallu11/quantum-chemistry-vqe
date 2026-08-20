@@ -1,0 +1,49 @@
+
+================================================================================================
+  task33d_pec_weight_diagnostics.py -- real PEC quasi-probability weight diagnostics, no new data
+================================================================================================
+  756 (slot, label) groups, 16 MC draws/group available (Task 31C's real data)
+
+  -- sign-pattern diagnostics across 756 (slot,label) groups, 16 real draws each --
+    |mean_sign| distribution: min=0.250  median=0.750  max=1.000
+    noise_contribution (gamma * sign_se) distribution: min=0.0000  median=0.2025  max=0.3321
+    27/756 groups have |mean_sign| < 0.5 (signs closer to a coin flip than a consistent correction)
+
+  -- 15 WORST (slot,label) groups by noise_contribution (gamma * sign_se) --
+    (u3+u5)|XZXZ           mean_sign=+0.250 (10+/6-)  gamma= 1.372  noise_contribution=0.3321
+    (u3+u5)|XZXI           mean_sign=+0.250 (10+/6-)  gamma= 1.372  noise_contribution=0.3321
+    (u3+u5)|IZIZ           mean_sign=+0.250 (10+/6-)  gamma= 1.372  noise_contribution=0.3321
+    (u3+u5)|IIIZ           mean_sign=+0.250 (10+/6-)  gamma= 1.372  noise_contribution=0.3321
+    (u0+u1)|YXXY           mean_sign=+0.375 (11+/5-)  gamma= 1.375  noise_contribution=0.3187
+    (u0+u1)|IXXI           mean_sign=+0.375 (11+/5-)  gamma= 1.375  noise_contribution=0.3187
+    (u0+u1)|YYXX           mean_sign=+0.375 (11+/5-)  gamma= 1.375  noise_contribution=0.3187
+    (u0+u1)|IIXX           mean_sign=+0.375 (11+/5-)  gamma= 1.375  noise_contribution=0.3187
+    (u0+u1)|YYII           mean_sign=+0.375 (11+/5-)  gamma= 1.375  noise_contribution=0.3187
+    (u1+u2)|YXXY           mean_sign=+0.375 (11+/5-)  gamma= 1.375  noise_contribution=0.3187
+    (u1+u2)|IXXI           mean_sign=+0.375 (11+/5-)  gamma= 1.375  noise_contribution=0.3187
+    (u0+u3)|YZYZ           mean_sign=+0.375 (11+/5-)  gamma= 1.374  noise_contribution=0.3183
+    (u0+u3)|YZYI           mean_sign=+0.375 (11+/5-)  gamma= 1.374  noise_contribution=0.3183
+    (u3+u4)|XZXZ           mean_sign=+0.375 (11+/5-)  gamma= 1.372  noise_contribution=0.3180
+    (u3+u4)|XZXI           mean_sign=+0.375 (11+/5-)  gamma= 1.372  noise_contribution=0.3180
+
+  -- 5 BEST (slot,label) groups by noise_contribution, for contrast --
+    u_0|YXXY               mean_sign=+1.000 (16+/0-)  gamma= 1.227  noise_contribution=0.0000
+    u_0|IXXI               mean_sign=+1.000 (16+/0-)  gamma= 1.227  noise_contribution=0.0000
+    u_0|YYYY               mean_sign=+1.000 (16+/0-)  gamma= 1.228  noise_contribution=0.0000
+    u_0|IYIY               mean_sign=+1.000 (16+/0-)  gamma= 1.228  noise_contribution=0.0000
+    u_0|YIYI               mean_sign=+1.000 (16+/0-)  gamma= 1.228  noise_contribution=0.0000
+
+  -- gamma (PEC sampling overhead, fixed per group) across all 756 groups --
+    median=1.372  max=1.377  min=1.128
+
+  -- cross-check: is PEC sign-noise the SAME thing as Task 32I/33B's boundary-proximity risk? --
+    Spearman(per-label sign-noise, Task 33B boundary_proximity) across 36 shared labels: rho=-0.231, p=0.1744
+    top-5 by sign-noise:        ['YZYZ', 'YZYI', 'YXXY', 'IXXI', 'XZXZ']
+    top-5 by boundary_proximity: ['ZIZI', 'IZIZ', 'IIZZ', 'ZIIZ', 'IZZI']
+
+  -- HONEST READ --
+    A FIRST VERSION of this diagnostic (ESS on sign*gamma weights) was mathematically guaranteed to report 16.00/16 for every group, because gamma is constant per group in this project's PEC implementation -- that was a broken diagnostic, not a clean result, caught by inspecting raw entries before trusting it.
+    The corrected version: 27/756 (3.6%) of (slot,label) groups have |mean_sign| < 0.5 across their 16 real draws -- i.e. the correction for these groups is closer to a coin flip than a confident signal, even before gamma amplifies whatever that noise is. This is a real, previously undiagnosed, concrete source of the pipeline's known instability (Task 32B's dominant PEC-MC variance, Task 33C's erratic per-k results): with only 16 draws, any group whose true sign-balance is genuinely close to 50/50 will have a highly unstable average, and gamma multiplies that noise directly into the final energy. This is a real, different, and probably more useful lever than Task 33B/33C's per-label damping: for groups with high noise_contribution, MORE real draws (not damping) would directly reduce sign_se (which shrinks as 1/sqrt(n)) -- a concrete, targeted (not blanket) case for extending N_MC beyond 16, but only for the specific high-noise groups identified above, not uniformly.
+
+  Results saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task33d_pec_weight_diagnostics_results.json
+

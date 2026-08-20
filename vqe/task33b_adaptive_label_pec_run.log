@@ -1,0 +1,37 @@
+
+================================================================================================
+  task33b_adaptive_label_pec.py -- per-label damped PEC, damping driven by measured boundary risk
+================================================================================================
+  36 labels have a measured boundary-proximity risk score; 36 exceed Task 32I's own 0.02 weighted-risk flag threshold
+
+  -- IYYI validation across damping k (real literal-twirling ground truth = 1.0) --
+    k=0.0    r_IYYI=1.0000  m_adaptive=-0.9653  |err vs GT|=1.9653
+    k=0.5    r_IYYI=0.9787  m_adaptive=-0.9630  |err vs GT|=1.9630
+    k=1.0    r_IYYI=0.9582  m_adaptive=-0.9608  |err vs GT|=1.9608
+    k=2.0    r_IYYI=0.9198  m_adaptive=-0.9568  |err vs GT|=1.9568
+    k=5.0    r_IYYI=0.8210  m_adaptive=-0.9464  |err vs GT|=1.9464
+    k=10.0   r_IYYI=0.6964  m_adaptive=-0.9332  |err vs GT|=1.9332
+    k=20.0   r_IYYI=0.5342  m_adaptive=-0.9161  |err vs GT|=1.9161
+    k=50.0   r_IYYI=0.3145  m_adaptive=-0.8929  |err vs GT|=1.8929
+    k=100.0  r_IYYI=0.1866  m_adaptive=-0.8794  |err vs GT|=1.8794
+    k=300.0  r_IYYI=0.0710  m_adaptive=-0.8673  |err vs GT|=1.8673
+    (raw m=-0.8598, |err|=1.8598; full ratio-clip k=0 |err|=1.9653 -- Task 32I's number)
+
+  -- MSE sweep: 32 bootstrap replicates per k, real forte-1 data --
+    k=0.0    median=  8.8974  std= 0.4815  MSE=  79.3955  FAIL (|b|+2sigma<0.5)
+    k=0.5    median=  7.2309  std= 0.5116  MSE=  52.5472  FAIL (|b|+2sigma<0.5)
+    k=1.0    median=  5.8006  std= 0.5003  MSE=  33.8968  FAIL (|b|+2sigma<0.5)
+    k=2.0    median=  2.9170  std= 0.7181  MSE=   9.0247  FAIL (|b|+2sigma<0.5)
+    k=5.0    median= 19.3327  std= 0.9524  MSE= 374.6590  FAIL (|b|+2sigma<0.5)
+    k=10.0   median= 40.3028  std= 0.9128  MSE=1625.1472  FAIL (|b|+2sigma<0.5)
+    k=20.0   median= 58.6607  std= 0.7360  MSE=3441.6251  FAIL (|b|+2sigma<0.5)
+    k=50.0   median= 74.2616  std= 0.8234  MSE=5515.4650  FAIL (|b|+2sigma<0.5)
+    k=100.0  median= 81.0692  std= 0.6176  MSE=6572.5957  FAIL (|b|+2sigma<0.5)
+    k=300.0  median= 85.9544  std= 0.7314  MSE=7388.6853  FAIL (|b|+2sigma<0.5)
+
+  MSE-MINIMIZING k* = 2.0  (MSE=9.0247)
+  Task 32G's global-lambda best (lambda=1, == this task's k=0) was MSE=2.33
+  -> PER-LABEL damping (k=2.0) beats full correction (k=0) by 88.6% MSE on this real data -- a real, finer-grained win Task 32G's single global knob could not find, because it damped every label equally.
+
+  Results saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task33b_adaptive_label_pec_results.json
+

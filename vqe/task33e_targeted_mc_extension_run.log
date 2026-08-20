@@ -1,0 +1,49 @@
+
+================================================================================================
+  task33e_targeted_mc_extension.py -- targeted real N_MC extension, 16->64, 10 flagged circuit families
+================================================================================================
+  27 flagged (slot,label) groups from Task 33D -> 10 (slot, basis-group) circuit families need extension
+    (u0+u1)    group1=['YXXY', 'IXXI']
+    (u0+u1)    group3=['YYXX', 'IIXX', 'YYII']
+    (u0+u3)    group9=['YZYZ', 'YZYI']
+    (u1+u2)    group1=['YXXY', 'IXXI']
+    (u2+u5)    group0=['XYYX', 'IYYI']
+    (u3+u4)    group7=['XZXZ', 'XZXI', 'IZIZ', 'IIIZ']
+    (u3+u5)    group7=['XZXZ', 'XZXI', 'IZIZ', 'IIIZ']
+    (u4+u5)    group1=['YXXY', 'IXXI']
+    u_3        group1=['YXXY', 'IXXI']
+    u_3        group4=['XZZX', 'IZZI', 'IIZI', 'IZII']
+
+  connected, backend=ionq_simulator
+  built 480 new twirled circuits (10 families x 48 extra draws)
+  submitting in 6 batches of <= 80 circuits each...
+    batch 1/6 done (80/480 total), 245.5s elapsed
+    batch 2/6 done (160/480 total), 385.4s elapsed
+    batch 3/6 done (240/480 total), 529.6s elapsed
+    batch 4/6 done (320/480 total), 651.2s elapsed
+    batch 5/6 done (400/480 total), 799.4s elapsed
+    batch 6/6 done (480/480 total), 904.0s elapsed
+  extension checkpoint saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\ionq_simulator_binding_curve_checkpoints\task33e_targeted_extension.json
+
+  -- VERIFICATION: sign_se before (16 draws) vs after (merged, up to 64 draws) --
+    27/27 flagged groups: sign_se decreased with more real data
+    (u3+u5)|XZXZ           n:16->64  mean_sign:+0.250->+0.594  sign_se:0.2421->0.1006
+    (u3+u5)|XZXI           n:16->64  mean_sign:+0.250->+0.594  sign_se:0.2421->0.1006
+    (u3+u5)|IZIZ           n:16->64  mean_sign:+0.250->+0.594  sign_se:0.2421->0.1006
+    (u3+u5)|IIIZ           n:16->64  mean_sign:+0.250->+0.594  sign_se:0.2421->0.1006
+    (u4+u5)|IXXI           n:16->64  mean_sign:+0.250->+0.688  sign_se:0.2421->0.0908
+    (u4+u5)|YXXY           n:16->64  mean_sign:+0.250->+0.688  sign_se:0.2421->0.0908
+    u_3|IZZI               n:16->64  mean_sign:+0.375->+0.562  sign_se:0.2318->0.1033
+    u_3|IZII               n:16->64  mean_sign:+0.375->+0.562  sign_se:0.2318->0.1033
+    u_3|IXXI               n:16->64  mean_sign:+0.375->+0.594  sign_se:0.2318->0.1006
+    u_3|IIZI               n:16->64  mean_sign:+0.375->+0.562  sign_se:0.2318->0.1033
+
+  -- VERIFICATION: champion pipeline energy error, extended-where-flagged vs original-everywhere --
+    ORIGINAL (16 everywhere)                      median=  1.2260  std= 0.9559  MSE=   2.4169  FAIL
+    TARGETED-EXTENDED (up to 64 for flagged groups) median=  1.1267  std= 1.1386  MSE=   2.5658  FAIL
+
+  -- HONEST READ --
+    Targeted extension did NOT reduce champion-pipeline MSE (2.417 -> 2.566) despite real sign_se improvement on the flagged groups themselves -- meaning those 27 groups' contribution to total pipeline variance is smaller than the manifold-fit and other-slot variance already documented (Task 32B), or the improvement is real but too small to show up against this pipeline's own run-to-run noise at N_BOOT=24.
+
+  Results saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task33e_targeted_mc_extension_results.json
+

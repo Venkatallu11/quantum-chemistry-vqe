@@ -1,0 +1,162 @@
+{
+  "0": {
+    "submit_time": null,
+    "retrieve_time": null,
+    "note": "predates timestamp recording (Task 31F original)"
+  },
+  "1": {
+    "submit_time": null,
+    "retrieve_time": null,
+    "note": "predates timestamp recording (Task 31F original)"
+  },
+  "2": {
+    "submit_time": null,
+    "retrieve_time": null,
+    "note": "predates timestamp recording (Task 31F original)"
+  },
+  "3": {
+    "submit_time": null,
+    "retrieve_time": null,
+    "note": "predates timestamp recording (Task 31F original)"
+  },
+  "4": {
+    "submit_time": null,
+    "retrieve_time": null,
+    "note": "predates timestamp recording (Task 31F original)"
+  },
+  "5": {
+    "submit_time": null,
+    "retrieve_time": null,
+    "note": "predates timestamp recording (Task 31F original)"
+  },
+  "6": {
+    "submit_time": null,
+    "retrieve_time": null,
+    "note": "predates timestamp recording (Task 31F original)"
+  },
+  "7": {
+    "submit_time": null,
+    "retrieve_time": null,
+    "note": "predates timestamp recording (Task 31F original)"
+  },
+  "8": {
+    "submit_time": 1786911457.7805252,
+    "retrieve_time": 1786912207.9142458,
+    "wall_clock_s": 750.1337206363678
+  },
+  "9": {
+    "submit_time": 1786912273.4765482,
+    "retrieve_time": 1786912978.8075237,
+    "wall_clock_s": 705.3309755325317
+  },
+  "10": {
+    "submit_time": 1786913024.2537892,
+    "retrieve_time": 1786924648.1291354,
+    "wall_clock_s": 11623.875346183777
+  },
+  "11": {
+    "submit_time": 1786970620.7784617,
+    "retrieve_time": 1786971514.9344196,
+    "wall_clock_s": 894.1559579372406
+  },
+  "12": {
+    "submit_time": 1786971543.6312988,
+    "retrieve_time": 1786972168.887392,
+    "wall_clock_s": 625.2560932636261
+  },
+  "13": {
+    "submit_time": 1786972194.130213,
+    "retrieve_time": 1786973445.6364286,
+    "wall_clock_s": 1251.5062155723572
+  },
+  "14": {
+    "submit_time": 1786973469.918486,
+    "retrieve_time": 1786974245.8559484,
+    "wall_clock_s": 775.9374623298645
+  },
+  "15": {
+    "submit_time": 1786974268.7033064,
+    "retrieve_time": 1786974937.7686746,
+    "wall_clock_s": 669.0653681755066
+  },
+  "16": {
+    "submit_time": 1786974962.6071928,
+    "retrieve_time": 1786975526.6855028,
+    "wall_clock_s": 564.0783100128174
+  },
+  "17": {
+    "submit_time": 1786975552.91031,
+    "retrieve_time": 1786976244.5609217,
+    "wall_clock_s": 691.6506116390228
+  },
+  "18": {
+    "submit_time": 1786976267.4191844,
+    "retrieve_time": 1786977538.7511232,
+    "wall_clock_s": 1271.3319387435913
+  },
+  "19": {
+    "submit_time": 1786977564.756692,
+    "retrieve_time": 1786978313.1824455,
+    "wall_clock_s": 748.4257535934448
+  },
+  "20": {
+    "submit_time": 1786983800.737937,
+    "retrieve_time": 1786984583.4134057,
+    "wall_clock_s": 782.6754686832428
+  },
+  "21": {
+    "submit_time": 1786984615.480742,
+    "retrieve_time": 1786985209.1998491,
+    "wall_clock_s": 593.7191071510315
+  },
+  "22": {
+    "submit_time": 1786985240.5001998,
+    "retrieve_time": 1786985906.3231204,
+    "wall_clock_s": 665.8229205608368
+  },
+  "23": {
+    "submit_time": 1786985936.6576452,
+    "retrieve_time": 1786986520.67055,
+    "wall_clock_s": 584.012904882431
+  },
+  "24": {
+    "submit_time": 1786986551.8674524,
+    "retrieve_time": 1786987249.123218,
+    "wall_clock_s": 697.2557656764984
+  },
+  "25": {
+    "submit_time": 1786987277.169085,
+    "retrieve_time": 1786987905.7843368,
+    "wall_clock_s": 628.6152517795563
+  },
+  "26": {
+    "submit_time": 1786987931.0457983,
+    "retrieve_time": 1786988483.499043,
+    "wall_clock_s": 552.4532446861267
+  },
+  "27": {
+    "submit_time": 1786988506.5660381,
+    "retrieve_time": 1786989107.612788,
+    "wall_clock_s": 601.046749830246
+  },
+  "28": {
+    "submit_time": 1786989131.4495938,
+    "retrieve_time": 1786989723.4308598,
+    "wall_clock_s": 591.9812660217285
+  },
+  "29": {
+    "submit_time": 1786989752.9601612,
+    "retrieve_time": 1786990449.6167433,
+    "wall_clock_s": 696.6565821170807
+  },
+  "30": {
+    "submit_time": 1786990477.1319282,
+    "retrieve_time": 1786991171.6179695,
+    "wall_clock_s": 694.4860413074493
+  },
+  "31": {
+    "submit_time": 1786991196.6615171,
+    "retrieve_time": 1786991775.5078297,
+    "wall_clock_s": 578.8463125228882
+  }
+}

@@ -1,0 +1,36 @@
+
+================================================================================================
+  task33c_adaptive_label_pec_champion.py -- per-label damping on the ACTUAL champion pipeline
+================================================================================================
+  boundary_proximity computed for 36 labels (median=0.1685)
+  loaded Task 31C's real checkpoint: 16 MC draws/label available
+
+  -- k sweep: 24 bootstrap replicates per k, champion (literal-twirling+manifold) pipeline --
+  k=0.0: running 24 bootstrap replicates...
+    k=0.0    median=  1.9226  std= 1.0150  MSE=   4.7265  FAIL (|b|+2sigma<0.5)
+  k=0.5: running 24 bootstrap replicates...
+    k=0.5    median=  2.4432  std= 6.8709  MSE=  53.1778  FAIL (|b|+2sigma<0.5)
+  k=1.0: running 24 bootstrap replicates...
+    k=1.0    median=  0.8952  std= 1.2594  MSE=   2.3876  FAIL (|b|+2sigma<0.5)
+  k=2.0: running 24 bootstrap replicates...
+    k=2.0    median=  2.2716  std= 1.2678  MSE=   6.7672  FAIL (|b|+2sigma<0.5)
+  k=5.0: running 24 bootstrap replicates...
+    k=5.0    median=  3.2256  std= 7.4287  MSE=  65.5899  FAIL (|b|+2sigma<0.5)
+  k=10.0: running 24 bootstrap replicates...
+    k=10.0   median=  4.1076  std= 7.1546  MSE=  68.0611  FAIL (|b|+2sigma<0.5)
+  k=20.0: running 24 bootstrap replicates...
+    k=20.0   median=  4.3041  std= 1.1965  MSE=  19.9565  FAIL (|b|+2sigma<0.5)
+  k=50.0: running 24 bootstrap replicates...
+Traceback (most recent call last):
+  File "C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task33c_adaptive_label_pec_champion.py", line 204, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task33c_adaptive_label_pec_champion.py", line 162, in main
+    errs = np.array([fut.result() for fut in futures])
+                     ~~~~~~~~~~^^
+  File "C:\Python313\Lib\concurrent\futures\_base.py", line 456, in result
+    return self.__get_result()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Python313\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+concurrent.futures.process.BrokenProcessPool: A process in the process pool was terminated abruptly while the future was running or pending.

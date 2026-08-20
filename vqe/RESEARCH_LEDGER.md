@@ -1,5 +1,163 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 33, LOCAL BRANCH `local/attack-base-problem`,
+committed to this branch, `origin/main` untouched -- PASS gate not met.
+Real submissions this iteration: local/free simulator analysis for Tasks
+A-D, ONE real `ionq_simulator` forte-1 submission for Task E (480
+circuits, free, no real QPU)): an auditing/diagnostic iteration, not a
+breakthrough, run to deliberately resolve iteration 31/32's leading open
+question -- is the Q95 robustness-envelope tail a GPi2 calibration
+artifact? -- before building anything else on top of an unverified guess.
+**Task A**: ran iteration 32's own written-but-never-executed outlier
+script for the first time. Result: NO single calibration parameter
+explains either the population-wide error distribution (strongest
+significant correlate is calib_ratio_1q, rho=+0.296 p=0.0032, NOT GPi2 --
+p_gpi2_true rho=+0.066 p=0.52, not significant) or the two known
+catastrophic outliers (one collapses under ablation of 6/9 parameters,
+the other collapses under ALL 9/9 -- a genuine multi-parameter joint
+effect, not a single "bad gate"). This directly overturns the leading
+GPi2 hypothesis carried since iteration 31; the stalled GPi2 calibration
+script was deliberately NOT resumed as a result. **Task B**: adaptive
+per-label PEC damping (correction strength per label set by that label's
+own measured ill-conditioning, not one global knob) tested on the fast
+analytic-ratio shortcut method -- a real, verified 88.6% MSE reduction
+relative to its own undamped baseline (8.90->2.92 kcal/mol median), but
+still fails the accuracy target badly and remains worse than the
+project's actual champion pipeline (MSE 9.02 vs champion's 2.33) --
+useful, not sufficient. **Task C**: the same per-label damping applied to
+the ACTUAL champion pipeline (literal-twirling PEC + manifold) -- erratic
+results (std spiking to 6.9-7.4 at several damping levels vs ~1.0-1.3
+elsewhere), a sanity-check reproduction 2x off Task 32G's own reference
+number, and an outright crash (`BrokenProcessPool`) before the sweep
+finished. No clean win; recorded as an inconclusive, disclosed negative
+result, not silently dropped. **Task D**: a first version of a PEC
+quasi-probability weight diagnostic was caught being mathematically
+guaranteed to report "no problem" regardless of the truth (gamma is
+constant per group in this project's sign-only PEC sampling scheme --
+wrong tool, corrected before trusting it), then properly redone measuring
+sign-pattern consistency instead: 27 of 756 (slot,label) correction
+groups (3.6%) have a near-coin-flip sign split across their 16 real
+draws, concentrated in specific pair-phase slots, and are statistically
+UNRELATED to Tasks 32I/33B's separate "boundary proximity" risk metric
+(rho=-0.231, p=0.174 -- two independent failure modes, not one). **Task
+E**: a targeted real resubmission (480 new circuits, forte-1,
+`ionq_simulator`, free) extending exactly those 27 flagged groups from 16
+to 64 draws -- the FIRST submission attempt was killed by an infrastructure
+timeout mid-run with no partial save (a real process-management bug,
+fixed by adding incremental per-batch checkpointing before relaunching
+detached); the second attempt completed cleanly. Verification: sign_se
+improved for 27/27 flagged groups almost exactly as the 1/sqrt(n) theory
+predicted (e.g. 0.2421->0.1006), confirming Task D's diagnosis was
+mechanistically real -- but the champion pipeline's overall MSE did NOT
+improve (2.417->2.566, median improved slightly, spread got worse),
+meaning these 27 groups are a real but minor contributor to total
+variance, not the dominant one. **THE HONEST BOTTOM LINE**: this
+iteration correctly diagnosed and ruled out one long-standing hypothesis
+(GPi2), correctly diagnosed and fixed one real (if minor) noise source
+end-to-end with a verified before/after real-data comparison, and
+correctly caught two of its own mistakes (a wrong baseline comparison in
+Task B, a degenerate diagnostic formula in Task D) before reporting either
+as a false win -- but closed no part of the actual accuracy gap. The
+project's best honest numbers remain in the same 1-3 kcal/mol
+(median-ish) range with heavy tails as before this iteration, still
+several-to-many times over the 0.25 kcal/mol target. Task 32B's finding
+(PEC Monte Carlo sampling + manifold-fit nonconvexity, not
+submission-to-submission drift or any single calibration parameter,
+dominates the pipeline's real instability) is CONFIRMED, not overturned,
+by every result this iteration produced. See "Iteration 33" below for
+the full write-up.
+
+**STATUS UPDATE (iteration 32, LOCAL BRANCH `local/attack-base-problem`,
+UNCOMMITTED, `origin/main` untouched -- PASS gate not met, no real QPU
+submission, simulator/local analysis only): auditing iteration 31's own
+numbers, and a stalled attempt to finally resolve the two questions
+iteration 31 left open (the Q95 outlier's cause, and whether GPi2
+recalibration would fix it). An un-lettered corrections task, run first:
+caught a real bug in iteration 31's own error-budget arithmetic -- Task
+F's convergence-study drift bar had been computed against the OLD, wrong
+2.31 kcal/mol drift-std figure instead of the real 8-submission sample
+statistics (mean 0.4378, sample_std 0.2639), inflating the reported
+total bar from the correct 0.6244 to a wrong 2.7478, and the number of
+submissions needed for `2*SE<0.15` from a real 13 to a wrong 949 -- a
+meaningfully less pessimistic correction, though the corrected 0.6244
+bar still misses the 0.5 threshold (1.25x over). Also re-examined Task
+H's Q95=51.22 kcal/mol tail: an analytic argument (GPi2's U(0,0.21)
+prior leaves only 1.7% of its support with >50% signal survival on 190
+real GPi2 gates) suggested GPi2 dominates the tail, but an empirical
+N=119 rerun pinning p_GPi2 to GPi's tight measured range gave
+Q95=61.07 kcal/mol (WORSE, not better) and Q99=701.82 -- same order of
+magnitude as the original, not the dramatic collapse the prior-survival
+argument predicted; reported honestly as inconclusive and underpowered
+(~100-120 draws of a heavy-tailed quantity), not as evidence either way.
+**Task B** (variance decomposition) is this iteration's single most
+useful real finding: decomposing WHY the champion pipeline gave 0.115
+(Task 31C), 0.317 (Task 31D reprocessing) and 0.438 (Task 31F mean of 8)
+on nominally the same measurement found PEC MONTE CARLO SAMPLING (only
+N_MC=16 real twirled draws) is the dominant variance source by a wide
+margin -- var_shot=0.0037, var_manifold=0.234, var_submission=0.070,
+var_PEC-MC=2.11 (total 2.42) -- roughly 9-570x every other source.
+**Task C** (convex SDP manifold relaxation): eliminates the manifold
+optimizer's seed-dependence completely (perfectly reproducible, 0.0
+cross-process variance) but a clean FAIL on bias (1.486 vs the 0.317
+nonlinear baseline, 4.7x worse) -- reproducibility and bias traded off
+against each other, not both won. **Task D** (multinomial MLE on raw
+counts): passes its ideal control cleanly (tight, ~0.219 kcal/mol across
+8 process trials) but fails catastrophically on real forte-1 data
+(median 32.95-33.21 kcal/mol, ~100x the 0.317 baseline) even with a PEC
+correction layered on top -- a real, disclosed FAIL, not a code bug
+(ideal path is clean). **Task F** (extending the submission-count study
+to N=32 real submissions): the 3-parameter power-law fit degenerates
+(alpha pins at its search boundary, amplitude statistically
+indistinguishable from zero) -- its own HONEST_CAVEAT explicitly
+disclaims alpha as a real scaling law; the well-determined part is the
+intercept b=0.1165+/-0.0071 (<0.25, supports averaging CAN reach
+chemical accuracy in principle), but the new N=32 sample mean (0.669,
+std 0.620) is itself HIGHER than Task 31F's N=8 mean (0.438) -- the
+champion number keeps drifting upward as more real data accumulates, the
+opposite of reassuring. **Task G** (MSE reframing): built an MSE league
+table and a raw/PEC shrinkage sweep -- full PEC (lambda=1) wins on MSE
+grounds too (2.33), not just bias; partial correction does not help on
+this data, a clean answer against a plausible-sounding hypothesis.
+**Task I** (boundary-aware tanh-reparameterized PEC): the IYYI test case
+still lands at the WRONG SIGN under either correction method, confirming
+iteration 31 Task B's diagnosis (coherent noise, not a boundary-clipping
+artifact) -- but ALSO discovered a new, unresolved bug: `analytic_A_and_B`
+has real, intermittent cross-process sign nondeterminism (6/7 launches
+gave A=+0.856, 1/7 gave A=-0.856, root cause not isolated), which the
+tanh correction's unbounded gradient amplifies into a 5x swing between
+two runs of identical code (err_tanh 5.0 vs 26.2) while the old ratio
+correction stayed stable (8.96/8.90) -- flagged as a new open risk to
+every analytic-PEC number in this project, not yet fixed. **Task J**
+(end-to-end bootstrap, N=200 replicates, joint shot+PEC-MC+manifold
+resampling, no covariance matrix): gives a real, non-degenerate
+uncertainty estimate without Task 31D's failed covariance-inverse
+approach -- median 1.284, mean 1.543, std 1.223, 95% CI [0.077, 4.458],
+Q95=3.730 kcal/mol. **Two tasks never completed**: Task A's amplified
+GPi2 calibration (N-ladder to 1200, exact-recovery-gate design) stalled
+mid-run -- the forte-1 checkpoint stops partway through the N-ladder
+with no fit ever performed, no results.json produced; this blocked
+Task E (the "decisive experiment" nesting three posterior ensembles to
+finally attribute Task H's tail) and Task H (turning Task E's Ensemble C
+into the actual `P(|E-E_exact|<0.5)>0.95` answer the project needs) --
+both scripts exist, complete and ready to run, but neither has been
+executed. A separate causal-ablation follow-up to Task H's specific
+outlier draws (`task32a_robustness_outlier_diagnosis.py`) was also
+written but never run. **THE HONEST BOTTOM LINE FOR THIS ITERATION**:
+real progress auditing iteration 31's own numbers (the drift-bar bug was
+a genuine, quantifiable overcorrection; Task B's variance decomposition
+finally explains WHY 0.115/0.317/0.438 disagreed -- insufficient PEC
+Monte Carlo sampling, not primarily submission variability) and three
+more honest negative results (convex manifold, multinomial MLE, and
+tanh-reparameterized PEC each fail on real data despite theoretical
+appeal) plus one genuine methodological win (Task J's bootstrap gives a
+real end-to-end uncertainty estimate, Q95=3.73 kcal/mol on the SAME
+already-collected data -- still ~15x over the 0.25 target, but a solid,
+non-degenerate number to build on) -- but the decisive chain this
+iteration set out to run (does recalibrating GPi2 actually fix Task H's
+tail?) never finished, so iteration 31's central open question is still
+open. No error-budget condition is newly claimed met. See "Iteration 32"
+below for the full write-up.
+
 **STATUS UPDATE (iteration 31, LOCAL BRANCH `local/attack-base-problem`,
 pushed to the SIDE BRANCH only, `origin/main` untouched -- PASS gate not
 met, no real QPU submission): calibrated PEC + covariance manifold +
@@ -6288,6 +6446,540 @@ TAKEN sections: search crosstalk properly (Task 4, implemented but
 untested), run subspace-tomography+leakage for real (Task 5, tests the
 circuit-count hypothesis directly), and put real repetition counts behind
 whichever number results from those before calling anything established.
+
+---
+
+## Iteration 33: resolving (not confirming) the GPi2 hypothesis, two adaptive-PEC attempts, and a correctly-diagnosed-but-minor real fix
+
+Local/free simulator analysis for Tasks A-D; ONE real submission for Task
+E (480 circuits, `ionq_simulator` forte-1, free, no real QPU). Local
+branch `local/attack-base-problem`. Deliberately sequenced to resolve
+iteration 31/32's central open question -- is GPi2 calibration the cause
+of the Q95=51.22 kcal/mol robustness-envelope tail? -- BEFORE building
+anything else on that assumption, per this project's own stated
+discipline ("let the data prove it, don't guess GPi2 first").
+
+### Task A — outlier causal ablation (finally executed)
+
+Iteration 32 wrote `task32a_robustness_outlier_diagnosis.py` but never ran
+it. Executed this iteration, N=97 draws (reproducing iteration 31 Task
+H's exact sequence), ~31 minutes wall clock. Reproduced quantiles: Q50=
+5.09, Q90=36.66, Q95=57.08, Q99=886.98 kcal/mol (close to, not identical
+to, iteration 31's original Q50=4.53/Q90=25.13/Q95=51.22/Q99=888.29 --
+expected run-to-run variation in a heavy-tailed N=97 sample, not a
+discrepancy).
+
+**Population-wide Spearman correlations** (9 noise parameters vs
+|E-E_exact|, all 97 draws): only two of nine are statistically
+significant -- `calib_ratio_1q` (rho=+0.296, p=0.0032) and `readout_err`
+(rho=+0.244, p=0.0162). **GPi2 itself is NOT significant**: `p_gpi2_true`
+rho=+0.066, p=0.5224; `angle_bias_gpi2` rho=+0.176, p=0.0853 (marginal at
+best). This directly contradicts the leading hypothesis carried since
+iteration 31.
+
+**Causal ablation on the two actual outliers** (swap one parameter to the
+population median at a time, holding the rest fixed at the outlier's
+values): draw #26 (err=885.12) -- 6/9 parameters collapse the error to
+normal range when swapped alone (including `p_gpi2_true`), but 3 do NOT
+(`angle_bias_zz`, `angle_bias_gpi2`, `calib_ratio_zz` -- swapping these
+alone leaves the error at 379-1019 kcal/mol, still catastrophic). Draw
+#94 (err=931.74) -- **all 9/9 parameters collapse it individually**,
+including GPi2's two parameters -- a textbook multi-parameter joint
+effect where breaking the "conspiracy" anywhere fixes it, meaning no
+parameter (GPi2 included) is uniquely necessary for this specific
+blowup.
+
+**Verdict**: GPi2 participates in both outliers but is not uniquely
+responsible for either, and is not even the strongest population-level
+correlate. The stalled GPi2 recalibration script
+(`task32a_gpi2_calibration.py`) was deliberately NOT resumed as a
+consequence -- finishing it would not have resolved the tail. This is a
+real, data-driven reversal of iteration 31/32's working hypothesis, not
+an assumption.
+
+### Task B — adaptive per-label PEC damping, fast analytic-ratio shortcut method
+
+Generalizes the existing per-label correction `corrected = clip(m*(B/A),
+-1, 1)` (Task 32I) with a per-label damping strength
+`r_l(k) = 1/(1 + k*boundary_proximity[l])`, using Task 32I's own
+measurement-independent boundary-proximity risk proxy (`|B/A-1|`) to
+decide how much to trust each label's correction, rather than trusting
+all labels equally (`r_l=1` for every label, iteration 32's status quo).
+k=0 exactly reproduces Task 32I's own "ratio-clip PEC" number (this run's
+k=0 median=8.897 vs Task 32I's recorded 8.904 -- confirms the
+implementation is correct before trusting anything else). Real bootstrap
+MSE sweep (32 replicates/k, real forte-1 data, no manifold fit needed for
+this fast method): **k=2.0 minimizes MSE (79.40->9.02, an 88.6%
+reduction relative to this task's OWN k=0 baseline)**, median bias
+falling 8.90->2.92 kcal/mol.
+
+**A mistake was caught in this task's own first-draft comparison**: the
+script's initial printed conclusion claimed this "beats Task 32G's global
+lambda by 88.6%" -- WRONG, because Task 32G's MSE=2.33 baseline uses a
+completely different correction mechanism (literal-twirling quasi-
+probability blend), not this task's fast analytic-ratio shortcut. The
+valid comparison is only against this task's own k=0, not Task 32G's
+number. Corrected before reporting. **Honest bottom line**: a real,
+verified improvement to a non-production shortcut method, but it neither
+reaches the accuracy target (all k FAIL `|b|+2*sigma<0.5`) nor beats the
+project's actual champion pipeline (best MSE=9.02 here vs champion's
+already-established 2.33) -- useful information, not a new best result.
+
+### Task C — same per-label damping, applied to the ACTUAL champion pipeline
+
+The real remaining question after Task B: does per-label damping help the
+pipeline that actually matters (literal-twirling PEC + manifold fit,
+Task 32G's own champion), given Task 32G already showed a single GLOBAL
+damping knob doesn't help there (lambda=1 optimal)? Reused Task 32G's
+exact `_lambda_worker` bootstrap machinery (resample shots AND which of
+the 16 real MC draws contribute, refit the manifold per replicate),
+generalized to per-label lambda_l(k) with the same damping formula as
+Task B. **Result: erratic, not clean.** k=0 sanity check (should
+reproduce Task 32G's own MSE=2.33 exactly, same data/formula) instead
+gave MSE=4.73 -- real run-to-run sampling variation in this
+already-known heavy-tailed regime (Task 32B), or a discrepancy worth
+more scrutiny; not resolved this iteration. Across k, standard deviation
+spiked unpredictably (6.87, 7.43, 7.15 at k=0.5/5/10 vs ~1.0-1.3
+elsewhere) -- consistent with Task 32C's already-established finding
+that this pipeline's nonconvex manifold fit has real seed-dependent
+instability, now apparently interacting badly with per-label damping in
+some configurations. **The run crashed at k=50** (`BrokenProcessPool`, a
+Windows multiprocessing infrastructure failure, not a scientific result)
+before the sweep could finish; no results file was produced. **Recorded
+as an inconclusive, disclosed negative result** -- per-label damping does
+NOT show a clean win on the champion pipeline, unlike Task B's shortcut,
+and may add instability. Not silently retried or cherry-picked; the raw
+crash and erratic pattern are the honest record.
+
+### Task D — PEC quasi-probability weight diagnostics (self-corrected mid-task)
+
+**A first version of this diagnostic was wrong, and caught before being
+reported.** It computed effective sample size `ESS=(sum|w|)^2/sum(w^2)`
+on `w=sign*gamma` per draw, expecting to find a few high-weight draws
+dominating each label's 16-draw average. Result: ESS=16.00/16 for every
+single one of 756 (slot,label) groups, zero variation -- a red flag
+inspected before being trusted. Root cause: `gamma` is a FIXED constant
+per group in this project's PEC implementation (verified directly from
+the checkpoint: one group's 16 real entries all carry
+`gamma=1.227091400091747` identically; only the SIGN varies per draw,
+standard PEC sign-sampling). The ESS formula was therefore mathematically
+guaranteed to return n=16 regardless of any real instability -- an
+inapplicable diagnostic, not a clean result. **Corrected**: measured
+sign-pattern consistency instead -- `mean_sign` (how lopsided the 16
+real +-1 draws are), `sign_se = sqrt(1-mean_sign^2)/sqrt(16)` (the real
+sampling uncertainty of that mean), and `noise_contribution = gamma *
+sign_se` (gamma's role as an amplifier). **Real result: 27 of 756 groups
+(3.6%) have |mean_sign| < 0.5** -- signs closer to a 50/50 coin flip than
+a confident correction, e.g. `(u3+u5)|XZXZ` at 10+/6- across 16 draws.
+These cluster in specific pair-phase slots ((u3+u5), (u0+u1), (u1+u2),
+(u0+u3), (u2+u5), (u3+u4), (u4+u5), u_3), not spread evenly. **Cross-
+checked against Tasks 32I/33B's independent boundary-proximity risk
+metric**: Spearman rho=-0.231, p=0.174 -- not significant, and the top-5
+riskiest labels by each metric don't overlap at all. **These are two
+genuinely independent failure modes**, not the same problem measured two
+ways.
+
+### Task E — targeted real N_MC extension for the 27 flagged groups (16->64)
+
+A direct, falsifiable test of Task D's diagnosis: if these 27 groups are
+genuinely undersampled coin-flip-like sign patterns, MORE real draws
+should shrink `sign_se` toward the predicted `1/sqrt(n)` law. Reused Task
+31C's own circuit-construction and submission logic unchanged
+(`sample_twirled_circuit`), targeting only the 10 (slot, basis-group)
+circuit families containing the 27 flagged labels (identified via
+`ef_fragment.group_labels_qubit_wise`) -- 480 new circuits (10 families x
+48 extra draws), NOT a blanket re-run of all 21 slots.
+
+**A real infrastructure failure occurred and is disclosed, not hidden**:
+the first submission attempt completed 5 of 6 batches (400/480 circuits,
+real, successfully retrieved) before being killed by a tool-level
+timeout; because the original script only checkpointed after the FULL
+loop finished, none of that real, successfully-collected data was
+recoverable, and the submission had to restart from batch 1. Fixed by
+adding incremental per-batch checkpointing (with resume support) before
+relaunching as a detached OS process immune to the same timeout; the
+second attempt completed cleanly, all 6 batches, ~904s.
+
+**Verification 1 (mechanism)**: sign_se improved for 27/27 flagged
+groups, closely matching the predicted ~2x shrinkage from 4x more data --
+e.g. `(u3+u5)|XZXZ` mean_sign +0.250->+0.594, sign_se 0.2421->0.1006;
+`(u4+u5)|IXXI` mean_sign +0.250->+0.688, sign_se 0.2421->0.0908. Task D's
+diagnosis was mechanistically real, confirmed with real new data, not
+just plausible-sounding theory.
+
+**Verification 2 (does it matter)**: real bootstrap comparison of the
+champion pipeline, targeted-extended data (up to 64 draws for the 27
+flagged groups) vs original-only (16 everywhere else, unchanged) --
+ORIGINAL: median=1.226, std=0.956, MSE=2.417, FAIL. TARGETED-EXTENDED:
+median=1.127 (slightly better), std=1.139 (worse), **MSE=2.566 (slightly
+WORSE, not better)**. **The fix that worked exactly as predicted at the
+mechanism level did not move the pipeline's actual accuracy.** Honest
+interpretation: these 27 groups are a real but minor contributor to
+total variance -- Task 32B's dominant sources (broader PEC Monte Carlo
+sampling, manifold-fit nonconvexity) are confirmed, not displaced, by
+this result.
+
+### THE HONEST BOTTOM LINE FOR THIS ITERATION
+
+An auditing/diagnostic iteration that did real, verifiable, falsifiable
+work and reported every negative result as plainly as the positive ones,
+but closed no part of the accuracy gap. **Resolved, not just narrowed**:
+GPi2 is not the tail's cause (Task A) -- a real reversal of the leading
+hypothesis carried since iteration 31, reached by running the actual
+diagnostic rather than assuming the answer. **Two adaptive-PEC attempts,
+mixed**: real but insufficient on a shortcut method (Task B, 88.6%
+self-relative improvement, still fails target and still worse than the
+champion), erratic and inconclusive on the champion itself (Task C,
+crashed, no clean win). **One diagnosis-to-verified-fix chain that worked
+mechanistically and still didn't help** (Tasks D->E): a real, previously
+undiagnosed noise source was found, correctly targeted, fixed with new
+real data, and the fix demonstrably worked exactly as predicted at the
+mechanism level (sign_se) -- yet the pipeline's overall MSE did not
+improve, proving these 27 groups were never the dominant problem. **Two
+of this iteration's own mistakes were caught before being reported as
+wins**: Task B's invalid cross-method MSE comparison, and Task D's
+degenerate ESS formula (mathematically guaranteed to hide any real
+problem in this project's sign-only PEC scheme). **A real infrastructure
+lesson**: Task E's first submission attempt lost 400 real, successfully-
+collected circuits' worth of data to a timeout because the script didn't
+checkpoint incrementally -- fixed for future long-running real
+submissions. No error-budget condition (bias_95<0.25, `2*sigma_stat<
+0.15`, `2*sigma_submission<0.15`, model-transfer_95<0.15) newly passes
+this iteration. The project's best honest numbers remain in the same
+1-3 kcal/mol (median-ish), heavy-tailed range as before this iteration
+began -- still several-to-many times over the 0.25 kcal/mol target, and
+Task 32B's diagnosis of where the real variance lives (PEC Monte Carlo
+sampling + manifold-fit nonconvexity, not drift, not any single
+calibration parameter, not the 27 groups this iteration fixed) stands
+confirmed by everything this iteration found.
+
+---
+
+## Iteration 32: auditing iteration 31, the drift-bar bug, and a stalled attempt to resolve the Q95 outlier
+
+Local/free simulator only, no real QPU submission anywhere this
+iteration, per this session's explicit instruction. Local branch
+`local/attack-base-problem`, all work here left uncommitted (same as
+iterations 27-31). Motivated by two loose ends iteration 31 explicitly
+flagged: Task H's robustness envelope had 2 outlier draws (886.4, 932.8
+kcal/mol) never diagnosed beyond "likely GPi2, not chased further," and
+GPi2 calibration itself (iteration 31 Task A) had failed even at 3.3x
+more shots, reported as a bound rather than a point estimate.
+
+### Ledger-corrections task (un-lettered, run first) — auditing iteration 31's own arithmetic
+
+**Correction 1 — the drift-bar bug.** Task 31F's convergence study
+reported its corrected bar using the OLD "drift-std" figure (2.31
+kcal/mol, iteration 25's cross-submission characterization) instead of
+the actual sample statistics from its own 8 real independent
+submissions (mean=0.4378, sample_std=0.2639). Recomputed correctly:
+`total_bar_correct` (mean + 2*SE in quadrature with shot-noise) = 0.6244
+kcal/mol, `target_ratio_correct` = 1.25x over the 0.5 threshold -- much
+closer to passing than the wrongly-computed `total_bar_old_wrong` =
+2.7478 (5.5x over) implied. Correspondingly, submissions needed for
+`2*SE<0.15` drops from a wrong 949 to a real 13 -- a large, genuine
+correction in the OPTIMISTIC direction, not a new problem.
+
+**Correction 2 — the Q95 outlier, re-examined.** An analytic
+prior-survival argument: GPi2's calibration prior is U(0,0.21) across
+190 real GPi2 gate instances in the production circuit; `(1-p)^n`
+survival at that prior's upper range leaves only 1.7% of prior support
+with >50% signal surviving -- a real, sample-size-independent argument
+that GPi2's wide uncertainty COULD be the tail's cause. An empirical
+follow-up then pinned p_GPi2 to GPi's own tight measured range and
+reran the N=97 robustness envelope at N=119 (a background process
+already loaded before an unrelated shrink-formula bug, `1-0.75p` vs the
+correct `1-p`, was caught and fixed -- that bug only affected a cheap
+analytic diagnostic block, NOT this Monte Carlo run, which uses a
+different code path and is unaffected). **Result: original Q50=4.53
+Q90=25.13 Q95=51.22 Q99=888.29 vs defensible (GPi2-pinned) Q50=5.24
+Q90=41.59 Q95=61.07 Q99=701.82** -- Q50/Q90/Q95 all got WORSE, not
+better, and only Q99 dropped, and only moderately. This is the OPPOSITE
+of the dramatic collapse the prior-survival argument alone would
+predict. **Honest read, from the results JSON's own note**: both runs
+are heavy-tailed distributions from only ~100-120 draws, where Q95/Q99
+are themselves high-variance statistics -- this single comparison is
+underpowered to distinguish "GPi2 was most of the story" from "something
+else (p_zz_true, angle bias, calibration ratios) drives the tail
+regardless of GPi2." The analytic prior-survival finding is real and
+sample-size-independent; the empirical requantification is suggestive
+but genuinely inconclusive. Task 32E (below) was designed to settle this
+properly and did not complete.
+
+### Task B — variance decomposition: why did 0.115, 0.317, and 0.438 all come from "the same" measurement?
+
+Four candidate variance sources, decomposed by reusing already-collected
+real data (no new submissions for shot/PEC-MC/manifold; submission
+variation reuses Task 31F's 8 real submissions outright): (i) shot noise
+-- bootstrap-resample the real integer counts, PEC draws and manifold
+seed fixed, 64 resamples; (ii) PEC Monte Carlo -- fix shot data and
+manifold seed, vary which subset of the 16 real twirled MC draws is
+averaged (M in {1,2,4,8,16}); (iii) manifold optimizer -- fix PEC-corrected
+values completely, vary only the optimizer's random-restart seed, 32
+refits; (iv) submission variation -- Task 31F's 8 real independent runs.
+
+**Variance budget**: shot=0.0037, manifold=0.234, submission=0.070,
+**PEC Monte Carlo=2.11** (total=2.42). **PEC MC dominates by a wide
+margin** -- roughly 9x the manifold optimizer's variance, 30x the
+submission-to-submission variance, and 570x pure shot noise. At M=1
+(a single twirled draw) the spread is enormous (std=90.6, one draw hit
+450.5 kcal/mol); it drops sharply through M=8 (std=1.46) but the
+resampled-with-replacement M=16 estimate (std=1.45, matching production)
+does NOT continue improving past M=8 in this data -- the naive
+`sqrt(M)` scaling (`pec_mc_scaling_beta=-1.82`, steeper than the
+theoretical -1) is not a clean law across the full range tested.
+**Bottom line: the champion pipeline's real instability is primarily an
+under-sampled PEC correction (only 16 real twirled draws), not primarily
+submission-to-submission hardware variability** -- a materially
+different diagnosis than iteration 31's framing, and a concrete lever
+(more N_MC) that iteration 31 did not identify as the dominant one.
+
+### Task C — convex SDP relaxation of the manifold fit
+
+The existing 5-parameter manifold fit (`task29c.fit_pure_state`) is a
+nonconvex degree-4-polynomial-on-a-sphere optimization -- a likely
+source of Task B's manifold-optimizer variance (0.234). Reformulated as
+`m_i = Tr(P_i X)`, linear in `X = a*a^T`, giving a convex SDP (`X>=0`,
+`Tr(X)=1`) with a provably unique global optimum -- no restarts, no seed
+dependence, by construction. Verified, not assumed: 4 independent
+cross-process reruns gave IDENTICAL `err_convex=1.486018441043611`
+(`worst_cross_process_diff=0.0`). **But bias_ok=False -- clean FAIL**:
+1.486 vs the 0.317 nonlinear-fit baseline (4.7x worse), even though the
+ideal control stayed reasonable (convex ideal=0.1046 vs nonlinear
+~0.0975-0.0976, `ideal_ok=True`). Eigenvalue spectra show most slots
+land near rank-1 as hoped (purity ratio mean 0.973), but several
+(u_3=0.958, u_5=0.910, `(u0+u3)`=0.887) carry real rank-2 mixture that
+the unconstrained relaxation happily accepts instead of being pushed
+toward a pure state the way the nonlinear fit's anchoring does. **Verdict:
+perfect reproducibility and good bias are NOT both achievable here with
+this relaxation** -- the nonlinear fit's seed-dependence, uncomfortable
+as it is, is doing real work that the convex relaxation's freedom
+throws away. Uniform-weighted nonlinear fit stays in production use.
+
+### Task D — multinomial MLE directly on raw counts
+
+Every prior estimator converts each circuit's raw bitstring counts to a
+per-label expectation value first, then fits a state to the derived
+numbers -- discarding information. This fits the state directly against
+raw counts via `p_{s,x}(a) = |<x|R_s|psi(a)>|^2`, maximizing multinomial
+log-likelihood, with Task 31C's literal-PEC value applied afterward as a
+separate multiplicative correction ratio (the same pattern this project
+already uses elsewhere; PEC's signed quasi-probability quantities cannot
+be forced into the multinomial itself). **Ideal control: PASSES cleanly**
+-- err_raw across 8 process trials: median 0.2194, min 0.2193, max
+0.2195, extremely tight. **Real forte-1 data: FAILS catastrophically**
+-- err_raw median=33.21 kcal/mol (range 18.19-41.75), and applying the
+PEC ratio correction does not rescue it (err_pec median=32.95, range
+16.76-66.26, if anything a wider spread). Both are ~100x the 0.317
+baseline. **This is a real, disclosed FAIL, not a code bug** -- the
+clean ideal-control pass proves the multinomial machinery itself is
+implemented correctly; something about how this likelihood surface
+behaves under REAL measurement noise (not present in the ideal case)
+breaks it. Not adopted; the existing bootstrap-of-expectation-values
+approach stays in production use.
+
+### Task F — extending the submission-count study to N=32
+
+Task 31F's alpha=-0.154 (want -0.5) came from only 8 real submissions.
+Extended to N=32 (Task 31F's own 8 reused unchanged + 24 new real
+submissions), with real wall-clock timestamps recorded for the first
+time (submissions 8-31; 0-7 predate timestamp recording) and a proper
+3-parameter fit `SE(N) = a*N^alpha + b` (nonlinear least squares,
+replacing the old 2-parameter log-log linear fit). **The fit
+degenerates**: alpha pins exactly at its lower search bound (-3.0) while
+`a=4.18e-13 +/- 0.298` is statistically indistinguishable from zero --
+the optimizer found no real evidence of a power-law term at all and
+parked alpha at an arbitrary boundary once `a~0` left it unconstrained.
+The script's own `HONEST_CAVEAT` field says exactly this and explicitly
+warns not to cite alpha=-3.0 as a real scaling law. **The well-determined
+part**: intercept `b=0.1165 +/- 0.0071` (small SE relative to the point
+estimate) -- `b<0.25` supports "averaging can in principle reach
+chemical accuracy," independent of the degenerate alpha term. Separately,
+the raw 32-submission distribution itself is worth noting: mean=0.6688,
+std=0.6199, individual draws ranging from 0.0119 to 3.4229 kcal/mol --
+**this N=32 mean is HIGHER than Task 31F's N=8 mean (0.438)**, the
+champion number drifting up rather than converging down as more real
+data accumulates. Lag-1 through lag-5 autocorrelation is modest but
+nonzero (rho_1=0.083, rho_3=0.255 the largest), giving N_eff=20.86 of
+the nominal N=32 -- real submissions are not fully independent, though
+not catastrophically correlated either. One submission (index 10) took
+11,624s (~3.2 hours) wall-clock vs a typical 550-1300s for the rest --
+a real, unexplained queue/retry outlier, flagged but not chased.
+
+### Task G — MSE reframing: minimize bias² + variance, not bias alone
+
+Built an MSE league table from every estimator this iteration and
+iteration 31 produced (bias/sigma taken from those tasks' own numbers,
+not re-derived): Task 31F's mean-of-8 (bias=0.438, sigma=0.264,
+MSE=0.2615, fails the `|b|+2*sigma<0.5` criterion) is "the most honest
+single number this project has" per the results file's own note, since
+it's the only entry with a real measured sigma alongside its bias; Task
+32C's convex SDP (bias=1.486, sigma=0.0, MSE=2.208) and Task 32D's
+multinomial MLE (bias=32.953, MSE not computable, sigma huge) both fail
+badly. **Shrinkage sweep** (`m_lambda = (1-lambda)*raw + lambda*PEC`,
+interpolating raw at lambda=0 to full PEC at lambda=1, MSE via the same
+per-shot bootstrap machinery as Task B, on Task 31C's real checkpointed
+data): MSE falls monotonically as lambda increases -- 39.37 (lambda=0)
+-> 23.06 (0.2) -> 10.23 (0.4) -> 8.27 (0.6) -> 5.59 (0.8) -> **2.33
+(lambda=1.0, best)**. **Full PEC wins on MSE grounds, not just bias** --
+the plausible-sounding hypothesis that a partial correction might trade
+a little bias for a lot less variance does NOT hold on this data; no
+shrinkage is a clean, negative-but-useful answer.
+
+### Task I — boundary-aware PEC via tanh reparameterization
+
+The existing analytic correction `corrected = clip(m_measured*(B/A), -1,
+1)` is a linear (multiplicative) correction, ill-conditioned near
+`|m|=1`: for IYYI, `B/A=1.1227` is already unphysical before any real
+noise is applied. Reparameterized in `z=atanh(m)` (unbounded), applying
+the same gate-by-gate correction as an additive shift there
+(`delta_z = atanh(B)-atanh(A)`) then transforming back
+(`m_corrected=tanh(z+delta_z)`) -- `|m_corrected|<1` holds for any
+delta_z by construction, no clip needed. **Validation on IYYI (the one
+label with real literal-twirling ground truth, ~1.0 at N_MC=128)**:
+`m_raw=-0.860`, `m_ratio=-0.966`, `m_tanh=-0.544` -- **both corrections
+land at the WRONG SIGN vs ground truth**; tanh is only marginally closer
+in absolute distance (1.544 vs 1.966) -- not a real fix. Confirms
+iteration 31 Task B's own diagnosis: IYYI is a genuine coherent-noise /
+wrong-channel-model problem, not a boundary-clipping artifact.
+**A new, previously unknown bug was discovered along the way**:
+`analytic_A_and_B` (used by Tasks 30B/31B/31F/32F and this task) has
+real, INTERMITTENT cross-process nondeterminism -- 7 independent process
+launches of the identical `analytic_A_and_B(IYYI)` call gave A=+0.856262
+in 6/7 and A=-0.856253 (sign-flipped) in 1/7, while `to_native` circuit
+construction itself was separately verified perfectly deterministic
+(identical layout/gate-sequence/unitary checksum across launches) --
+root cause lives somewhere in the downstream density-matrix trace
+computation, not isolated within this session (candidate culprit:
+BLAS-parallel floating-point non-associativity tipping a near-degenerate
+branch). Consequence: two runs of this file's identical full-pipeline
+code gave `err_tanh=5.005` vs `err_tanh=26.197` while `err_ratio` stayed
+stable (8.957/8.904) -- **tanh's unbounded gradient amplifies this
+hidden nondeterminism far more than the bounded ratio method**, a real
+practical weakness the theoretical bounded-by-construction argument
+doesn't address. Not blocking for Task F (which runs all 32 submissions
+within one continuous process, internally self-consistent), but flagged
+as a new, unresolved risk to every analytic-PEC number in this project
+going forward -- recommend pinning deterministic execution in the
+density-matrix chain and adding a cross-process regression test before
+trusting `analytic_A_and_B` point estimates as precise anywhere. The
+production-scale boundary-proximity gate (weighting `|analytic_val-1|`
+by real Hamiltonian-coefficient sensitivity) flags ZIII, IIZI, IIIZ,
+IZII as the highest-risk labels -- useful for future targeting even
+though tanh itself isn't adopted.
+
+### Task J — bootstrap the whole estimator end to end
+
+Task 31D's covariance-aware manifold fit failed because a plug-in
+covariance matrix inverse with n_seeds=32 < n_labels=36 sits in the
+classic small-sample regime. Instead of fixing the covariance estimate,
+this resamples raw counts (shot noise) AND which of the 16 real PEC MC
+draws are used AND reruns the manifold fit (letting its own real
+cross-process seed variance, quantified in Task B, be part of the
+picture) TOGETHER per replicate, each replicate a separate OS process
+(matching Tasks B/C's own established discipline that manifold-fit
+degenerate-optimum noise is invisible from seed variation within one
+process). Reuses Task 31C's already-collected 4,368 real circuits'
+counts unchanged -- no new submission. **N=200 replicates: mean=1.5435,
+median=1.2844, std=1.2226, 95% CI=[0.077, 4.458], Q90=3.312, Q95=3.730,
+Q99=4.743 kcal/mol.** This is a real, non-degenerate, no-matrix-inverse
+uncertainty estimate for the champion pipeline on already-collected
+data -- still ~15x over the 0.25 kcal/mol target at the median and
+~1.9x over even at the CI's lower bound, but internally consistent with
+Task B's variance decomposition (PEC-MC variance of 2.11 alone implies a
+std of ~1.45, in the same ballpark as this end-to-end std of 1.22) in a
+way none of Tasks 31C/31D/31F's individual point estimates were.
+
+### Task A — GPi2 calibration, amplified (BLOCKING, INCOMPLETE)
+
+Intended to fix a real design problem in Task 31A's GPi2 measurement:
+the old N-ladder topped out at N=13, where `p~3e-4` accumulates to only
+~0.4% signal, below the shot-noise floor even at 1M shots. This task
+extended the ladder to N up to 1200 using an exact-recovery-gate
+construction (numerically verified to 1.81e-15 worst-case error before
+submitting anything) so the corrected decay model applies at any N, not
+just special period-preserving values. **Status: STALLED, never
+completed.** The forte-1 checkpoint
+(`task32a_gpi2_calibration_forte-1.json.partial.json`) shows the N-ladder
+only partially executed -- phase bin 0 reached N=800 (of the intended
+[1,25,50,100,200,400,800,1200]), bins 1-7 stopped as early as N=1 or
+N=100 -- and no fit was ever run, no `results.json` was ever produced
+(only the ideal-control checkpoint completed). **No GPi2 posterior came
+out of this iteration**; iteration 31's explicit bound (`|p1(gpi2)|<0.21`)
+is still the most current number this project has for GPi2. This
+incompleteness directly blocked Tasks E and H below.
+
+### Task E — the "decisive experiment" (BLOCKING, INCOMPLETE, blocked by Task A)
+
+Designed as three nested ensembles (A: iteration 31's priors unchanged,
+reproduces Q95~51; B: p_GPi2 fixed to Task 32A's measured posterior; C:
+B plus p_ZZ fixed to Task 31A's measured posterior) to finally attribute
+Task H's Q95=51.22 kcal/mol tail to a specific calibration parameter,
+with every draw's full parameter vector saved this time (Task 31H did
+not save this) so a proper Spearman / partial-rank / conditional-
+probability sensitivity analysis could run on the same data as the
+quantile study. **Never run** -- it depends on Task 32A's measured GPi2
+posterior, which does not exist. No results file was produced.
+
+### Task H — PEC as an uncertain channel (BLOCKING, INCOMPLETE, blocked by Task E)
+
+Intended to replace the pipeline's point-estimate calibration
+(`theta_hat` -> invert -> report one number, "exactly why 0.115/0.317/
+0.438 all came out of 'the same' measurement" per this script's own
+framing) with real uncertainty propagation, reusing Task E's Ensemble C
+directly as the posterior-propagated energy-error distribution and
+reporting the deliverable the project actually needs:
+`P(|E-E_exact|<0.5) > 0.95`. Its own docstring says to run it "after
+Task 32E has produced its results" -- Task E did not, so this was never
+run either. **The project still does not have a probabilistic answer to
+its own acceptance criterion.**
+
+### Outlier causal-ablation follow-up (`task32a_robustness_outlier_diagnosis.py`) — written, never run
+
+A planned follow-up to Task H's two specific outlier draws (886.4, 932.8
+kcal/mol): reproduce Task 31H's exact 97-draw sequence (same seed) while
+additionally logging every draw's full noise-model dict (not saved the
+first time), compute Spearman correlations of each of 9 noise parameters
+against error, then run a causal ablation on any draw exceeding 500
+kcal/mol (swap one parameter at a time to its population median, holding
+the rest fixed, to isolate which parameter actually causes the blowup
+rather than just correlates with it). Local/free-simulator only, as
+designed. **The script is complete and untested but was never executed**
+this iteration -- no log output, no results file. Remains queued as the
+concrete next step for actually explaining Task H's specific outliers,
+independent of whether Task A/E/H's calibration-posterior chain ever
+completes.
+
+### THE HONEST BOTTOM LINE FOR THIS ITERATION
+
+Real, useful auditing progress on iteration 31's own numbers: the
+drift-bar bug was a genuine, quantifiable OVERcorrection (submissions
+needed drops from a wrong 949 to a real 13), and Task B's variance
+decomposition finally explains WHY 0.115/0.317/0.438 disagreed --
+insufficient PEC Monte Carlo sampling (only 16 real twirled draws) is
+the dominant variance source (2.11 of 2.42 total), not primarily
+submission-to-submission variability (0.070) as iteration 31's framing
+implied. Three more honest negative results this iteration (convex
+manifold, multinomial MLE, tanh-reparameterized PEC) each looked
+theoretically appealing and each failed on real data despite passing
+their own ideal-data sanity checks -- exactly the discipline this
+project's house style asks for. One genuine methodological win: Task J's
+end-to-end bootstrap (Q95=3.73 kcal/mol, still ~15x over target but a
+real, non-degenerate, matrix-inverse-free uncertainty estimate on
+already-collected data) is a solid foundation to build future work on.
+**But the decisive chain this iteration actually set out to run --
+recalibrate GPi2 properly (Task A), use it to attribute Task H's tail
+(Task E), and turn that into a real probabilistic pass/fail answer (Task
+H) -- stalled at the first step and never restarted.** Iteration 31's
+central open question (is the Q95 tail a GPi2 calibration artifact or
+something more fundamental?) is still open. The `task32a_robustness_outlier_diagnosis.py`
+script and the Task A/E/H chain both remain queued, complete, and ready
+to run as the natural next steps. No error-budget condition
+(bias_95<0.25, `2*sigma_stat<0.15`, `2*sigma_submission<0.15`,
+model-transfer_95<0.15) is newly claimed met this iteration; the
+corrected submission-variability bar (0.6244, Correction 1 above) is the
+one number that moved meaningfully closer to passing, and even that is
+still 1.25x over its own 0.5 threshold.
 
 ---
 

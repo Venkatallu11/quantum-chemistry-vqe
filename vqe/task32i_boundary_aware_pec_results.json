@@ -1,0 +1,247 @@
+{
+  "iyyi_validation": {
+    "A": 0.8562615938977249,
+    "B": 0.9613297826935285,
+    "m_raw": -0.8601449999999999,
+    "m_ratio": -0.9656897049077399,
+    "m_tanh": -0.5440637834872527,
+    "ground_truth": 1.0,
+    "tanh_improved": true,
+    "honest_read": "both corrections land at the WRONG SIGN vs ground truth (-0.96 vs +1.0) -- tanh is only marginally closer (1.544 vs 1.966 absolute diff), not a real fix. Confirms Task 31B's own diagnosis: IYYI is a genuine coherent-noise/wrong-channel-model problem, not a boundary-clipping problem."
+  },
+  "DISCOVERED_NONDETERMINISM": {
+    "summary": "A new, previously-unknown finding: analytic_A_and_B (used by Task 30B/31B/31F/32F and this task) has real but INTERMITTENT cross-process nondeterminism -- verified `to_native` itself is perfectly deterministic (identical layout, gate sequence, and unitary checksum across process launches), so the nondeterminism lives somewhere in the downstream density-matrix trace computation, root cause NOT isolated within this session's time budget.",
+    "evidence": "7 independent process launches of the identical analytic_A_and_B(IYYI) call: 6/7 gave A=+0.856262 (positive), 1/7 gave A=-0.856253 (negative) -- rare, not 50/50, but real and reproducible as a phenomenon.",
+    "consequence_for_this_task": "the two script runs of this file's FULL PIPELINE section gave err_tanh=5.005 (first run) vs err_tanh=26.197 (second run, corrected ideal-control) for IDENTICAL code -- while err_ratio stayed stable at 8.957/8.904 across the same two runs. This suggests tanh's unbounded gradient near the atanh boundary AMPLIFIES this upstream nondeterminism far more than the bounded ratio method does -- a real, disclosable practical weakness of the tanh approach that the theoretical bounded-by-construction argument does not address.",
+    "consequence_for_task_32F": "Task 32F runs all 32 submissions within ONE continuous process, so it is internally self-consistent (whatever A/B this process happens to land on is used uniformly across all 32 submissions) -- not blocking, but flagged for follow-up since it means Task 32F's numbers could differ from a re-run in a fresh process for reasons unrelated to genuine hardware variability.",
+    "recommendation": "pin explicit seeds/deterministic execution paths in the density-matrix simulation chain (candidate culprits: BLAS-parallel floating-point non-associativity in DensityMatrix.evolve's matrix multiplication tipping a near-degenerate branch) and add a cross-process determinism regression test before trusting analytic_A_and_B-derived numbers as precise point estimates anywhere in this project.",
+    "err_tanh_run1": 5.005, "err_tanh_run2_corrected_ideal": 26.197, "err_ratio_run1": 8.957, "err_ratio_run2": 8.904
+  },
+  "full_pipeline": {
+    "err_raw": 89.15496196345502,
+    "err_ratio": 8.903988837795502,
+    "err_tanh": 26.1966685199432
+  },
+  "ideal_control": {
+    "err_ideal_ratio": 1.2149835429503146,
+    "err_ideal_tanh": 1.2149835429503146
+  },
+  "flagged_labels": [
+    {
+      "label": "ZIII",
+      "boundary_proximity": 0.22284851074768253,
+      "weight": 587.584386402383,
+      "weighted": 130.94230544836188
+    },
+    {
+      "label": "IIZI",
+      "boundary_proximity": 0.23663747397759236,
+      "weight": 342.1019683380847,
+      "weighted": 80.95414563028665
+    },
+    {
+      "label": "IIIZ",
+      "boundary_proximity": 0.10910494720458898,
+      "weight": 464.2391320425497,
+      "weighted": 50.6507859918066
+    },
+    {
+      "label": "IZII",
+      "boundary_proximity": 0.13642029409197814,
+      "weight": 341.5083340778249,
+      "weighted": 46.58866736975839
+    },
+    {
+      "label": "ZIZI",
+      "boundary_proximity": 0.4836568981773129,
+      "weight": 56.36603371181398,
+      "weighted": 27.2618210276138
+    },
+    {
+      "label": "IZIZ",
+      "boundary_proximity": 0.48114027289637695,
+      "weight": 53.0499597680716,
+      "weighted": 25.52447211995179
+    },
+    {
+      "label": "YZYI",
+      "boundary_proximity": 0.17039968555070412,
+      "weight": 103.5451408288418,
+      "weighted": 17.644059437538015
+    },
+    {
+      "label": "XZXI",
+      "boundary_proximity": 0.1672258583263352,
+      "weight": 103.5451408288418,
+      "weighted": 17.315425050624327
+    },
+    {
+      "label": "ZIIZ",
+      "boundary_proximity": 0.2591094112763962,
+      "weight": 66.81137217944213,
+      "weighted": 17.311455311983448
+    },
+    {
+      "label": "IYZY",
+      "boundary_proximity": 0.15860288767422986,
+      "weight": 97.11939909844948,
+      "weighted": 15.403417146200084
+    },
+    {
+      "label": "IIZZ",
+      "boundary_proximity": 0.3516300907429683,
+      "weight": 43.69820348651742,
+      "weighted": 15.365603257268814
+    },
+    {
+      "label": "IXZX",
+      "boundary_proximity": 0.15638284317476334,
+      "weight": 97.11939909844948,
+      "weighted": 15.187807758440076
+    },
+    {
+      "label": "ZZII",
+      "boundary_proximity": 0.24773714868184524,
+      "weight": 49.848405994579146,
+      "weighted": 12.349301967432039
+    },
+    {
+      "label": "IZZI",
+      "boundary_proximity": 0.24893858739082597,
+      "weight": 48.70750017027962,
+      "weighted": 12.125176287727825
+    },
+    {
+      "label": "YYII",
+      "boundary_proximity": 0.07429172678310991,
+      "weight": 142.26700329203368,
+      "weighted": 10.569261338823564
+    },
+    {
+      "label": "XXII",
+      "boundary_proximity": 0.07292342884662803,
+      "weight": 142.26700329203368,
+      "weighted": 10.374597691789614
+    },
+    {
+      "label": "IIYY",
+      "boundary_proximity": 0.07290666969619426,
+      "weight": 140.90738540984066,
+      "weighted": 10.273088205829595
+    },
+    {
+      "label": "IIXX",
+      "boundary_proximity": 0.07224181365269483,
+      "weight": 140.90738540984066,
+      "weighted": 10.179405079066159
+    },
+    {
+      "label": "YZZY",
+      "boundary_proximity": 0.07786121792308269,
+      "weight": 73.44483242618949,
+      "weighted": 5.71850410285983
+    },
+    {
+      "label": "XZZX",
+      "boundary_proximity": 0.0778612179230718,
+      "weight": 73.44483242618949,
+      "weighted": 5.71850410285903
+    },
+    {
+      "label": "IXXI",
+      "boundary_proximity": 0.04359414186293715,
+      "weight": 121.6147448227057,
+      "weighted": 5.301690438425934
+    },
+    {
+      "label": "IYYI",
+      "boundary_proximity": 0.04359414186283365,
+      "weight": 121.6147448227057,
+      "weighted": 5.301690438413346
+    },
+    {
+      "label": "YYYY",
+      "boundary_proximity": 0.20428075989336691,
+      "weight": 15.322669425889924,
+      "weighted": 3.130126553915654
+    },
+    {
+      "label": "XXXX",
+      "boundary_proximity": 0.20340760394039145,
+      "weight": 15.322669425889924,
+      "weighted": 3.116747473890963
+    },
+    {
+      "label": "YIYI",
+      "boundary_proximity": 0.14300893130274273,
+      "weight": 16.029881156290664,
+      "weighted": 2.2924161730711017
+    },
+    {
+      "label": "XIXI",
+      "boundary_proximity": 0.1408404480882706,
+      "weight": 16.029881156290664,
+      "weighted": 2.257655644853702
+    },
+    {
+      "label": "IYIY",
+      "boundary_proximity": 0.148119362885263,
+      "weight": 13.835927372928829,
+      "weighted": 2.049368747404989
+    },
+    {
+      "label": "IXIX",
+      "boundary_proximity": 0.1459398127442276,
+      "weight": 13.835927372928829,
+      "weighted": 2.019212649947966
+    },
+    {
+      "label": "XXYY",
+      "boundary_proximity": 0.21142236489487942,
+      "weight": 8.176519613259208,
+      "weighted": 1.7286991132446266
+    },
+    {
+      "label": "YYXX",
+      "boundary_proximity": 0.20914575985569478,
+      "weight": 8.176519613259208,
+      "weighted": 1.7100844074900887
+    },
+    {
+      "label": "XYYX",
+      "boundary_proximity": 0.20137117294513768,
+      "weight": 7.146149812630714,
+      "weighted": 1.4390285698111227
+    },
+    {
+      "label": "YXXY",
+      "boundary_proximity": 0.200768643013676,
+      "weight": 7.146149812630714,
+      "weighted": 1.4347228006543036
+    },
+    {
+      "label": "ZYZY",
+      "boundary_proximity": 0.16139595029778955,
+      "weight": 7.049731675789697,
+      "weighted": 1.1377981431585065
+    },
+    {
+      "label": "ZXZX",
+      "boundary_proximity": 0.15918766248336502,
+      "weight": 7.049731675789697,
+      "weighted": 1.1222303066038974
+    },
+    {
+      "label": "YZYZ",
+      "boundary_proximity": 0.1650210503995737,
+      "weight": 6.457632470454538,
+      "weighted": 1.0656452933688019
+    },
+    {
+      "label": "XZXZ",
+      "boundary_proximity": 0.16280492061711263,
+      "weight": 6.457632470454538,
+      "weighted": 1.05133434172684
+    }
+  ]
+}

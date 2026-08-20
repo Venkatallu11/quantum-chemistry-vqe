@@ -1,0 +1,80 @@
+
+================================================================================================
+  task32a_robustness_outlier_diagnosis.py -- iteration 32 Task A (LOCAL/FREE SIMULATOR ONLY)
+================================================================================================
+  N=97 (fixed to match iteration 31 Task H's actual run, not re-derived from timing)
+    10/97 done, 318.6s elapsed, last err=11.01
+    20/97 done, 501.0s elapsed, last err=2.12
+    30/97 done, 690.4s elapsed, last err=6.47
+    40/97 done, 884.2s elapsed, last err=20.23
+    50/97 done, 1072.7s elapsed, last err=1.33
+    60/97 done, 1260.7s elapsed, last err=5.10
+    70/97 done, 1457.6s elapsed, last err=4.42
+    80/97 done, 1661.6s elapsed, last err=0.39
+    90/97 done, 1861.8s elapsed, last err=0.35
+
+  -- reproduced quantiles (should match iteration 31 Task H: Q50=4.53 Q90=25.13 Q95=51.22 Q99=888.29) --
+    Q50 = 5.0911 kcal/mol
+    Q90 = 36.6596 kcal/mol
+    Q95 = 57.0829 kcal/mol
+    Q99 = 886.9836 kcal/mol
+
+  -- Spearman correlation: each noise-model parameter vs |E-E_exact| across all 97 draws --
+    p_zz_true         rho=-0.068  p=0.5057
+    p_gpi_true        rho=-0.003  p=0.9805
+    p_gpi2_true       rho=+0.066  p=0.5224
+    angle_bias_zz     rho=-0.003  p=0.9736
+    angle_bias_gpi    rho=+0.042  p=0.6833
+    angle_bias_gpi2   rho=+0.176  p=0.0853
+    readout_err       rho=+0.244  p=0.0162
+    calib_ratio_zz    rho=-0.014  p=0.8923
+    calib_ratio_1q    rho=+0.296  p=0.0032
+
+  -- 2 draw(s) exceed 500.0 kcal/mol: indices [26, 94] --
+
+  draw #26: err=885.12 kcal/mol
+    full model: {
+      "p_zz_true": 0.01988195867284269,
+      "p_gpi_true": 0.0003791746518808961,
+      "p_gpi2_true": 0.14301581157499946,
+      "angle_bias_zz": -0.002432417384136506,
+      "angle_bias_gpi": 0.0014887801977931617,
+      "angle_bias_gpi2": 0.0022138345866070303,
+      "readout_err": 0.018175475888203927,
+      "calib_ratio_zz": 1.0006005209390139,
+      "calib_ratio_1q": 1.1437379498669484
+}
+      swap p_zz_true        (draw=+0.01988 -> median=+0.01556)  ->  err=   37.37 kcal/mol  <-- COLLAPSES toward normal range
+      swap p_gpi_true       (draw=+0.00038 -> median=+0.00036)  ->  err=   14.19 kcal/mol  <-- COLLAPSES toward normal range
+      swap p_gpi2_true      (draw=+0.14302 -> median=+0.10232)  ->  err=    2.82 kcal/mol  <-- COLLAPSES toward normal range
+      swap angle_bias_zz    (draw=-0.00243 -> median=+0.00005)  ->  err= 1019.33 kcal/mol
+      swap angle_bias_gpi   (draw=+0.00149 -> median=+0.00004)  ->  err=   18.01 kcal/mol  <-- COLLAPSES toward normal range
+      swap angle_bias_gpi2  (draw=+0.00221 -> median=+0.00010)  ->  err=  379.44 kcal/mol
+      swap readout_err      (draw=+0.01818 -> median=+0.00824)  ->  err=    2.13 kcal/mol  <-- COLLAPSES toward normal range
+      swap calib_ratio_zz   (draw=+1.00060 -> median=+0.98661)  ->  err=  549.68 kcal/mol
+      swap calib_ratio_1q   (draw=+1.14374 -> median=+1.00977)  ->  err=    1.73 kcal/mol  <-- COLLAPSES toward normal range
+
+  draw #94: err=931.74 kcal/mol
+    full model: {
+      "p_zz_true": 0.015748866861317053,
+      "p_gpi_true": 0.00040592792766603464,
+      "p_gpi2_true": 0.1452163012808018,
+      "angle_bias_zz": 0.003295338486640647,
+      "angle_bias_gpi": -0.001965222846569386,
+      "angle_bias_gpi2": -0.00025510009487536133,
+      "readout_err": 0.017246276045680183,
+      "calib_ratio_zz": 1.1125158373278343,
+      "calib_ratio_1q": 0.9677746661958161
+}
+      swap p_zz_true        (draw=+0.01575 -> median=+0.01556)  ->  err=   45.86 kcal/mol  <-- COLLAPSES toward normal range
+      swap p_gpi_true       (draw=+0.00041 -> median=+0.00036)  ->  err=   23.83 kcal/mol  <-- COLLAPSES toward normal range
+      swap p_gpi2_true      (draw=+0.14522 -> median=+0.10232)  ->  err=    7.23 kcal/mol  <-- COLLAPSES toward normal range
+      swap angle_bias_zz    (draw=+0.00330 -> median=+0.00005)  ->  err=   29.48 kcal/mol  <-- COLLAPSES toward normal range
+      swap angle_bias_gpi   (draw=-0.00197 -> median=+0.00004)  ->  err=    5.58 kcal/mol  <-- COLLAPSES toward normal range
+      swap angle_bias_gpi2  (draw=-0.00026 -> median=+0.00010)  ->  err=    8.71 kcal/mol  <-- COLLAPSES toward normal range
+      swap readout_err      (draw=+0.01725 -> median=+0.00824)  ->  err=    6.16 kcal/mol  <-- COLLAPSES toward normal range
+      swap calib_ratio_zz   (draw=+1.11252 -> median=+0.98661)  ->  err=   23.21 kcal/mol  <-- COLLAPSES toward normal range
+      swap calib_ratio_1q   (draw=+0.96777 -> median=+1.00977)  ->  err=    6.21 kcal/mol  <-- COLLAPSES toward normal range
+
+  Results saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task32a_robustness_outlier_diagnosis_results.json
+
