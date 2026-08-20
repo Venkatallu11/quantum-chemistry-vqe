@@ -1,0 +1,22 @@
+
+================================================================================================
+  task35e_cross_fitted_manifold.py -- cross-fitted vs same-sample H4 manifold reconstruction
+================================================================================================
+  loaded Task 31C's real checkpoint: 16 MC draws/label, 21 slots (split 8+8 per trial for cross-fitting)
+
+  -- running 32 paired trials (SAME trial produces both same-sample and cross-fitted energy, for a fair paired comparison) --
+
+  SAME-SAMPLE (standard, full 16 draws, self bilinear):  median=1.6206  std=1.4249  MSE=4.6565
+  CROSS-FITTED (8+8 split, cross bilinear):               median=1.8939  std=515.3765  MSE=265616.5137
+
+  PAIRED per-trial difference (same_sample_err - cross_fitted_err): mean=-131.4320  std=515.1602
+  cross-fitting had LOWER error in 15/32 trials (not a consistent direction -- likely just added independent noise)
+
+  -- HONEST READ --
+    bias:     NOT reduced (1.6206 -> 1.8939)
+    variance: INCREASED (1.4249 -> 515.3765)
+    MSE:      INCREASED (4.6565 -> 265616.5137)
+    -> Cross-fitting does NOT win on MSE here (5704147.2% worse) -- the bias reduction (if any) is outweighed by each half-fit's higher variance from using half the data. The same-sample bias mechanism may be real but small relative to this pipeline's dominant PEC-MC variance (Task 32B), which cross-fitting does not address at all.
+
+  Results saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task35e_cross_fitted_manifold_results.json
+

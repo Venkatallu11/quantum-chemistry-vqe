@@ -32,7 +32,19 @@ local pilots, not a directly-measured full-pipeline result; confirming
 it requires either broader local testing across more labels or real
 `ionq_simulator` re-collection using the new stratified sampling design
 (existing collected data used naive IID, cannot be reanalyzed into this
-gain after the fact). See "Iteration 35" below for the full write-up.
+gain after the fact). **Task E (cross-fitted manifold reconstruction,
+targeting the same-sample nonlinear-estimator bias mechanism
+`Tr(P*Sigma)` implicated in the 0.115/0.317/0.438 reproducibility
+problem)**: a real, decisive NO. Splitting each slot's 16 real draws into
+independent 8+8 halves and reconstructing via the symmetrized cross
+bilinear form removes the same-sample bias term in principle, but in
+practice destabilizes the already-fragile nonconvex manifold fit
+(Task 32C's known issue) -- 2/32 real bootstrap trials produced
+catastrophic blowups (2094, 2101 kcal/mol) that same-sample reconstruction
+never showed (0/32); even robustly excluding those outliers, cross-
+fitting wins on median (1.50 vs 1.62) but LOSES on mean/std/IQR and wins
+only 15/30 trials -- essentially a coin flip, not a real improvement.
+See "Iteration 35" below for the full write-up.
 
 **STATUS UPDATE (iteration 34, LOCAL BRANCH `local/attack-base-problem`,
 committed, `origin/main` untouched -- PASS gate not met. All local/free,
@@ -6640,6 +6652,54 @@ the 756 label-groups (cheap, no new submissions), or (b) real
 -- the currently-collected Task 31C checkpoint used naive IID sampling
 throughout and cannot be reanalyzed into this gain after the fact.
 
+### Task E — cross-fitted manifold reconstruction: a real, decisive NO
+
+Targets a DIFFERENT mechanism than Tasks B/C: not PEC-MC sampling
+variance, but a same-sample nonlinear-estimator BIAS this project's own
+history plausibly implicates in the 0.115-vs-0.317-vs-0.438
+reproducibility problem. `build_full_from_a` (task29c_manifold_
+estimator.py) reconstructs every label as a SELF bilinear form
+`a_hat @ P @ a_hat` of ONE state vector that is ITSELF a nonlinear
+(L-BFGS) fit of the SAME noisy data -- for such a plug-in estimator,
+`E[a_hat^T P a_hat] = mu^T P mu + Tr(P*Sigma)` in general, an extra bias
+term from the fit's own sampling covariance that ordinary averaging does
+not remove. Fix tested: split each of the 21 kept slots' 16 real draws
+into independent 8+8 halves, fit `a_hat_A`/`a_hat_B` separately, and
+reconstruct via the SYMMETRIZED CROSS bilinear form `(a_A^T P a_B +
+a_B^T P a_A)/2` -- for independent A,B this removes the Tr(P*Sigma) term
+exactly, since Cov(a_hat_A, a_hat_B)=0 by construction.
+
+**32 real paired bootstrap trials** (same trial produces both the
+standard same-sample energy and the cross-fitted energy, from Task 31C's
+real checkpoint, for a fair comparison), `max_workers=2` (this project's
+now-standard workaround for the recurring `BrokenProcessPool`
+infrastructure issue on this machine). **Naive summary looked
+catastrophic**: cross-fitted std=515.4 vs same-sample std=1.4 (MSE
+"increased" by 5.7 million percent) -- but this number was NOT taken at
+face value. Diagnosed before reporting: exactly 2/32 trials produced
+astronomical blowups (2094, 2101 kcal/mol), the same heavy-tailed pattern
+this project has hit repeatedly elsewhere (Task 31h's Q99 outliers, Task
+32C's known nonconvex-fit instability). **Robust re-analysis, excluding
+those 2 trials**: cross-fitting's median is marginally BETTER (1.50 vs
+1.62), but its mean (2.31 vs 1.79), std (2.35 vs 1.40), and IQR (2.31 vs
+1.57) are all WORSE, and it wins on only 15/30 individual trials --
+statistically indistinguishable from a coin flip, not a real, consistent
+improvement. **And same-sample reconstruction showed ZERO catastrophic
+outliers in this same test (0/32) where cross-fitting showed 2/32 (6.2%)
+-- a new, real tail-risk cost cross-fitting introduces, not one it
+removes.**
+
+**Mechanism, understood not just observed**: halving the data per half
+(8 draws instead of 16) makes each half-fit substantially more exposed
+to `fit_pure_state`'s already-documented nonconvex-optimization
+instability (Task 32C) -- the bias-removal benefit of cross-fitting is
+real in principle but is outweighed here by a real increase in each
+half's own estimation variance, and occasionally by outright bad local
+optima that the full-data fit is less likely to hit. **Verdict: cross-
+fitting does not solve the reproducibility problem for this estimator --
+if anything, it trades a modest, unconfirmed bias-reduction mechanism
+for a real, measured increase in tail risk.** Not adopted.
+
 ### THE HONEST BOTTOM LINE FOR THIS ITERATION
 
 The best real result this project has found since iteration 31: a
@@ -6651,10 +6711,20 @@ signal to stratify, disclosed rather than hidden behind an averaged
 headline number. Projected full-pipeline impact is real and meaningful
 (~29% std reduction) but does not, on its own, reach chemical accuracy --
 still 2-4x over target at the median and an order of magnitude over at
-the tail. Cross-fitting (Task 35E) and the confidence-constrained energy
-SDP (Task 35F) from the same proposal remain untested this iteration,
-genuine future work, not abandoned. No error-budget condition newly
-passes on real (only projected) numbers.
+the tail. **Cross-fitting (Task 35E), tested this iteration, is a real,
+decisive rejection** -- a second confirmation (after Task 33C's per-label
+damping) that this pipeline's nonconvex manifold fit is fragile enough
+that ANY technique reducing its effective per-fit sample size tends to
+destabilize it faster than the technique's intended benefit can
+compensate. The confidence-constrained energy SDP (Task 35F) from the
+same proposal remains untested, genuine future work, not abandoned -- and
+structurally different from both B/C (targets PEC-MC variance) and E
+(targets manifold-fit bias): it replaces the fragile nonconvex fit
+entirely with a convex SDP relaxation and reports an interval rather than
+a fragile point estimate, so Task E's specific failure mode (nonconvex-
+fit instability under reduced sample size) may not apply to it the same
+way. No error-budget condition newly passes on real (only projected)
+numbers.
 
 ---
 
