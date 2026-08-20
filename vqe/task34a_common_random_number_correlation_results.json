@@ -1,0 +1,35 @@
+{
+  "slot": "(u0+u1)",
+  "label": "IYYI",
+  "folds": [
+    1,
+    3,
+    5
+  ],
+  "M": 256,
+  "exact_val": 0.9613297826935462,
+  "ideal_control_pass": true,
+  "correlations": {
+    "1_vs_3": {
+      "rho_matched": 0.023585655514747644,
+      "rho_independent": -0.06026277658264049,
+      "crn_gap": 0.08384843209738813,
+      "var_ratio_matched": 0.9793503089012628,
+      "var_ratio_independent": 1.045298670701151,
+      "var_E1_matched": 0.5468039919827521,
+      "var_Efold_matched": 1.56924326318769,
+      "var_diff_matched": 2.072351533000842
+    },
+    "1_vs_5": {
+      "rho_matched": 0.067220619347939,
+      "rho_independent": -0.10875405162760725,
+      "crn_gap": 0.17597467097554625,
+      "var_ratio_matched": 0.9578692702361847,
+      "var_ratio_independent": 1.0566926554432619,
+      "var_E1_matched": 0.5468039919827521,
+      "var_Efold_matched": 4.406532991252738,
+      "var_diff_matched": 4.7446492813656835
+    }
+  },
+  "caveat": "This tests ONLY the classical PEC twirl-choice component, local density-matrix expectation (zero shots). Real hardware shot noise cannot be shared across separate ionq_simulator job submissions (established iteration 25) and is not modeled here."
+}

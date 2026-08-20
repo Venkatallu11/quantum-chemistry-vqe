@@ -1,5 +1,54 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 34, LOCAL BRANCH `local/attack-base-problem`,
+committed, `origin/main` untouched -- PASS gate not met. All local/free,
+zero real submissions this iteration): tested a fundamentally different
+estimator architecture -- common-random-number (CRN) correlated PEC
+sampling across ZNE fold levels, extrapolating one scalar post-manifold
+energy instead of hundreds of per-Pauli curves -- proposed as a way to
+finally beat the champion pipeline's dominant PEC-Monte-Carlo variance
+(Task 32B) without more real data. **Task A** (naive CRN, shared RNG seed
+across folds): RED, rho=0.02-0.07 -- essentially zero correlation.
+Diagnosed why before giving up: `fold_all_gates` inserts repeat-gates
+INLINE, so a shared seed does not mean "same twirl choice for the same
+gate" once folding restructures the circuit -- an implementation
+artifact, not proof the idea fails. **Task A2** (gate-identity-aligned
+CRN, the corrected construction, validated gate-for-gate identical to the
+established `fold_all_gates` before trusting anything): real, substantial
+correlation recovered, rho=0.54 (fold 1v3) / 0.36 (fold 1v5), with a
+large gap vs an independent-draw control (+0.47/+0.34) confirming the
+mechanism is genuinely responsible, not a coincidence. **But the bottom-
+line test (does this actually tighten a zero-noise extrapolation vs just
+using the raw fold-1 PEC estimate?) says no**: naive 2-point Richardson
+on CRN data beats naive independent-draw ZNE by 30% (real), but even the
+MSE-optimal SHRINKAGE estimator (blending raw fold-1 with the full
+extrapolation, exactly as the proposal's own regularization prescribed)
+picks a blend of essentially zero (s=0.1) and achieves only a 0.5% MSE
+improvement over not extrapolating at all (0.3560 vs 0.3579) -- CRN-ZNE
+is real but not useful, at least on the one label tested (IYYI, a known
+atypical coherent-noise case -- not retested on a typical label this
+iteration, a disclosed gap). **Task C**: checked the proposal's control-
+variate idea (H4 manifold normalization Sum(a_j^2)=1) directly against
+`task29c_manifold_estimator.fit_pure_state` -- the constraint is HARD-
+ENFORCED (`a_hat = best_v/norm(best_v)`) on every replicate, so C(a) is
+identically 0 with zero signal; the literal proposed control variate
+does not apply to this codebase. Adapted to the real available signal
+instead (`fit_pure_state`'s own leftover fit residual, `best_val`) --
+real but weak correlation with energy error (rho=0.246), and applying the
+resulting control-variate correction gives a genuine but small 4.9% MSE
+reduction (1.753->1.668). **THE HONEST BOTTOM LINE**: every rigorously-
+tested idea this iteration (and the prior two) either doesn't apply to
+this codebase as literally proposed, works exactly as predicted at the
+mechanism level but fails to move the pipeline's actual accuracy, or
+gives a real but small (<5%) improvement -- none closes any meaningful
+fraction of the gap to the 0.25 kcal/mol target. The champion pipeline's
+best honest current numbers remain median~0.8-1.3, Q95~3.7-4.7 kcal/mol
+(varies run to run in this heavy-tailed regime, see Task 32J/33C/34C),
+roughly 3-5x over target at the median and 15-19x at the Q95 tail -- the
+same order of magnitude as three iterations ago. See "Iteration 34" below
+for the full write-up, and the top-level session conclusion on whether
+real IonQ hardware submission is justified given these numbers.
+
 **STATUS UPDATE (iteration 33, LOCAL BRANCH `local/attack-base-problem`,
 committed to this branch, `origin/main` untouched -- PASS gate not met.
 Real submissions this iteration: local/free simulator analysis for Tasks
@@ -6446,6 +6495,178 @@ TAKEN sections: search crosstalk properly (Task 4, implemented but
 untested), run subspace-tomography+leakage for real (Task 5, tests the
 circuit-count hypothesis directly), and put real repetition counts behind
 whichever number results from those before calling anything established.
+
+---
+
+## Iteration 34: common-random-number scalar ZNE, tested rigorously and rejected -- plus a small real control-variate win
+
+Local/free only, zero real submissions. Local branch `local/attack-base-
+problem`. Motivated by a detailed external proposal: instead of more PEC
+draws (Task 33E: real, confirmed, didn't move the pipeline's MSE) or more
+per-label damping (Task 33B/C: mixed), correlate the PEC Monte Carlo
+randomness ACROSS ZNE fold levels (1/3/5) via common random numbers
+(CRN), then extrapolate one scalar post-manifold energy to zero noise
+instead of hundreds of per-Pauli curves (the construction that caused the
+513x noise amplification in this project's earliest ZNE attempts).
+Pre-registered decision thresholds from the proposal itself: rho>0.9
+green, 0.6-0.9 yellow, <0.3 red -- applied honestly below, not adjusted
+after seeing the result.
+
+### Task A — naive CRN (shared RNG seed across folds): RED, and why
+
+Built entirely on Task 31B's own validated local noisy-twirl simulator
+(`noisy_dm` + `sample_twirled_circuit_local`, density-matrix propagation
+through the SAME simulated depolarizing channel PEC assumes, zero real
+submissions, zero shot noise by design -- this tests only the CLASSICAL
+PEC twirl-choice component of the estimator, not real hardware shot
+noise, which this project's own iteration-25 finding establishes cannot
+be shared across separate `ionq_simulator` job submissions anyway).
+Folded circuits via Task 28d's `fold_all_gates` (1/3/5), IYYI label
+(this project's established validation case), M=256 draws, RNG re-seeded
+IDENTICALLY per draw index across all three folds. **Result: rho=0.024
+(fold 1v3), rho=0.067 (fold 1v5) -- RED**, essentially no correlation.
+Diagnosed the cause rather than accepting it at face value:
+`fold_all_gates` inserts fold-repeat gates INLINE, immediately after each
+original gate, not appended at the end -- so a single sequentially-
+advancing RNG stream visits gates in a completely different order at
+fold=3 than at fold=1, meaning "same seed" does not mean "same twirl
+choice for the same physical gate" once folding restructures the
+circuit. A real, checkable, fixable implementation artifact, not
+evidence the underlying idea is wrong -- investigated further rather
+than reported as final.
+
+### Task A2 — gate-identity-aligned CRN (the corrected construction)
+
+Instead of sharing an RNG stream, share the TWIRL DECISION itself, keyed
+by original-gate identity: every fold-repeat copy of "the same physical
+gate" gets the SAME PEC recovery-Pauli choice at every fold level (fold-
+construction-only gates, e.g. the intermediate GPI(0) insertions used to
+build the 2Q-gate inverse, have no fold=1 analog and get their own
+reproducible but fold-local draws). **Validated before trusting anything
+new**: `build_folded_with_parent_tags`, a from-scratch reimplementation
+of `fold_all_gates`'s exact gate-insertion logic that additionally tracks
+parent-gate identity, was checked instruction-for-instruction identical
+to the real `fold_all_gates` output for every fold (1/3/5) -- PASS, not
+assumed. One real bug caught along the way: an earlier draft composed
+the basis-rotation gates BEFORE folding (folding them too, a different,
+non-standard construction never used elsewhere in this project) --
+caught by comparing against `task28d_all_gate_zne.py`'s and
+`task28d_resume.py`'s own established usage (`fold_all_gates(base, ...)`,
+ansatz only), fixed before running anything expensive.
+
+**Result: rho=0.5369 (fold 1v3), rho=0.3565 (fold 1v5)** -- both
+"borderline" against the proposal's own thresholds (below the 0.6 yellow
+floor but well above the 0.3 red floor), and critically, both show a
+LARGE gap vs the independent-seed control (rho=0.076 and 0.015
+respectively; CRN gap +0.46 and +0.34) -- proof the correlation is
+genuinely caused by the shared-twirl-decision mechanism, not an artifact
+of the circuits being intrinsically similar regardless of randomization.
+**The underlying physical intuition in the proposal was correct**: PEC's
+classical twirl-choice randomness CAN be correlated across fold levels
+when done right. The magnitude achieved, though, falls well short of the
+"enormous" (rho>0.9, ~10x variance reduction) the proposal hoped for.
+
+### The bottom-line test: does confirmed correlation actually help?
+
+Not assumed -- tested directly, since this project's own Task 33E already
+showed once this iteration that a mechanism working exactly as predicted
+does not guarantee it moves the pipeline's actual accuracy. Two-point
+linear Richardson extrapolation on folds (1,3), compared against the
+TRUE known exact value (zero noise, computed once via `Statevector`, not
+estimated): **one real arithmetic bug was caught before trusting the
+first run's answer** -- an initial version used `E0_est = 2*E1 - E3`,
+which is WRONG for the 2-point linear system (correct solution:
+`E0_est = 1.5*E1 - 0.5*E3`); the bug alone produced sign-flipped,
+~2x-magnitude-wrong extrapolated values that would have been reported as
+"ZNE is catastrophically worse than raw" -- a math error, not a finding
+about CRN. Fixed, and the raw per-draw arrays (already saved) let the
+corrected analysis be recomputed INSTANTLY with no need to re-run the
+~20-minute local simulation.
+
+**Corrected result**: RAW fold-1 alone (no extrapolation): std=0.598,
+MSE=0.358. Naive independent-draw ZNE: std=1.092, MSE=1.193 (extrapolation
+amplifies noise, nearly 2x worse than not extrapolating -- the same
+qualitative failure mode as this project's earliest per-Pauli ZNE,
+recurring at the scalar level too). CRN-paired ZNE: std=0.770, MSE=0.593
+-- a real 30% std reduction vs naive independent ZNE, but STILL 29%
+worse (higher variance) than simply not extrapolating.
+
+**Then tested the proposal's own prescribed fix** (regularized/shrinkage
+Richardson, `E0(s) = (1-s)*E1 + s*E0_richardson`, MSE-optimal `s` chosen
+by sweeping, not assumed): for CRN data, MSE-minimizing `s*=0.1` --
+barely any extrapolation at all -- giving MSE=0.3560, a 0.5% improvement
+over raw fold-1 alone's 0.3579. For independent-draw data, `s*=0`
+exactly -- confirming naive ZNE should not be used at all here. **Even
+with the exact regularization the proposal itself specified to prevent
+this failure mode, the MSE-optimal answer is "don't extrapolate."**
+
+**Disclosed gap, not swept under**: this entire test used IYYI, a label
+this project already flagged (Task 31B/32I) as having a genuine coherent-
+noise / wrong-channel-model problem -- atypical, not representative. A
+well-behaved label was not retested this iteration due to time; it
+remains possible (not shown either way) that a typical label would tell
+a more favorable story.
+
+### Task C — control variate: the literal proposal doesn't apply, the adapted version gives a small real win
+
+The proposal's section 18 control variate, `C(a) = Sum(a_j^2) - 1`
+(should be exactly 0 at the true physical state), was checked directly
+against `task29c_manifold_estimator.fit_pure_state` before building
+anything on it: `a_hat = best_v / np.linalg.norm(best_v)` HARD-ENFORCES
+unit norm on every replicate, by construction, with zero exception --
+`C(a)` is identically 0 always, carrying no information whatsoever. The
+literal proposed control variate does not apply to this codebase's
+actual estimator (a fact established by reading the code, not assumed
+either way).
+
+**Adapted to a real available signal instead**: `fit_pure_state` also
+returns `best_val`, the leftover weighted residual of the best-fit pure
+state against the raw (possibly non-pure) noisy data, computed BEFORE
+the hard normalization constraint is applied -- a genuine, physically
+motivated per-replicate quantity that should correlate with how bad that
+replicate's noise realization was. 48 real bootstrap replicates (Task
+32G/33C's own established resample-shots-and-MC-draws, refit-manifold-
+per-slot, separate-process discipline), reduced to `max_workers=2` after
+hitting the same `BrokenProcessPool` infrastructure failure Task 33C saw
+(a real, recurring Windows/multiprocessing resource issue on this
+machine, not a scientific result -- worked around, not silently ignored).
+
+**Result**: rho(|E-E_exact|, total_fit_residual) = +0.246 across 48
+replicates -- real, weak, present. Applying the resulting MSE-optimal
+control-variate correction (`beta=Cov(E,residual)/Var(residual)=0.360`):
+MSE 1.753 -> 1.668, a real but small **4.9% reduction**. Honest,
+disclosed as marginal, not oversold.
+
+### THE HONEST BOTTOM LINE FOR THIS ITERATION
+
+A rigorously-tested, genuinely different estimator architecture (CRN-
+correlated scalar ZNE) was proposed, built carefully (catching two real
+bugs -- a fold/basis-composition-order error and a Richardson-formula
+arithmetic error -- before trusting either result), and rejected on its
+own merits: the underlying correlation mechanism is REAL (rho=0.54,
+confirmed against a control) but not large enough to make extrapolation
+beat simply not extrapolating, even under the proposal's own prescribed
+MSE-optimal regularization. A literal control-variate idea from the same
+proposal does not apply to this codebase (checked directly against the
+actual estimator code, not assumed); an honest adaptation of it gives a
+real but small (4.9%) win. **No error-budget condition newly passes.**
+Combined with Task 33's findings (no single calibration parameter
+dominates; adaptive per-label damping doesn't beat the champion; targeted
+real-data fixes work mechanistically without moving the pipeline's MSE),
+the honest current picture after three consecutive iterations of
+rigorous, real, mostly-negative-or-marginal results is: **the champion
+pipeline's remaining error is not primarily a clever-reweighting or
+better-estimator problem** -- Task 32B's diagnosis (PEC Monte Carlo
+sampling, ~87% of total variance, does not scale cleanly with more
+draws) stands, unmoved by every sophisticated statistical construction
+tried against it since. The pipeline's best honest current numbers
+remain median~0.8-1.3, Q95~3.7-4.7 kcal/mol depending on which real
+bootstrap run is read (Task 32J's N=200 gives the most statistically
+credible single estimate: median=1.28, Q95=3.73) -- roughly 3-5x over
+the 0.25 kcal/mol target at the median, 15-19x at the Q95 tail that
+actually governs reliability. This is the same order of magnitude as
+three iterations ago, despite substantial, real, honestly-reported
+effort across iterations 32-34.
 
 ---
 

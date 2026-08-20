@@ -1,0 +1,37 @@
+
+================================================================================================
+  task34a_common_random_number_correlation.py -- CRN-across-folds gating test (LOCAL, zero shots)
+================================================================================================
+  fold=1: 11 ZZ gates, 96 1Q gates in full circuit
+  fold=3: 33 ZZ gates, 274 1Q gates in full circuit
+  fold=5: 55 ZZ gates, 452 1Q gates in full circuit
+  TRUE exact <IYYI> (zero noise, fold=1): 0.9613
+
+  -- IDEAL CONTROL (p2=p1=0, must reproduce exact value, both fold and seed irrelevant) --
+    fold=5, p=0: 0.961330  (exact=0.961330, |diff|=0.000000)
+    IDEAL CONTROL: PASS
+
+  -- generating 256 draws per fold, MATCHED (shared seed across folds) and INDEPENDENT (control) --
+    64/256 draws done
+    128/256 draws done
+    192/256 draws done
+    256/256 draws done
+
+  -- CORRELATION: MATCHED (CRN) vs INDEPENDENT (control) --
+    fold 1 vs 3:
+      MATCHED:     rho=+0.0236   Var(E1-E3)/[Var(E1)+Var(E3)]=0.9794 (0.5=uncorrelated, 0=perfect+corr)
+      INDEPENDENT: rho=-0.0603   Var(E1-E3)/[Var(E1)+Var(E3)]=1.0453  (control baseline)
+      CRN GAP (matched - independent) in rho: +0.0838
+    fold 1 vs 5:
+      MATCHED:     rho=+0.0672   Var(E1-E5)/[Var(E1)+Var(E5)]=0.9579 (0.5=uncorrelated, 0=perfect+corr)
+      INDEPENDENT: rho=-0.1088   Var(E1-E5)/[Var(E1)+Var(E5)]=1.0567  (control baseline)
+      CRN GAP (matched - independent) in rho: +0.1760
+
+  -- VERDICT (thresholds: green rho>0.9, yellow 0.6-0.9, red rho<0.3) --
+    fold 1 vs 3: rho_matched=+0.0236 -> RED
+    fold 1 vs 5: rho_matched=+0.0672 -> RED
+
+    CRN mechanism check: matched-vs-independent rho GAP is MEANINGFUL (CRN is doing real work) (fold1v3 gap=+0.0838, fold1v5 gap=+0.1760)
+
+  Results saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task34a_common_random_number_correlation_results.json
+

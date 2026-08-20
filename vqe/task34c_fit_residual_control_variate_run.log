@@ -1,0 +1,21 @@
+
+================================================================================================
+  task34c_fit_residual_control_variate.py -- fit-residual control variate, champion pipeline
+================================================================================================
+  loaded Task 31C's real checkpoint: 16 MC draws/label, 21 slots
+
+  -- running 48 bootstrap replicates, capturing per-replicate energy error AND total fit-residual (sum of best_val across all 21 slots) --
+
+  raw energy error: median=0.8399  std=1.0236  MSE=1.7533
+  fit residual (sum best_val): median=5.254304  range=[4.124013, 7.020830]
+
+  -- Pearson correlation(|E-E_exact|, total_fit_residual) across 48 replicates: rho=+0.2459 --
+
+  -- APPLYING control variate: beta=0.3596 --
+     RAW:              median=0.8399  std=1.0236  MSE=1.7533
+     CONTROL-VARIATE:  median=0.8264  std=0.9922  MSE=1.6675
+     MSE change: +4.9%
+     HONEST READ: Small/marginal effect
+
+  Results saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task34c_fit_residual_control_variate_results.json
+
