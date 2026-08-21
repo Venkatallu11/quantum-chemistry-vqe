@@ -1,0 +1,7 @@
+{
+  "ideal_ok": true,
+  "adv_ok": false,
+  "chi2dof_real": 0.1636271411581347,
+  "chi2dof_adv": 0.33387322073623293,
+  "stopped_early": true
+}

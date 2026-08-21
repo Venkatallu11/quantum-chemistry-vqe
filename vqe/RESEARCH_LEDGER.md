@@ -1,5 +1,47 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 37, LOCAL BRANCH `local/attack-base-problem`,
+committed, `origin/main` untouched -- PASS gate not met. Local/free, real
+already-collected calibration + H4 checkpoints, zero new submissions):
+two-pronged test of self-consistent noise-and-state estimation, following
+Iteration 36's finding that calibration/noise-model uncertainty (not
+resampling noise) is the dominant remaining error source. **Phase 0**:
+checked whether the robustness envelope's assumed calibration ranges
+(independent, hand-picked) were unrealistically wide compared to real
+measured uncertainty already sitting in this project's own files. They
+were, dramatically -- Task 31A's real ZZ calibration (9/11 positions)
+gives std=0.000124, vs the assumed range's implied std=0.002887 (23x
+too wide); Task 30B's real GPi calibration gives std=0.000011 vs implied
+0.000159 (14x too wide). GPi2 confirmed genuinely unresolved (real
+recalibration attempt flagged "physical": false, unusable). Substituting
+REAL ZZ/GPi uncertainty into the N=209 robustness envelope: joint's
+Q95 18.29 -> 15.97, only a 12.7% reduction. **Real, quantified, and
+smaller than hoped**: ZZ/GPi precision was never the dominant problem --
+GPi2 (and/or angle-bias/readout/calib-ratio uncertainty, left untouched)
+accounts for the other ~87% of the gap, now precisely located rather
+than guessed at. **Phase 1A**: attempted the proposal's own "self-
+consistent" idea directly -- jointly fit the 15-parameter Schmidt frame
+AND 2 PEC calibration parameters (p_zz_assumed anchored to its real
+calibration prior, p_gpi2_assumed left free, deliberately, since no real
+prior exists) against REAL RAW (pre-PEC) hardware data, with proper
+calibration/H4 data-role separation per the proposal's own identifiability
+safeguard. Two real implementation bugs caught and fixed before trusting
+anything (a severe performance bug recomputing an expensive 21-slot
+density-matrix calculation on every single optimizer step regardless of
+whether it could have changed; and a restart scheme that hard-coded the
+SAME noise-parameter starting point across all 8 restarts, which failed
+even the ideal-data check until fixed). **After both fixes, the model
+correctly passes ideal-data recovery but FAILS its own adversarial-
+rejection check** (real data fits only ~2x better than the same data with
+labels shuffled, vs the 3x bar and vs Task 36's 52x on PEC-corrected
+data) -- reproducibly, confirmed byte-identical across two independent
+runs. **Honest verdict**: fitting raw, uncorrected hardware data with
+only 2 free noise parameters is too weak a model to reliably distinguish
+real physics from scrambled data; the self-consistent joint-calibration
+idea is not disproven, but this specific first construction is not
+trustworthy and was not forced past its own gate. See "Iteration 37"
+below for the full write-up.
+
 **STATUS UPDATE (iteration 36, LOCAL BRANCH `local/attack-base-problem`,
 committed, `origin/main` untouched -- PASS gate not met. Local/free,
 reuses Task 31C's real checkpoint, zero new submissions): **the largest
@@ -6605,6 +6647,126 @@ TAKEN sections: search crosstalk properly (Task 4, implemented but
 untested), run subspace-tomography+leakage for real (Task 5, tests the
 circuit-count hypothesis directly), and put real repetition counts behind
 whichever number results from those before calling anything established.
+
+---
+
+## Iteration 37: real-calibration-uncertainty audit, and a first (failed but informative) attempt at self-consistent noise-and-state estimation
+
+Local/free, real already-collected data only, zero new submissions.
+Motivated directly by Iteration 36's own open question: joint's real-
+data Q95=1.29 vs. noise-model-uncertainty Q95=18.29 -- a 14x gap this
+iteration set out to understand and, where possible, close.
+
+### Phase 0 -- is the robustness envelope's assumed calibration uncertainty realistic?
+
+The envelope (Tasks 31h/33A/36B) draws p_ZZ and p_GPi independently from
+hand-picked, disclosed-as-"justified by Task A's real measurements"
+uniform ranges -- but never actually substitutes the real measured
+distributions those measurements produced. Checked directly: Task 31A's
+real per-position ZZ calibration (9/11 real positions, excluding 2 near-
+zero outliers) gives empirical mean=0.014593, std=0.000124 across
+positions -- the assumed `Uniform(0.010,0.020)` has implied std=0.002887,
+**23.3x wider** than reality. Task 30B's real GPi calibration (4 phase
+bins) gives mean=0.000119, std=0.000011 -- the assumed
+`Uniform(0.00005,0.0006)` has implied std=0.000159, **14.4x wider**.
+GPi2 checked too, and confirmed genuinely unresolved: Task 31A's own
+recalibration attempt file flags every entry `"physical": false`, with
+nonsensical values (negative "probabilities", std up to 0.19) -- left
+completely unchanged, not silently tightened alongside ZZ/GPi.
+
+**Real result, N=209 randomized noise models, real ZZ/GPi Gaussians
+substituted, GPi2 and all other parameters unchanged**: joint Q50=2.14,
+Q90=13.47, **Q95=15.97**, Q99=37.62 (vs Task 36B's Q50=2.65, Q90=12.46,
+Q95=18.29, Q99=39.80) -- **only a 12.7% Q95 reduction**. Standard's Q95
+moved to 245.16 (vs Task 36B's 70.74) -- read as further confirmation of
+that method's already-established extreme small-sample tail volatility
+(Task 36B's own N=29->N=267 extension already showed standard's Q95
+swinging by 6.5x on sample size alone), not evidence that tighter
+calibration made anything worse.
+
+**Honest, precisely quantified finding**: ZZ and GPi precision was never
+the dominant driver of joint's Q95=18.29, despite being modeled far more
+pessimistically than reality. The other ~87% of the gap is attributable
+to GPi2 and/or the untouched angle-bias/readout/calib-ratio parameters.
+This sharpens, rather than resolves, the target -- and is consistent
+with this project's own long-standing structural observation that GPi2
+appears ~190 times in the H4 circuit versus ZZ's 11, so its uncertainty
+compounds far more.
+
+### Phase 1A -- self-consistent joint noise-and-state estimation, first attempt
+
+Directly implements the proposal's core idea, with its own identifiability
+safeguard: jointly fit the 15-parameter shared Schmidt frame AND 2 PEC
+calibration parameters (p_zz_assumed, p_gpi2_assumed) against REAL RAW
+(pre-PEC) hardware data (`task28b_optimized_raw.json`, not the already-
+PEC-corrected Task 31C checkpoint Task 36 used -- that data has
+calibration baked in and can't be used to re-derive it). Reused Task 30B/
+31F/32I's own established `analytic_A_and_B` correction machinery
+unchanged (`m_corrected = m_raw * B(p_assumed)/A(p_assumed)`) rather than
+writing new noise-forward-model code. Calibration prior: p_zz_assumed
+anchored to its real Task 31A posterior (mean=0.014593, std=0.000124);
+p_gpi2_assumed deliberately left WITHOUT a prior, since none exists --
+the one parameter this task lets the H4 data itself determine.
+
+**Two real bugs found and fixed before trusting anything, both caught by
+this project's own now-standard discipline of validating before
+believing a result:**
+1. **A severe performance bug**: `analytic_A_and_B` (expensive 21-slot
+   density-matrix propagation) was being recomputed on every single
+   residual-function evaluation during the nonconvex optimization, even
+   though it depends on only 2 of the 17 free parameters (the noise
+   params), not the 15 state parameters -- meaning most of that
+   recomputation was pure waste. Caught when the first attempt hung with
+   zero output for 20+ minutes. Fixed with memoization keyed on the
+   rounded noise-parameter values (which don't change during most of the
+   optimizer's exploration of the state-frame directions).
+2. **A restart-scheme bug**: every one of the 8 multi-start restarts used
+   the IDENTICAL noise-parameter starting point (the calibration value)
+   -- so ideal-data recovery (which requires the fit to find p~0, the
+   TRUE answer for noiseless data, not the calibration value, which is
+   the WRONG answer there) failed at err=0.050 kcal/mol with p_zz_hat
+   frozen exactly at its unperturbed start. Fixed by varying the noise
+   starting point across restarts (including a near-zero option). After
+   the fix: ideal-data recovery err=0.001447 kcal/mol, p_zz_hat and
+   p_gpi2_hat both correctly converge to ~0.00001 -- PASS.
+
+**Adversarial rejection: FAILS, reproducibly.** chi2/dof on real
+(unshuffled) raw data = 0.1636; on the same data with labels shuffled
+within each slot = 0.3339 -- only a ~2x separation, below the 3x bar this
+project's own discipline requires, and far below Task 36's 52x separation
+on PEC-corrected data. Confirmed byte-identical across two independent
+runs (PYTHONHASHSEED=0) -- not a fluke of one particular shuffle.
+
+**Honest diagnosis, not just a failed number**: Task 36's joint frame
+succeeded partly because it fit against data that had ALREADY been
+PEC-corrected using well-established, separately-validated calibration --
+that correction step did most of the work of making the data "look
+physical" before the frame fit ever saw it. Fitting RAW, uncorrected data
+with only 2 free noise parameters asks a much weaker model to do a much
+harder job, and it isn't strong enough to reliably tell real physics from
+scrambled data. **This does not disprove the self-consistent joint-
+calibration idea** -- it disproves this specific, minimal first
+construction of it, and was not forced past its own validation gate to
+manufacture a positive-looking result.
+
+### THE HONEST BOTTOM LINE FOR THIS ITERATION
+
+Two results, both real, both informative, neither a win: Phase 0
+precisely quantifies that ZZ/GPi calibration precision was never the
+dominant problem (only 12.7% of Q95's gap), newly and sharply implicating
+GPi2 (and/or the still-untouched angle-bias/readout/calib-ratio
+parameters) as the real remaining target -- a genuine narrowing of the
+problem, not a guess. Phase 1A's first attempt at directly resolving
+GPi2 via self-consistent estimation failed its own honesty gate,
+correctly, after two real implementation bugs were caught and fixed
+along the way -- a disciplined negative result, not a swept-under one.
+The joint Schmidt-frame estimator (Iteration 36) remains this project's
+best real, validated result; neither of this iteration's two experiments
+changed that number. No error-budget condition newly passes. The next
+honest step, if pursued, is a stronger version of Phase 1A -- either
+against PEC-corrected (not raw) data with calibration folded in
+differently, or with more informative real data specifically targeting
+GPi2 -- not a repeat of this exact construction.
 
 ---
 

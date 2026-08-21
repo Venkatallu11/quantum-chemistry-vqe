@@ -1,0 +1,13 @@
+
+================================================================================================
+  task37_phase1a_joint_noise_and_state.py -- joint Schmidt frame + PEC calibration, data-role separated
+================================================================================================
+
+  -- VALIDATION 1: ideal-data (noiseless raw, p=0) recovery --
+    recovered energy err vs exact: 0.001447 kcal/mol  p_zz_hat=0.000010  p_gpi2_hat=0.000010
+    IDEAL-DATA RECOVERY: PASS
+
+  -- VALIDATION 2: adversarial rejection (real raw data, labels shuffled within each slot) --
+    chi2/dof on REAL data (unshuffled):  0.1636
+    chi2/dof on SHUFFLED (adversarial):  0.3339
+    ADVERSARIAL REJECTION: FAIL -- STOP, not trustworthy

@@ -1,0 +1,53 @@
+
+================================================================================================
+  task37_phase0_real_calibration_uncertainty.py -- real vs assumed calibration width
+================================================================================================
+
+  ZZ:  assumed Uniform(0.010,0.020) implied_std=0.002887  REAL mean=0.014593 std=0.000124  (assumed/real width ratio = 23.3x)
+  GPi: assumed Uniform(0.00005,0.0006) implied_std=0.000159  REAL mean=0.000119 std=0.000011  (assumed/real width ratio = 14.4x)
+  GPi2: UNCHANGED, Uniform(0,0.21) -- no real posterior exists (recalibration flagged 'physical': false, std up to 0.19)
+
+  ONE evaluation: std=6.4767  joint=1.6929  wall-clock=42.90s
+  setting N=209 based on measured per-eval cost (budget ~9000s)
+    10/209 done, 521.0s elapsed, last: std=3.009 joint=6.561
+    20/209 done, 974.0s elapsed, last: std=7.457 joint=2.968
+    30/209 done, 1440.4s elapsed, last: std=0.317 joint=1.424
+    40/209 done, 1933.1s elapsed, last: std=2.182 joint=0.397
+    50/209 done, 2429.6s elapsed, last: std=17.127 joint=2.324
+    60/209 done, 2968.0s elapsed, last: std=1.855 joint=2.001
+    70/209 done, 3389.2s elapsed, last: std=14.438 joint=5.335
+    80/209 done, 3769.2s elapsed, last: std=1.236 joint=0.316
+    90/209 done, 4133.5s elapsed, last: std=0.308 joint=0.152
+    100/209 done, 4570.3s elapsed, last: std=15.888 joint=5.749
+    110/209 done, 5144.0s elapsed, last: std=19.444 joint=6.533
+    120/209 done, 5527.4s elapsed, last: std=3.178 joint=0.643
+    130/209 done, 5927.7s elapsed, last: std=17.641 joint=14.669
+    140/209 done, 6307.3s elapsed, last: std=5.730 joint=1.561
+    150/209 done, 6642.8s elapsed, last: std=5.935 joint=2.910
+    160/209 done, 6938.2s elapsed, last: std=16.897 joint=2.041
+    170/209 done, 7285.2s elapsed, last: std=19.410 joint=6.836
+    180/209 done, 7786.6s elapsed, last: std=34.361 joint=12.630
+    190/209 done, 8406.3s elapsed, last: std=2.955 joint=1.737
+    200/209 done, 8998.9s elapsed, last: std=41.766 joint=15.885
+    209/209 done, 9497.0s elapsed, last: std=11.060 joint=3.354
+
+  -- QUANTILES under 209 noise models, REAL ZZ/GPi uncertainty, GPi2 unchanged --
+                STANDARD       JOINT
+    Q50           5.7676      2.1401
+    Q90          39.9940     13.4682
+    Q95         245.1640     15.9657
+    Q99         823.5869     37.6170
+
+  outlier rate (>20 kcal/mol): standard 44/209, joint 8/209
+  paired: joint wins 170/209 trials
+
+  -- COMPARISON vs Task 36B's original (independent wide-uniform) result --
+    Task 36B (N=267): standard Q95=70.74  joint Q95=18.29
+    Task 37 Phase 0 (N=209): standard Q95=245.16  joint Q95=15.97
+    -> Using REAL ZZ/GPi uncertainty recovers 12.7% of joint's Q95, even leaving GPi2 fully unresolved. The remaining gap is attributable to GPi2 and/or angle-bias/readout/calib-ratio uncertainty, not to unrealistically wide ZZ/GPi assumptions.
+
+  TARGET: Q95 < 0.25 -> joint NOT MET
+  LOOSENED HARDWARE BAR: Q95 < 0.5 -> joint NOT MET
+
+  Results saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task37_phase0_real_calibration_uncertainty_results.json
+
