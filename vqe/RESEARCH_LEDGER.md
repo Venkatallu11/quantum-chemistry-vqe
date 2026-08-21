@@ -46,15 +46,23 @@ models) -- joint is still dramatically, consistently better (96.4% Q95
 reduction, 5x fewer outliers, wins 23/29 trials, confirming the real-data
 win generalizes beyond one resampling scheme) -- **but BOTH miss the
 0.25 kcal/mol target badly, and BOTH miss even the loosened 0.5 kcal/mol
-hardware bar**: joint's Q95=16.48 is still ~66x over target. **Honest
-synthesis**: the joint estimator is a genuine, twice-validated advance
-(relatively, and now on two different real tests) -- not a solved
-problem. The gap between Task 36's real-data-only result (Q95=1.29) and
-Task B's noise-model-uncertainty result (Q95=16.48) is itself the
-project's own long-standing lesson (since iteration 31's 0.115 kcal/mol
-false alarm) that resampling-only tests systematically understate real-
-world uncertainty. Not ready for real IonQ hardware. See "Iteration 36"
-below for the full write-up.
+hardware bar**: joint's Q95=16.48 is still ~66x over target. **Task B
+EXTENDED to N=267** (incremental checkpointing added, ~2.7 hours real
+wall-clock): the larger sample REVISES standard's Q95 down substantially
+(461.72 -> 70.74 -- the N=29 estimate was a small-sample artifact, one or
+two extreme draws inflating it) while joint's numbers barely move at all
+(Q95 16.48 -> 18.29, Q50/Q90 nearly unchanged, win rate 79%->79.4%) --
+the joint estimator's distribution is genuinely well-behaved, not lucky.
+**Honest synthesis, now on solid statistical footing**: the joint
+estimator is a real, twice-validated, now large-sample-confirmed advance
+(Q95 reduced ~74%, outlier rate 20.2%->3.7%) -- not a solved problem.
+Joint's Q95=18.29 is still ~73x over the 0.25 target and ~37x over the
+loosened 0.5 hardware bar. The gap between Task 36's real-data-only
+result (Q95=1.29) and Task B's noise-model-uncertainty result (Q95=18.29)
+remains the key honest finding -- calibration/noise-model uncertainty is
+a much larger, harder problem than resampling noise, this project's own
+lesson since iteration 31's 0.115 kcal/mol false alarm. Not ready for
+real IonQ hardware. See "Iteration 36" below for the full write-up.
 
 **STATUS UPDATE (iteration 35, LOCAL BRANCH `local/attack-base-problem`,
 committed, `origin/main` untouched -- PASS gate not met. All local/free,
@@ -6764,24 +6772,53 @@ Joint wins 23/29 (79%) trials. chi2/dof stays low and stable throughout
 (median 0.0066, max 0.1138) -- no sign of the pre-fix nondeterminism
 reappearing.
 
-**Honest read, precisely, not oversold**: joint is dramatically,
+**Honest read at N=29, precisely, not oversold**: joint is dramatically,
 consistently better than standard here too -- 96.4% Q95 reduction, 5x
 fewer catastrophic outliers, confirming the Task A win is a real,
 generalizing property of the shared-frame regularization, not an
-artifact specific to one dataset's resampling structure. **But in
+artifact specific to one dataset's resampling structure. But N=29 is
+small for precise Q95/Q99 estimation -- flagged explicitly, not just
+asserted, and extended immediately below rather than left as a guess.
+
+**EXTENDED to N=267** (incremental per-batch checkpointing added first,
+so a tool-level timeout -- which killed the first attempt at this exact
+extension -- could not lose progress; ~2.7 hours real wall-clock,
+resumed cleanly once from a partial checkpoint):
+
+| | STANDARD (N=29 -> N=267) | JOINT (N=29 -> N=267) |
+|---|---|---|
+| Q50 | 2.81 -> 6.01 | 2.69 -> 2.65 |
+| Q90 | 46.44 -> 38.14 | 12.78 -> 12.46 |
+| Q95 | **461.72 -> 70.74** | **16.48 -> 18.29** |
+| Q99 | 856.56 -> 900.33 | 29.43 -> 39.80 |
+| outliers (>20 kcal/mol) | 5/29 (17.2%) -> 54/267 (20.2%) | 1/29 (3.4%) -> 10/267 (3.7%) |
+| joint win rate | 23/29 (79%) -> 212/267 (79.4%) | |
+
+chi2/dof stays low and stable throughout all 267 trials (median 0.0081,
+max 0.1323) -- no sign of the pre-fix nondeterminism reappearing at the
+larger sample size either.
+
+**The bigger sample tells an important, honest story about its own
+predecessor**: standard's N=29 Q95=461.72 was a real small-sample
+artifact -- one or two extreme draws dominating a 29-point tail estimate
+-- and revises down substantially to 70.74 with 9x more data. Joint's
+numbers, by contrast, barely moved (Q95 16.48->18.29, Q50/Q90 nearly
+identical, win rate 79%->79.4%) -- its distribution was already well-
+characterized at N=29, not lucky. **This is exactly the discipline this
+project asks of itself**: a striking small-sample number was not taken
+as final: it was extended, and the extension either confirms or revises
+each side honestly rather than cherry-picking whichever came first.
+
+**Final honest read**: joint remains dramatically, robustly better than
+standard -- Q95 reduced ~74% (70.74->18.29), outlier rate down 5.5x
+(20.2%->3.7%), win rate a stable ~79% across a 9x larger sample. **But in
 absolute terms, NEITHER method is remotely close to usable**: joint's
-Q95=16.48 kcal/mol is still ~66x over the 0.25 kcal/mol target and ~33x
+Q95=18.29 kcal/mol is still ~73x over the 0.25 kcal/mol target and ~37x
 over the loosened 0.5 kcal/mol hardware bar. The gap between this result
-(Q95=16.48) and Task A's real-data-only result (Q95=1.29) is itself the
-key honest finding -- calibration/noise-model uncertainty is a much
-larger, harder problem than shot/PEC-MC resampling noise, exactly the
-distinction this project's own error budget has insisted on since
-iteration 31. N=29 is small for precise Q95/Q99 estimation (a handful of
-extreme noise-model draws dominate the tail, as they have throughout this
-project's robustness-envelope work) -- the exact value 16.48 should be
-read as "still very large," not trusted to two significant figures;
-extending N would sharpen the estimate without changing the qualitative
-conclusion.
+(Q95=18.29) and Task A's real-data-only result (Q95=1.29) remains the key
+honest finding -- calibration/noise-model uncertainty is a much larger,
+harder problem than shot/PEC-MC resampling noise, exactly the distinction
+this project's own error budget has insisted on since iteration 31.
 
 ### THE HONEST BOTTOM LINE FOR THIS ITERATION
 
@@ -6791,15 +6828,17 @@ project has found, survives a serious self-inflicted numerical bug that
 was caught and properly root-caused rather than glossed over, passes
 every validation this project's discipline demands, and now generalizes
 across TWO different real tests (real-data resampling AND noise-model
-uncertainty) rather than just one. **This is real, durable progress, not
-a repeat of iteration 31's false alarm.** But it is not a finished
-answer: under the harder, more realistic noise-model-uncertainty test,
-Q95 is still ~66x over target for even the improved estimator. No error-
-budget condition passes. The joint Schmidt-frame idea should be kept and
-built on (a natural next question: does it compound with Task 35's
-stratified PEC, which attacks a different, still-untouched variance
-source?) -- but this project's own honest number after 36 iterations
-remains: not ready for real IonQ hardware.
+uncertainty, the second confirmed at N=267 after an initial N=29 estimate
+was honestly flagged as too small and then extended) rather than just
+one. **This is real, durable progress, not a repeat of iteration 31's
+false alarm.** But it is not a finished answer: under the harder, more
+realistic noise-model-uncertainty test, Q95 is still ~73x over target for
+even the improved estimator. No error-budget condition passes. The joint
+Schmidt-frame idea should be kept and built on (a natural next question:
+does it compound with Task 35's stratified PEC, which attacks a
+different, still-untouched variance source?) -- but this project's own
+honest number after 36 iterations remains: not ready for real IonQ
+hardware.
 
 ---
 

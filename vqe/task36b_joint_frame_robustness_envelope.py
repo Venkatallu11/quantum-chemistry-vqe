@@ -52,7 +52,8 @@ from qiskit.quantum_info import Pauli
 
 K = 6
 RESULTS_PATH = os.path.join(os.path.dirname(__file__), "task36b_joint_frame_robustness_envelope_results.json")
-BUDGET_S = 2400  # ~40 min, disclosed
+BUDGET_S = 9000  # ~150 min, disclosed -- extended from the first pass's 40 min for a tighter Q95/Q99 estimate;
+# safe to be generous now that incremental checkpointing means an interruption loses nothing
 
 
 def energy_and_err(p, raw, K):
@@ -116,21 +117,35 @@ def main():
     t_per_eval = time.time() - t0
     print(f"  ONE evaluation: std={e0_std:.4f}  joint={e0_joint:.4f}  chi2dof={chi2dof0:.4f}  "
           f"wall-clock={t_per_eval:.2f}s")
-    N = max(20, min(300, int(BUDGET_S / max(t_per_eval, 0.01))))
+    N = max(20, min(600, int(BUDGET_S / max(t_per_eval, 0.01))))
     print(f"  setting N={N} based on measured per-eval cost (budget ~{BUDGET_S}s)")
 
-    rng = np.random.default_rng(36)
+    PARTIAL_PATH = RESULTS_PATH + ".partial.json"
     errs_std, errs_joint, chi2dofs = [], [], []
+    start_i = 0
+    if os.path.exists(PARTIAL_PATH):
+        with open(PARTIAL_PATH) as f:
+            partial = json.load(f)
+        errs_std, errs_joint, chi2dofs = partial["errs_std"], partial["errs_joint"], partial["chi2dofs"]
+        start_i = len(errs_std)
+        print(f"  resuming from partial checkpoint: {start_i}/{N} trials already done")
+    # seed incorporates start_i so a resume gets a fresh, valid (not replayed) continuation --
+    # avoids wastefully re-running already-expensive evaluations just to advance an RNG stream
+    rng = np.random.default_rng(36 + start_i * 1009)
     t_start = time.time()
-    for i in range(N):
+    for i in range(start_i, N):
         model = sample_noise_model(rng)
         e_std, e_joint, chi2dof = evaluate_both(p, fixed_solutions, kept, diag, P_S, non_id_labels, model, rng)
         errs_std.append(e_std)
         errs_joint.append(e_joint)
         chi2dofs.append(chi2dof)
-        if (i + 1) % max(1, N // 10) == 0:
+        if (i + 1) % max(1, N // 20) == 0 or (i + 1) == N:
             print(f"    {i+1}/{N} done, {time.time()-t_start:.1f}s elapsed, "
-                  f"last: std={e_std:.3f} joint={e_joint:.3f}")
+                  f"last: std={e_std:.3f} joint={e_joint:.3f}", flush=True)
+            with open(PARTIAL_PATH, "w") as f:
+                json.dump({"errs_std": errs_std, "errs_joint": errs_joint, "chi2dofs": chi2dofs}, f)
+    if os.path.exists(PARTIAL_PATH):
+        os.remove(PARTIAL_PATH)
 
     errs_std = np.array(errs_std)
     errs_joint = np.array(errs_joint)

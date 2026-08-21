@@ -2,39 +2,46 @@
 ================================================================================================
   task36b_joint_frame_robustness_envelope.py -- joint frame vs standard, under noise-model uncertainty
 ================================================================================================
-  ONE evaluation: std=6.4556  joint=1.6930  chi2dof=0.0188  wall-clock=81.88s
-  setting N=29 based on measured per-eval cost (budget ~2400s)
-    2/29 done, 113.0s elapsed, last: std=729.825 joint=0.020
-    4/29 done, 213.2s elapsed, last: std=10.245 joint=5.539
-    6/29 done, 326.1s elapsed, last: std=1.611 joint=0.268
-    8/29 done, 412.3s elapsed, last: std=15.627 joint=5.864
-    10/29 done, 475.8s elapsed, last: std=19.844 joint=6.779
-    12/29 done, 532.3s elapsed, last: std=43.162 joint=16.478
-    14/29 done, 591.9s elapsed, last: std=2.612 joint=4.194
-    16/29 done, 656.4s elapsed, last: std=8.934 joint=7.236
-    18/29 done, 702.5s elapsed, last: std=2.382 joint=0.512
-    20/29 done, 751.4s elapsed, last: std=0.137 joint=0.579
-    22/29 done, 798.5s elapsed, last: std=5.660 joint=2.692
-    24/29 done, 851.9s elapsed, last: std=0.106 joint=0.133
-    26/29 done, 898.6s elapsed, last: std=13.366 joint=3.905
-    28/29 done, 949.0s elapsed, last: std=2.550 joint=1.310
+  ONE evaluation: std=6.4556  joint=1.6930  chi2dof=0.0188  wall-clock=33.60s
+  setting N=267 based on measured per-eval cost (budget ~9000s)
+    13/267 done, 435.3s elapsed, last: std=0.670 joint=0.526
+    26/267 done, 892.5s elapsed, last: std=13.366 joint=3.905
+    39/267 done, 1348.7s elapsed, last: std=1.765 joint=0.257
+    52/267 done, 1870.4s elapsed, last: std=16.655 joint=5.958
+    65/267 done, 2372.5s elapsed, last: std=2.583 joint=3.008
+    78/267 done, 2858.7s elapsed, last: std=0.178 joint=0.312
+    91/267 done, 3335.2s elapsed, last: std=4.589 joint=5.929
+    104/267 done, 3765.9s elapsed, last: std=15.245 joint=4.864
+    117/267 done, 4256.7s elapsed, last: std=15.408 joint=4.937
+    130/267 done, 4792.1s elapsed, last: std=1.828 joint=0.382
+    143/267 done, 5259.3s elapsed, last: std=0.176 joint=0.145
+    156/267 done, 5734.2s elapsed, last: std=33.019 joint=13.514
+    169/267 done, 6172.1s elapsed, last: std=12.573 joint=4.695
+    182/267 done, 6603.5s elapsed, last: std=0.657 joint=0.748
+    195/267 done, 7066.5s elapsed, last: std=5.694 joint=1.060
+    208/267 done, 7563.5s elapsed, last: std=1.022 joint=0.447
+    221/267 done, 8021.6s elapsed, last: std=1.007 joint=1.708
+    234/267 done, 8500.9s elapsed, last: std=5.839 joint=4.889
+    247/267 done, 9001.9s elapsed, last: std=26.311 joint=8.849
+    260/267 done, 9534.8s elapsed, last: std=46.784 joint=12.707
+    267/267 done, 9816.8s elapsed, last: std=3.383 joint=0.755
 
-  -- QUANTILES under 29 randomized Forte-like noise models --
+  -- QUANTILES under 267 randomized Forte-like noise models --
                 STANDARD       JOINT
-    Q50           2.8136      2.6924
-    Q90          46.4433     12.7799
-    Q95         461.7227     16.4770
-    Q99         856.5597     29.4291
-    chi2/dof: median=0.0066  max=0.1138
+    Q50           6.0113      2.6540
+    Q90          38.1416     12.4601
+    Q95          70.7350     18.2898
+    Q99         900.3334     39.7968
+    chi2/dof: median=0.0081  max=0.1323
 
-  outlier rate (>20 kcal/mol): standard 5/29, joint 1/29
-  paired: joint wins 23/29 trials
+  outlier rate (>20 kcal/mol): standard 54/267, joint 10/267
+  paired: joint wins 212/267 trials
 
   TARGET: Q95 < 0.25 -> standard NOT MET, joint NOT MET
   LOOSENED HARDWARE BAR: Q95 < 0.5 -> standard NOT MET, joint NOT MET
 
   -- HONEST READ --
-    Joint frame IMPROVES robustness to noise-model uncertainty too: Q95 reduced 96.4% (461.72 -> 16.48), no worse outlier behavior. The Task 36 real-data win generalizes to calibration/noise-model uncertainty, not just shot/PEC-MC resampling noise.
+    Joint frame IMPROVES robustness to noise-model uncertainty too: Q95 reduced 74.1% (70.73 -> 18.29), no worse outlier behavior. The Task 36 real-data win generalizes to calibration/noise-model uncertainty, not just shot/PEC-MC resampling noise.
 
   Results saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task36b_joint_frame_robustness_envelope_results.json
 
