@@ -1,0 +1,29 @@
+{
+  "gpi2_candidates": [
+    0.0005,
+    0.001,
+    0.003,
+    0.008
+  ],
+  "results": {
+    "IYYI (established validation case)": {
+      "residuals_by_candidate": {
+        "0.0005": 1.1501068030320169e-17,
+        "0.001": 2.021576157880652e-13,
+        "0.003": 5.267771218203657e-16,
+        "0.008": 9.950500012209039e-10
+      },
+      "best_candidate": 0.0005
+    },
+    "(u3+u5) (Task 33D-flagged high sign-noise group)": {
+      "residuals_by_candidate": {
+        "0.0005": 1.4684359316330368e-12,
+        "0.001": 4.369385432764346e-12,
+        "0.003": 1.201918866759747e-12,
+        "0.008": 0.013089231703110797
+      },
+      "best_candidate": 0.003
+    }
+  },
+  "cross_slot_agree": false
+}

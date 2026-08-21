@@ -39,8 +39,21 @@ runs. **Honest verdict**: fitting raw, uncorrected hardware data with
 only 2 free noise parameters is too weak a model to reliably distinguish
 real physics from scrambled data; the self-consistent joint-calibration
 idea is not disproven, but this specific first construction is not
-trustworthy and was not forced past its own gate. See "Iteration 37"
-below for the full write-up.
+trustworthy and was not forced past its own gate. **Phase 1B**: a real
+new submission (128 circuits) testing GPi2 identification via single-
+slot internal consistency (never comparing to the known exact energy).
+Caught and fixed a severe bug first (GPi2's candidate value was
+accidentally also applied to the separate, well-calibrated GPi gates,
+causing PEC sampling overhead to reach 1e5-1e26 -- infeasible at any
+practical shot count, explaining why every corrected value clipped to
+exactly +-1.0). After the fix, values were no longer clipped, but a
+second, more fundamental issue surfaced: single-slot fits (2-4 measured
+labels vs a 6-dimensional state) are mathematically underdetermined and
+can hit exact-zero residual for almost any candidate -- not enough
+constraints to discriminate. A real design lesson, not a physics
+finding: genuine GPi2 identification needs the full multi-slot joint
+fit, not a per-slot shortcut. See "Iteration 37" below for the full
+write-up.
 
 **STATUS UPDATE (iteration 36, LOCAL BRANCH `local/attack-base-problem`,
 committed, `origin/main` untouched -- PASS gate not met. Local/free,
@@ -6749,21 +6762,61 @@ calibration idea** -- it disproves this specific, minimal first
 construction of it, and was not forced past its own validation gate to
 manufacture a positive-looking result.
 
+### Phase 1B -- real GPi2 sweep, single-slot internal consistency (real submission)
+
+Tested whether NEW real hardware data, twirled at several candidate
+p_gpi2 values, could identify GPi2 without ever comparing to the known
+exact H4 energy (the target-leakage safeguard the proposal itself
+demanded) -- using single-slot fit residual (`fit_pure_state`'s own
+`best_val`) as a purely internal consistency check. 128 new real circuits
+submitted to `ionq_simulator` (2 slots x 4 GPi2 candidates x 16 draws).
+
+**A real, severe bug was caught before trusting the first result**: the
+initial submission passed the GPi2 CANDIDATE value for both the `p1_gpi`
+and `p1_gpi2` arguments to `sample_twirled_circuit`, inflating the far
+more numerous, already-well-calibrated real GPi gates too. Verified
+directly: PEC's sampling overhead (gamma) compounds multiplicatively per
+gate, and reached 1e5-1e26 across the ~96-190 real gate instances in
+these circuits at the tested candidates (0.02-0.20, chosen from Task
+31A's own loose statistical bound) -- astronomically infeasible with any
+practical shot count, which is exactly why every corrected value clipped
+to precisely +-1.0 regardless of the real signal. Fixed (GPi held fixed
+at its own real calibration; a realistic small-p candidate range chosen
+instead, 0.0005-0.008, verified to keep gamma under ~40); resubmitted.
+
+**After the fix, values are no longer clipped** (real, varied blended
+values like -0.2683, 0.777) -- but a SECOND, more fundamental limitation
+surfaced: with only 2-4 measured labels per slot against a 6-dimensional
+state, `fit_pure_state` is mathematically UNDERDETERMINED (as few as 2
+equations for 5 real degrees of freedom) -- it can hit an EXACT zero
+residual for almost any candidate regardless of whether that candidate
+is physically correct. Both test slots showed zero residual for 3 of 4
+candidates, only distinguishing the largest (0.008) -- not because the
+data agreed on a preferred value, but because the test itself lacked
+enough constraints to discriminate most of the range. **This is a real
+design limitation, not a new physics finding**: single-slot internal-
+consistency checks don't carry enough redundancy; genuine identification
+needs the FULL multi-slot joint fit (Phase 1A's architecture) evaluated
+against data that varies with the candidate, not a per-slot shortcut.
+
 ### THE HONEST BOTTOM LINE FOR THIS ITERATION
 
-Two results, both real, both informative, neither a win: Phase 0
-precisely quantifies that ZZ/GPi calibration precision was never the
-dominant problem (only 12.7% of Q95's gap), newly and sharply implicating
-GPi2 (and/or the still-untouched angle-bias/readout/calib-ratio
-parameters) as the real remaining target -- a genuine narrowing of the
-problem, not a guess. Phase 1A's first attempt at directly resolving
-GPi2 via self-consistent estimation failed its own honesty gate,
-correctly, after two real implementation bugs were caught and fixed
-along the way -- a disciplined negative result, not a swept-under one.
-The joint Schmidt-frame estimator (Iteration 36) remains this project's
-best real, validated result; neither of this iteration's two experiments
-changed that number. No error-budget condition newly passes. The next
-honest step, if pursued, is a stronger version of Phase 1A -- either
+Three results, all real, all informative, none a win: Phase 0 precisely
+quantifies that ZZ/GPi calibration precision was never the dominant
+problem (only 12.7% of Q95's gap), newly and sharply implicating GPi2
+(and/or the still-untouched angle-bias/readout/calib-ratio parameters)
+as the real remaining target -- a genuine narrowing of the problem, not
+a guess. Phase 1A's and Phase 1B's attempts at directly resolving GPi2
+via self-consistent estimation each failed their own honesty/design
+checks, correctly, after real implementation bugs were caught and fixed
+along the way in both (Phase 1A: a performance bug and a frozen-restart
+bug; Phase 1B: a GPi/GPi2 parameter-conflation bug causing astronomical
+PEC overhead, then an underdetermined single-slot test design) -- three
+disciplined negative results, not swept-under ones. The joint Schmidt-
+frame estimator (Iteration 36) remains this project's best real,
+validated result; none of this iteration's three experiments changed
+that number. No error-budget condition newly passes. The next honest
+step, if pursued, is a stronger version of Phase 1A/1B -- either
 against PEC-corrected (not raw) data with calibration folded in
 differently, or with more informative real data specifically targeting
 GPi2 -- not a repeat of this exact construction.

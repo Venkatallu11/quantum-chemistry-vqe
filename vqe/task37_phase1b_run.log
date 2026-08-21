@@ -1,0 +1,36 @@
+
+================================================================================================
+  task37_phase1b_gpi2_identification.py -- real GPi2 sweep, internal-consistency identification
+  TARGET-LEAKAGE SAFEGUARD: the known exact H4 energy is NEVER used below to pick a candidate.
+================================================================================================
+
+  connected, backend=ionq_simulator
+  built 128 new twirled circuits (2 slots x 4 GPi2 candidates x 16 draws)
+  submitting in 2 batches of <= 64 circuits each...
+    batch 1/2 done (64/128 total), 378.9s elapsed
+    batch 2/2 done (128/128 total), 499.5s elapsed
+  checkpoint saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\ionq_simulator_binding_curve_checkpoints\task37_phase1b_gpi2_sweep.json
+
+  -- ANALYSIS: single-slot fit residual per GPi2 candidate (internal consistency only) --
+
+  === IYYI (established validation case) ===
+    p_gpi2=0.00: fit residual (best_val) = 0.000000   blended={'XYYX': -0.2683, 'IYYI': 0.777}
+    p_gpi2=0.00: fit residual (best_val) = 0.000000   blended={'XYYX': -0.334, 'IYYI': 0.886}
+    p_gpi2=0.00: fit residual (best_val) = 0.000000   blended={'XYYX': -0.2248, 'IYYI': 0.665}
+    p_gpi2=0.01: fit residual (best_val) = 0.000000   blended={'XYYX': -0.5442, 'IYYI': 1.0}
+    -- DATA-PREFERRED p_gpi2 (lowest internal-fit residual, NO exact-energy comparison used): 0.00 --
+
+  === (u3+u5) (Task 33D-flagged high sign-noise group) ===
+    p_gpi2=0.00: fit residual (best_val) = 0.000000   blended={'XZXZ': 0.3073, 'XZXI': 0.2417, 'IZIZ': -0.0363, 'IIIZ': 0.7403}
+    p_gpi2=0.00: fit residual (best_val) = 0.000000   blended={'XZXZ': 0.3246, 'XZXI': 0.2984, 'IZIZ': 0.0398, 'IIIZ': 0.9026}
+    p_gpi2=0.00: fit residual (best_val) = 0.000000   blended={'XZXZ': 0.3234, 'XZXI': 0.291, 'IZIZ': 0.0465, 'IIIZ': 0.8862}
+    p_gpi2=0.01: fit residual (best_val) = 0.013089   blended={'XZXZ': 0.5732, 'XZXI': 0.4231, 'IZIZ': 0.0967, 'IIIZ': 1.0}
+    -- DATA-PREFERRED p_gpi2 (lowest internal-fit residual, NO exact-energy comparison used): 0.00 --
+
+  -- CROSS-SLOT CHECK: do independent slots agree on which GPi2 the data prefers? --
+    IYYI (established validation case): prefers p_gpi2=0.00
+    (u3+u5) (Task 33D-flagged high sign-noise group): prefers p_gpi2=0.00
+    DISAGREE -- no consistent signal across independent slots; real, honest negative finding
+
+  Results saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task37_phase1b_gpi2_identification_results.json
+
