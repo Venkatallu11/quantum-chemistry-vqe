@@ -1,5 +1,47 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 37 addendum, circuit-level branch, LOCAL
+BRANCH `local/attack-base-problem`, committed, `origin/main` untouched):
+after three consecutive estimator-side negative results this iteration
+(Phase 1A, Phase 1B x2), pivoted to the circuit itself for the first time
+in this multi-iteration investigation -- every prior iteration (32-37)
+worked exclusively on post-processing/estimation. **Correction made in
+the open**: an earlier recollection of "~190 GPi2 gates per circuit" was
+wrong and not verified before being stated -- the real, directly-measured
+count for a representative circuit is 48 GPi2/24 GPi/7 ZZ. **Real finding
+via direct circuit inspection**: `base.compose(basis_qc)` (the standard
+construction used to build every one of this project's real measurement
+circuits, throughout its entire history) concatenates two INDEPENDENTLY-
+compiled native circuits without ever re-optimizing across the seam --
+every qubit shows a `GPi2-GPi-GPi2` Euler-style block from the ansatz
+immediately followed by another such block from the basis rotation,
+mathematically redundant (two consecutive single-qubit rotations should
+multiply into one net rotation, needing at most 3 native gates, not 6).
+**Checked whether Qiskit's own transpiler could fix this for free**:
+`transpile(..., optimization_level=0..3)` on the composed circuit does
+NOT achieve this fusion -- levels 0/1 leave gate count unchanged, levels
+2/3 make it WORSE (76 vs 48 GPi2 gates on the same test circuit) --
+directly confirming, with real measurement, the `IonQTranspileLevelWarning`
+this project has seen in every run log all session ("recommend 0-1,
+avoid aggressive re-synthesis at 2+") is correct for this gate set, not
+just a generic library nag. Built a targeted fusion pass (`gate_fusion.py`)
+reusing Qiskit's own unitary-synthesis machinery (via `UnitaryGate` +
+`transpile(target=...)`, not hand-derived Euler math), applied
+surgically only where consecutive same-qubit gate runs actually exist.
+**Result, verified across 48 sampled real measurement circuits (8 slots
+x 6 basis groups), exact unitary equivalence confirmed on every one
+(max diff 8e-14, machine precision)**: GPi2 2484->1896, GPi 1242->948 --
+**a 23.7% reduction in both**, purely mechanical, zero new physics
+assumption, zero new calibration requirement. Since GPi2 is the
+confirmed-dominant remaining uncertainty source (Task 37 Phase 0: ~87%
+of the robustness gap) and its noise compounds per real gate instance,
+this is a real, free, orthogonal lever that stacks with every estimator-
+side result from this iteration and Iteration 36 -- not yet integrated
+into the production circuit-building pipeline or re-tested end-to-end
+against real hardware data, which is the natural next step. See
+"Iteration 37" below for the full estimator-side write-up this addendum
+follows.
+
 **STATUS UPDATE (iteration 37, LOCAL BRANCH `local/attack-base-problem`,
 committed, `origin/main` untouched -- PASS gate not met. Local/free, real
 already-collected calibration + H4 checkpoints, zero new submissions):
