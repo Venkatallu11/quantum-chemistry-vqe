@@ -1,0 +1,39 @@
+
+================================================================================================
+  task36_joint_schmidt_frame.py -- joint 15-parameter Schmidt-frame fit vs 21 independent fits
+================================================================================================
+
+  -- VALIDATION 1: ideal-data (noiseless) recovery --
+    recovered energy err vs exact: 0.000000 kcal/mol  (should be ~0)
+    chi2/dof: 0.00000000  (should be ~0)
+    IDEAL-DATA RECOVERY: PASS
+
+  -- VALIDATION 2: adversarial rejection (real data, labels shuffled within each slot) --
+  loaded Task 31C's real checkpoint: 16 MC draws/label, 21 slots
+    chi2/dof on REAL data (unshuffled):  0.0068
+    chi2/dof on SHUFFLED (adversarial):  0.3546
+    ADVERSARIAL REJECTION: PASS (model correctly rejects scrambled data)
+
+  Both validations passed -- proceeding to real bootstrap comparison
+
+  -- running 80 paired real bootstrap trials (standard 21-fit vs joint 15-param frame) --
+
+  STANDARD (21 independent fits):  median=1.1788  std=1.2175  MSE=2.8720
+  JOINT (15-param shared frame):   median=0.2920  std=0.4858  MSE=0.3212
+  chi2/dof across trials: median=0.0079  max=0.1224
+
+  errs_std sorted:   [0.03 0.03 0.04 0.07 0.09 0.14 0.17 0.22 0.23 0.23 0.24 0.28 0.29 0.32 0.39 0.48 0.53 0.54 0.56 0.57 0.58 0.6  0.66 0.68 0.78 0.83 0.86 0.87 0.88 0.89 0.9  0.91 0.94 0.94 0.96 1.07 1.08 1.12 1.13
+ 1.15 1.2  1.21 1.22 1.22 1.24 1.26 1.49 1.5  1.51 1.54 1.57 1.59 1.67 1.9  1.96 1.98 1.99 2.02 2.15 2.16 2.22 2.37 2.39 2.41 2.44 2.47 2.5  2.54 2.74 3.08 3.19 3.53 3.63 3.7  3.77 4.13 4.21 4.5
+ 4.54 4.82]
+  errs_joint sorted: [0.07 0.08 0.09 0.09 0.1  0.1  0.12 0.12 0.13 0.15 0.16 0.18 0.18 0.19 0.19 0.19 0.2  0.2  0.2  0.21 0.21 0.22 0.22 0.23 0.23 0.23 0.24 0.24 0.24 0.24 0.25 0.25 0.25 0.26 0.26 0.26 0.26 0.27 0.29
+ 0.29 0.29 0.29 0.29 0.3  0.3  0.31 0.32 0.32 0.33 0.34 0.35 0.35 0.38 0.38 0.38 0.39 0.39 0.4  0.4  0.4  0.41 0.43 0.43 0.43 0.44 0.44 0.46 0.46 0.48 0.51 0.52 0.53 0.54 0.57 0.67 1.27 1.56 1.91
+ 2.18 3.41]
+
+  outlier rate (>20 kcal/mol): standard 0/80, joint 0/80
+  paired: joint wins 66/80 trials, mean(std_err-joint_err)=+1.1051
+
+  -- HONEST READ --
+    JOINT SCHMIDT-FRAME WINS: 88.8% MSE reduction, no worse outlier behavior. The shared-frame regularization is a real, net win on this real data.
+
+  Results saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task36_joint_schmidt_frame_results.json
+
