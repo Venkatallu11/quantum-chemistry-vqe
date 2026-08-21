@@ -36,13 +36,24 @@ median=1.18, Q95=4.14 kcal/mol; JOINT (15-param shared frame)
 **median=0.29, Q95=1.29 kcal/mol** -- an 88.8% MSE reduction, a 6.7x
 improvement at Q90 (3.54->0.53), joint frame winning 66/80 (82.5%) of
 trials. **The single largest real, validated, reproducible improvement
-this project has found across 36 iterations.** Two honest limits, not
-yet tested: this bootstrap captures shot-noise + PEC-MC resampling
-variance from ONE real hardware collection only -- it does NOT yet
-include cross-submission drift (iteration 25: +-2.3 to 4.0 kcal/mol) or
-noise-model calibration uncertainty (the robustness-envelope test from
-Tasks 31h/33A); median 0.29 is near the 0.25 target but Q95~1.3 is still
-meaningfully over even the loosened 0.5 hardware bar. See "Iteration 36"
+this project has found across 36 iterations, on ONE fixed real hardware
+collection.** **Task B, immediately following: the SAME comparison
+re-run through Tasks 31h/33A's established noise-model robustness
+envelope (varying calibration/noise-model parameters, not just
+resampling one dataset) -- and the picture changes substantially.**
+Standard Q95=461.72, joint Q95=16.48 kcal/mol (N=29 randomized Forte-like
+models) -- joint is still dramatically, consistently better (96.4% Q95
+reduction, 5x fewer outliers, wins 23/29 trials, confirming the real-data
+win generalizes beyond one resampling scheme) -- **but BOTH miss the
+0.25 kcal/mol target badly, and BOTH miss even the loosened 0.5 kcal/mol
+hardware bar**: joint's Q95=16.48 is still ~66x over target. **Honest
+synthesis**: the joint estimator is a genuine, twice-validated advance
+(relatively, and now on two different real tests) -- not a solved
+problem. The gap between Task 36's real-data-only result (Q95=1.29) and
+Task B's noise-model-uncertainty result (Q95=16.48) is itself the
+project's own long-standing lesson (since iteration 31's 0.115 kcal/mol
+false alarm) that resampling-only tests systematically understate real-
+world uncertainty. Not ready for real IonQ hardware. See "Iteration 36"
 below for the full write-up.
 
 **STATUS UPDATE (iteration 35, LOCAL BRANCH `local/attack-base-problem`,
@@ -6715,22 +6726,80 @@ re-verified stable afterward before being reported.
    question, exactly the "accuracy vs reliability" distinction this
    project's own error budget has emphasized since iteration 31.
 
+### Task B — the SAME comparison through noise-model uncertainty, not just resampling
+
+Task A's 88.8% MSE win was measured entirely on ONE fixed real hardware
+collection (Task 31C's checkpoint) -- resampling shot noise and which
+real PEC draws contribute, but never varying the underlying calibration/
+noise-model parameters themselves. This project's own history (iteration
+31's 0.115 kcal/mol false alarm, disowned once noise-model uncertainty
+was properly included) makes clear that's a different, usually much
+larger, source of uncertainty. Tested directly: reused Tasks 31h/33A's
+established noise-model robustness-envelope machinery UNCHANGED
+(`sample_noise_model`, `noisy_pec_dm`, `apply_readout_error` --
+randomized p_ZZ/p_GPi/p_GPi2, per-gate-type coherent angle bias, PEC
+calibration mismatch, readout error, over the same intervals Task 31h
+justified from real measurements), feeding the SAME noisy realization
+into BOTH the standard 21-independent-fit estimator and the joint 15-
+parameter frame for a fair, paired comparison. Zero shot noise (exact
+density-matrix expectation, matching Task 31h's own convention) --
+isolates calibration/noise-model robustness specifically. Run with
+`PYTHONHASHSEED=0` throughout, per Task A's own fix.
+
+**Result, N=29 randomized Forte-like noise models** (N set from measured
+per-eval cost against a disclosed ~40-minute budget, matching Task 31h's
+own convention -- each joint-frame evaluation costs ~82s given the 12-
+restart optimizer, materially more expensive than Task 31h's original
+per-eval cost, hence the smaller N here than Task 31h's own runs):
+
+| | STANDARD | JOINT |
+|---|---|---|
+| Q50 | 2.81 | 2.69 |
+| Q90 | 46.44 | 12.78 |
+| Q95 | **461.72** | **16.48** |
+| Q99 | 856.56 | 29.43 |
+| outliers (>20 kcal/mol) | 5/29 | 1/29 |
+
+Joint wins 23/29 (79%) trials. chi2/dof stays low and stable throughout
+(median 0.0066, max 0.1138) -- no sign of the pre-fix nondeterminism
+reappearing.
+
+**Honest read, precisely, not oversold**: joint is dramatically,
+consistently better than standard here too -- 96.4% Q95 reduction, 5x
+fewer catastrophic outliers, confirming the Task A win is a real,
+generalizing property of the shared-frame regularization, not an
+artifact specific to one dataset's resampling structure. **But in
+absolute terms, NEITHER method is remotely close to usable**: joint's
+Q95=16.48 kcal/mol is still ~66x over the 0.25 kcal/mol target and ~33x
+over the loosened 0.5 kcal/mol hardware bar. The gap between this result
+(Q95=16.48) and Task A's real-data-only result (Q95=1.29) is itself the
+key honest finding -- calibration/noise-model uncertainty is a much
+larger, harder problem than shot/PEC-MC resampling noise, exactly the
+distinction this project's own error budget has insisted on since
+iteration 31. N=29 is small for precise Q95/Q99 estimation (a handful of
+extreme noise-model draws dominate the tail, as they have throughout this
+project's robustness-envelope work) -- the exact value 16.48 should be
+read as "still very large," not trusted to two significant figures;
+extending N would sharpen the estimate without changing the qualitative
+conclusion.
+
 ### THE HONEST BOTTOM LINE FOR THIS ITERATION
 
 A genuinely different, structurally-motivated estimator -- not another
 reweighting or damping trick -- gives the largest real improvement this
 project has found, survives a serious self-inflicted numerical bug that
-was caught and properly root-caused rather than glossed over, and passes
-every validation this project's discipline demands before trusting real-
-data results. Not yet a finished answer: the natural next step is
-running this same joint-frame estimator through the SAME noise-model
-robustness envelope (Task 31h/33A methodology) that is this project's
-real reliability gate, since a result this large deserves the same
-scrutiny that caught false positives at 0.115 kcal/mol (iteration 31) and
-Task 32C's convex-SDP excitement before it. No error-budget condition
-formally passes yet (drift and noise-model uncertainty not yet included),
-but this is the first result in the project's history where doing so
-looks like a realistic near-term question rather than a distant one.
+was caught and properly root-caused rather than glossed over, passes
+every validation this project's discipline demands, and now generalizes
+across TWO different real tests (real-data resampling AND noise-model
+uncertainty) rather than just one. **This is real, durable progress, not
+a repeat of iteration 31's false alarm.** But it is not a finished
+answer: under the harder, more realistic noise-model-uncertainty test,
+Q95 is still ~66x over target for even the improved estimator. No error-
+budget condition passes. The joint Schmidt-frame idea should be kept and
+built on (a natural next question: does it compound with Task 35's
+stratified PEC, which attacks a different, still-untouched variance
+source?) -- but this project's own honest number after 36 iterations
+remains: not ready for real IonQ hardware.
 
 ---
 

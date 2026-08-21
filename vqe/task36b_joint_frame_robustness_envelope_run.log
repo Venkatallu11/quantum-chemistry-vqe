@@ -1,0 +1,40 @@
+
+================================================================================================
+  task36b_joint_frame_robustness_envelope.py -- joint frame vs standard, under noise-model uncertainty
+================================================================================================
+  ONE evaluation: std=6.4556  joint=1.6930  chi2dof=0.0188  wall-clock=81.88s
+  setting N=29 based on measured per-eval cost (budget ~2400s)
+    2/29 done, 113.0s elapsed, last: std=729.825 joint=0.020
+    4/29 done, 213.2s elapsed, last: std=10.245 joint=5.539
+    6/29 done, 326.1s elapsed, last: std=1.611 joint=0.268
+    8/29 done, 412.3s elapsed, last: std=15.627 joint=5.864
+    10/29 done, 475.8s elapsed, last: std=19.844 joint=6.779
+    12/29 done, 532.3s elapsed, last: std=43.162 joint=16.478
+    14/29 done, 591.9s elapsed, last: std=2.612 joint=4.194
+    16/29 done, 656.4s elapsed, last: std=8.934 joint=7.236
+    18/29 done, 702.5s elapsed, last: std=2.382 joint=0.512
+    20/29 done, 751.4s elapsed, last: std=0.137 joint=0.579
+    22/29 done, 798.5s elapsed, last: std=5.660 joint=2.692
+    24/29 done, 851.9s elapsed, last: std=0.106 joint=0.133
+    26/29 done, 898.6s elapsed, last: std=13.366 joint=3.905
+    28/29 done, 949.0s elapsed, last: std=2.550 joint=1.310
+
+  -- QUANTILES under 29 randomized Forte-like noise models --
+                STANDARD       JOINT
+    Q50           2.8136      2.6924
+    Q90          46.4433     12.7799
+    Q95         461.7227     16.4770
+    Q99         856.5597     29.4291
+    chi2/dof: median=0.0066  max=0.1138
+
+  outlier rate (>20 kcal/mol): standard 5/29, joint 1/29
+  paired: joint wins 23/29 trials
+
+  TARGET: Q95 < 0.25 -> standard NOT MET, joint NOT MET
+  LOOSENED HARDWARE BAR: Q95 < 0.5 -> standard NOT MET, joint NOT MET
+
+  -- HONEST READ --
+    Joint frame IMPROVES robustness to noise-model uncertainty too: Q95 reduced 96.4% (461.72 -> 16.48), no worse outlier behavior. The Task 36 real-data win generalizes to calibration/noise-model uncertainty, not just shot/PEC-MC resampling noise.
+
+  Results saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task36b_joint_frame_robustness_envelope_results.json
+
