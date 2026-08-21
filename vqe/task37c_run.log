@@ -1,0 +1,24 @@
+
+================================================================================================
+  task37c_fusion_real_test.py -- original vs fused circuit, real submission, ideal/aria-1/forte-1
+================================================================================================
+  connected, backend=ionq_simulator
+  built 12 circuits (2 cases x 2 versions x 3 backends)
+    ideal: 4 circuits done
+    aria-1: 4 circuits done
+    forte-1: 4 circuits done
+
+  -- RESULTS: raw error vs exact, original vs fused, per backend --
+
+  === IYYI (established validation case) ===
+    ideal    original_err=0.6487  fused_err=0.6449  (fused BETTER by 0.0038)
+    aria-1   original_err=0.6701  fused_err=0.6688  (fused BETTER by 0.0014)
+    forte-1  original_err=0.6733  fused_err=0.6679  (fused BETTER by 0.0054)
+
+  === (u3+u5) (Task 33D-flagged group) ===
+    ideal    original_err=0.3075  fused_err=0.3094  (fused WORSE by 0.0019)
+    aria-1   original_err=0.3576  fused_err=0.3567  (fused BETTER by 0.0009)
+    forte-1  original_err=0.3496  fused_err=0.3544  (fused WORSE by 0.0048)
+
+  Results saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task37c_fusion_real_test_results.json
+
