@@ -1,5 +1,54 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 37, Task E real follow-up #2, LOCAL BRANCH
+`local/attack-base-problem`, not yet committed, `origin/main` untouched --
+8 REAL independent `ionq_simulator` submissions per backend, explicit
+user go-ahead given, `ionq_simulator` only, never real hardware): **THIS
+CORRECTS THE READ OF THE ENTRY DIRECTLY BELOW.** Ran `task37e_real_
+calibration_repeated_submission.py` -- 8 genuinely independent real API
+submissions per backend (NOT bootstrap resampling of one submission's
+counts, which only captures shot noise; these are fresh real
+submissions, matching the exact protocol that established this
+project's own cross-submission-drift finding) for both calibration
+circuits, specifically to check whether the single-draw run's aria-1
+delta_zz=-0.00114 (~2.3 SE "significant" reading) and its sign
+disagreement with forte-1 would replicate. **It did not.** Across 8 real
+draws: aria-1 delta_zz_hat=+0.000084 (SEM~2.49e-4) -- not just
+insignificant, but the SIGN FLIPPED relative to the single-draw result,
+and the magnitude collapsed to near-zero. forte-1 delta_zz_hat=
+-0.000239 (SEM~1.80e-4), also not significant. delta_gpi2 on both
+backends likewise not significant (aria-1 -0.000927 SEM~1.6e-3, forte-1
++0.000710 SEM~1.27e-3). aria-1 and forte-1 STILL disagree in sign for
+delta_zz even with 8 draws each -- but now BOTH values are individually
+indistinguishable from zero, so this is exactly what pure noise around a
+true value of ~0 looks like, not evidence of a real backend-dependent
+effect. Ideal-backend sanity check still PASSES (both near zero, and its
+own across-draw std, 0.0033, closely matches the pure-shot-noise
+expectation of ~0.00316 -- confirming `ideal` shows no extra drift beyond
+sampling, as it should, and giving confidence the OTHER backends'
+somewhat larger across-draw std, ~0.0032-0.0044, reflects a real but
+here comparatively modest cross-submission variability for this specific
+circuit, smaller than the much larger drift this project has separately
+quantified on other, more complex H4 circuits). **Honest final verdict
+for this line of investigation**: the single-draw "significant" finding
+was a real, disclosed FALSE POSITIVE, caught by exactly the repeated-
+draw discipline this project has used for every other real calibration
+number -- a good, hard-won demonstration of why that discipline exists,
+not a wasted effort. With proper statistics, delta_zz and delta_gpi2
+remain CONSISTENT WITH ZERO on both aria-1 and forte-1 at this shot
+budget (8 draws x 100k shots): roughly |delta_zz| < 5e-4 and
+|delta_gpi2| < 3e-3 at ~95% confidence (2x SEM), an upper bound, not a
+detection. This does NOT mean delta_zz/delta_gpi2 are exactly zero on
+real IonQ hardware -- it means these specific, verified, maximally-
+sensitive circuits, at this shot budget, could not resolve a nonzero
+value if the true bias is smaller than that bound. The calibration-
+circuit design and Fisher-information framework (Tasks 37D/37E) both
+worked exactly as intended; what was learned is a real, disclosed null
+result at a now-quantified precision floor, closing this specific
+sub-investigation for now (a materially larger shot/draw budget would be
+needed to push the floor lower, a real-cost tradeoff for the user to
+weigh, not decided here).
+
 **STATUS UPDATE (iteration 37, Task E real follow-up, LOCAL BRANCH
 `local/attack-base-problem`, not yet committed, `origin/main` untouched --
 ONE real `ionq_simulator` submission, explicit user go-ahead given,

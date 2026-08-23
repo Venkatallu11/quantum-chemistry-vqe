@@ -1,0 +1,49 @@
+
+================================================================================================
+  task37e_real_calibration_repeated_submission.py -- 8 independent REAL submissions/backend
+================================================================================================
+  connected, backend=ionq_simulator
+    draw 1/8 done (3 backends x 2 circuits)
+    draw 2/8 done (3 backends x 2 circuits)
+    draw 3/8 done (3 backends x 2 circuits)
+    draw 4/8 done (3 backends x 2 circuits)
+    draw 5/8 done (3 backends x 2 circuits)
+    draw 6/8 done (3 backends x 2 circuits)
+    draw 7/8 done (3 backends x 2 circuits)
+    draw 8/8 done (3 backends x 2 circuits)
+
+  -- RESULTS: mean +/- std ACROSS 8 INDEPENDENT REAL SUBMISSIONS (real drift, not shot noise) --
+
+  === ideal (8 draws) ===
+    <XI> across draws: [ 4.94e-03 -3.54e-03 -1.58e-03  3.56e-03  4.00e-05 -4.56e-03  1.46e-03
+  1.62e-03]
+    <XI> mean=+0.000242  std_across_draws=0.003321  SEM=0.001174
+    <Z>  across draws: [ 0.00222 -0.00174 -0.00514 -0.00196  0.00032 -0.00254  0.00206  0.0033 ]
+    <Z>  mean=-0.000435  std_across_draws=0.002888  SEM=0.001021
+    delta_zz_hat   = -0.000039  (SEM~1.87e-04)  not significant vs real cross-draw variation
+    delta_gpi2_hat = +0.000435  (SEM~1.02e-03)  not significant vs real cross-draw variation
+
+  === aria-1 (8 draws) ===
+    <XI> across draws: [-0.00122 -0.0078   0.0015   0.00496  0.00266 -0.00264  0.0033  -0.00498]
+    <XI> mean=-0.000527  std_across_draws=0.004419  SEM=0.001562
+    <Z>  across draws: [ 0.00544 -0.00164  0.00224  0.00096 -0.00366 -0.00398  0.00916 -0.0011 ]
+    <Z>  mean=+0.000927  std_across_draws=0.004562  SEM=0.001613
+    delta_zz_hat   = +0.000084  (SEM~2.49e-04)  not significant vs real cross-draw variation
+    delta_gpi2_hat = -0.000927  (SEM~1.61e-03)  not significant vs real cross-draw variation
+
+  === forte-1 (8 draws) ===
+    <XI> across draws: [ 0.0016   0.00348 -0.00118  0.00078 -0.00364  0.00334  0.0007   0.00694]
+    <XI> mean=+0.001503  std_across_draws=0.003200  SEM=0.001131
+    <Z>  across draws: [-1.48e-03 -2.42e-03 -2.40e-04 -1.00e-04  1.46e-03  4.80e-03 -7.82e-03
+  1.20e-04]
+    <Z>  mean=-0.000710  std_across_draws=0.003594  SEM=0.001271
+    delta_zz_hat   = -0.000239  (SEM~1.80e-04)  not significant vs real cross-draw variation
+    delta_gpi2_hat = +0.000710  (SEM~1.27e-03)  not significant vs real cross-draw variation
+
+  -- SANITY CHECK: ideal backend should read ~0 for both -- PASS
+
+  -- CROSS-BACKEND COMPARISON (aria-1 vs forte-1 delta_zz sign disagreement from the single-draw run) --
+    aria-1 delta_zz_hat=+0.000084   forte-1 delta_zz_hat=-0.000239   STILL OPPOSITE SIGN -- real backend difference or both consistent with zero
+
+  Results saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task37e_real_calibration_repeated_submission_results.json
+
