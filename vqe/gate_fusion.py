@@ -34,6 +34,22 @@ from qiskit.circuit.library import UnitaryGate
 from qiskit.quantum_info import Operator
 
 
+def build_fused_measurement_circuit(base, basis_qc, native_target):
+    """Iteration 38A: the ONE canonical way new work should compose a
+    state-prep circuit with a measurement-basis-change circuit from here
+    on. `base.compose(basis_qc)` alone (used throughout iterations
+    30-37, ~17 files) leaves the ansatz/basis-rotation seam unfused --
+    verified real, free, exact 23.7% GPi2/GPi reduction (see this file's
+    own self-test). NOT retrofitted into those existing 17 files: they
+    are each already validated, real-data results; rewriting them risks
+    silently changing what a committed result means. This helper is for
+    NEW circuit-building work (Task 38 onward) so every future real
+    submission uses the reduced circuit without re-deriving the fusion
+    call each time."""
+    full = base.compose(basis_qc)
+    return fuse_single_qubit_runs(full, native_target)
+
+
 def fuse_single_qubit_runs(qc, native_target):
     """Returns a new circuit with every maximal run of consecutive
     single-qubit gates on the SAME qubit (with no intervening multi-qubit
@@ -129,6 +145,15 @@ def _self_test():
     pct_gpi = 100 * (gpi_before - gpi_after) / gpi_before if gpi_before else 0
     print(f"\n  GPi2: {gpi2_before} -> {gpi2_after}  ({pct_gpi2:+.1f}%)")
     print(f"  GPi:  {gpi_before} -> {gpi_after}  ({pct_gpi:+.1f}%)")
+
+    print("\n  -- Iteration 38A: build_fused_measurement_circuit wrapper regression check --")
+    fused_wrapper = build_fused_measurement_circuit(base, basis_qc, tgt)
+    U_wrapper = Operator(fused_wrapper).data
+    phase_w = U_wrapper[tuple(idx)] / U_before[tuple(idx)]
+    diff_w = np.max(np.abs(U_wrapper - phase_w * U_before))
+    same_gates = Counter(instr.operation.name for instr in fused_wrapper.data) == counts_after
+    print(f"  wrapper vs manual two-step: unitary diff={diff_w:.3e}, identical gate counts={same_gates}  "
+          f"{'PASS' if diff_w < 1e-8 and same_gates else 'FAIL'}")
 
 
 if __name__ == "__main__":
