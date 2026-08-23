@@ -1,0 +1,29 @@
+{
+  "ideal_ok": true,
+  "adv_ok": true,
+  "chi2dof_frameonly_real": 0.0064,
+  "chi2dof_frameonly_adv": 0.3362,
+  "chi2dof_train_check": 0.0070,
+  "chi2dof_adv_check": 0.3429,
+  "chi2dof_train": 0.0071,
+  "chi2dof_val": 0.0085,
+  "val_train_ratio": 1.19,
+  "n_train": 525,
+  "n_val": 231,
+  "noise_hat": {
+    "p_zz": 0.0,
+    "p_gpi2": 0.0003,
+    "delta_zz": 0.0,
+    "delta_gpi2": 0.0,
+    "p_readout": 0.002006
+  },
+  "priors": {
+    "p_zz": {"mean": 0.0, "std": 0.000124, "source": "RESIDUAL (Task 31C's own correction already used the real Task 31A p_zz calibration; std reused directly from that calibration's own measurement uncertainty)"},
+    "p_gpi2": {"mean": 0.001, "std": 0.02, "source": "WEAK (no real posterior -- Task 31A recalibration failed; bound set by PEC feasibility, Task 37 Phase 1B)"},
+    "delta_zz": {"mean": 0.0, "std": 0.01, "source": "WEAK (no real measurement)"},
+    "delta_gpi2": {"mean": 0.0, "std": 0.01, "source": "WEAK (no real measurement)"},
+    "p_readout": {"mean": 0.005, "std": 0.01, "source": "WEAK (no dedicated real calibration exists in this project, confirmed by search before writing this)"}
+  },
+  "err_vs_exact_informational_only": 0.6237,
+  "note": "manually transcribed from the run's complete stdout log (task37c_pec_run.log) -- the run's own json.dump call crashed on a numpy-bool JSON-serialization bug AFTER all analysis and printing finished (see task37c_pec_run.err.log); the bug is fixed in task37c_pec_corrected_joint_fit.py for future runs, not re-run here since PYTHONHASHSEED=0 plus fixed RNG seeds make this deterministic and every value below is a direct, unaltered transcription of what the real run printed, not a re-derived or estimated number"
+}

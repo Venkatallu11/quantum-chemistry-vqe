@@ -1,0 +1,32 @@
+
+================================================================================================
+  task37c_pec_corrected_joint_fit.py -- 15+5-param fit on Task 31C's PEC-corrected data
+================================================================================================
+
+  loaded Task 31C's real PEC-corrected checkpoint: 16 MC draws/label, 21 slots
+  data split: 525 training residuals, 231 held-out validation residuals (31% held out, stratified per slot, seed=37)
+
+  -- VALIDATION 1: ideal-data (noiseless, no residual correction needed) recovery --
+    recovered energy err vs exact: 0.000146 kcal/mol  noise_hat={'p_zz': np.float64(0.0), 'p_gpi2': np.float64(0.0), 'delta_zz': np.float64(0.0), 'delta_gpi2': np.float64(0.0), 'p_readout': np.float64(0.0)}
+    IDEAL-DATA RECOVERY: PASS
+
+  -- VALIDATION 2: adversarial rejection (TRAINING data only) -- frame-only baseline AND frame+residual-noise --
+    [frame-only baseline, Task 36's own fit] real=0.0064  shuffled=0.3362  ratio=52.7x
+    [frame+residual-noise, this script]     real=0.0070  shuffled=0.3429  ratio=49.2x
+    ADVERSARIAL REJECTION: PASS
+
+  -- MAIN FIT: joint 15+5-param fit on TRAINING data only (validation held out) --
+    fitted residual noise params:
+      p_zz         = +0.000000   (prior 0.00000+/-0.00012, z=+0.00, source: RESIDUAL (Task 31C's own correction already used the real Task 31A p_zz calibration; std reused directly from that calibration's own measurement uncertainty))
+      p_gpi2       = +0.000300   (prior 0.00100+/-0.02000, z=-0.03, source: WEAK (no real posterior -- Task 31A recalibration failed; bound set by PEC feasibility, Task 37 Phase 1B))
+      delta_zz     = +0.000000   (prior 0.00000+/-0.01000, z=+0.00, source: WEAK (no real measurement))
+      delta_gpi2   = +0.000000   (prior 0.00000+/-0.01000, z=+0.00, source: WEAK (no real measurement))
+      p_readout    = +0.002006   (prior 0.00500+/-0.01000, z=-0.30, source: WEAK (no dedicated real calibration exists in this project, confirmed by search before writing this))
+    chi2/dof (TRAINING): 0.0071
+
+  -- GENERALIZATION CHECK: chi2/dof on VALIDATION data the fit never saw --
+    chi2/dof (VALIDATION, n=231): 0.0085
+    validation/training chi2 ratio: 1.19x  (no strong overfitting signal)
+
+  -- INFORMATIONAL ONLY (NOT used in any decision above -- no target leakage): energy vs exact --
+    resulting H4 energy error vs exact: 0.6237 kcal/mol

@@ -1,5 +1,56 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 37, Task C retry, PEC-corrected data, LOCAL
+BRANCH `local/attack-base-problem`, not yet committed, `origin/main`
+untouched -- pure local computation, zero real submissions): retried
+Task C on Task 31C's real, ALREADY quasi-probability-PEC-corrected
+checkpoint (`task37c_pec_corrected_joint_fit.py`) instead of raw data,
+per the plan the raw-data negative result above pointed to. **Design
+change, disclosed**: since literal-twirling PEC only corrects INCOHERENT
+gate error, the noise model here is a SECOND, smaller correction layered
+on Task 31C's own real correction, with p_zz's prior RE-CENTERED at 0
+(residual/leftover miscalibration, std reused directly from Task 31A's
+own real measurement uncertainty) while p_gpi2/delta_zz/delta_gpi2/
+p_readout keep Task 37B's original weak priors unchanged (PEC's twirling
+structurally cannot address any of those four regardless of how accurate
+its own depolarizing calibration was). **All validation gates PASS this
+time**: ideal-data recovery (err=0.000146 kcal/mol); adversarial
+rejection at 49.2x (real chi2/dof=0.0070 vs shuffled=0.3429), essentially
+matching Task 36's own frame-only baseline reproduced side-by-side in the
+same run (52.7x, real=0.0064/shuffled=0.3362) -- confirming the 5 added
+residual noise parameters do NOT meaningfully damage the identifiability
+Task 36 already had (a ~7% softer margin, still >16x over the 3x bar);
+generalization check (the safeguard the raw-data attempt never reached)
+shows NO overfitting signal at all: validation chi2/dof 0.0085 vs
+training 0.0071, a 1.19x ratio. **Honest, disclosed result on the actual
+fitted residual noise parameters: ALL FIVE ARE STATISTICALLY
+INDISTINGUISHABLE FROM THEIR (weak-or-zero-centered) PRIOR MEANS** --
+p_zz=0.000000 (z=0.00), p_gpi2=0.0003 (z=-0.03), delta_zz=delta_gpi2=
+0.000000 (z=0.00 each), p_readout=0.002006 (z=-0.30). This is a genuine
+null result for the noise-model-refinement HYPOTHESIS specifically (not
+a validation failure): on this real data, at this shot/MC-draw budget,
+there is no detectable residual coherent bias or readout error left over
+after Task 31C's own real correction -- the 5-parameter extension adds
+no exploitable structure beyond Task 36's simpler frame-only fit on this
+same real dataset. Task 36's frame-only result therefore remains the
+project's best validated real-data estimator; this experiment further
+corroborates it (found nothing beyond it) rather than improving on it.
+**Informational-only** (never used in any fitting/validation decision
+above): resulting single-point H4 energy error vs exact = 0.6237
+kcal/mol, on a 70% train-split subset of Task 31C's real MC draws -- a
+promising number in isolation, but explicitly NOT a robustness-checked
+or statistically-controlled claim the way Task 36's own N_BOOT=80 paired
+bootstrap comparison is; do not compare directly to Task 36's headline
+MSE-reduction numbers without rerunning the same paired-bootstrap
+protocol on this exact model. **One real, now-fixed bug, disclosed**: the
+run's own `json.dump` call crashed on a numpy-bool JSON-serialization
+error, AFTER all analysis/printing had already completed cleanly (see
+`task37c_pec_run.err.log`) -- fixed in the script (explicit `bool(...)`/
+`float(...)` casts) for future runs; the results JSON committed here was
+manually transcribed, unaltered, from the run's complete stdout log
+(`task37c_pec_run.log`), not re-derived or re-run, since PYTHONHASHSEED=0
+plus fixed RNG seeds throughout make this fit deterministic.
+
 **STATUS UPDATE (iteration 37, Task C, LOCAL BRANCH
 `local/attack-base-problem`, not yet committed, `origin/main` untouched --
 pure local computation, zero real submissions, REAL negative result):

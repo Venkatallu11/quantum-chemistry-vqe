@@ -1,0 +1,27 @@
+Traceback (most recent call last):
+  File "C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task37c_pec_corrected_joint_fit.py", line 368, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task37c_pec_corrected_joint_fit.py", line 353, in main
+    json.dump({
+    ~~~~~~~~~^^
+        "ideal_ok": ideal_ok, "adv_ok": adv_ok,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+        "err_vs_exact_informational_only": err_joint,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    }, f, indent=2)
+    ^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\json\__init__.py", line 179, in dump
+    for chunk in iterable:
+                 ^^^^^^^^
+  File "C:\Python313\Lib\json\encoder.py", line 433, in _iterencode
+    yield from _iterencode_dict(o, _current_indent_level)
+  File "C:\Python313\Lib\json\encoder.py", line 407, in _iterencode_dict
+    yield from chunks
+  File "C:\Python313\Lib\json\encoder.py", line 440, in _iterencode
+    o = _default(o)
+  File "C:\Python313\Lib\json\encoder.py", line 180, in default
+    raise TypeError(f'Object of type {o.__class__.__name__} '
+                    f'is not JSON serializable')
+TypeError: Object of type bool is not JSON serializable
