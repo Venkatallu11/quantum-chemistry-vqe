@@ -1,5 +1,53 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 37, Tasks A+B, LOCAL BRANCH
+`local/attack-base-problem`, not yet committed, `origin/main` untouched --
+pure local computation, zero real submissions): resumed the self-
+consistent-calibration proposal after the circuit-fusion addendum below.
+**Task A (`task37a_iyyi_convention_lock.py`)**: before trusting IYYI in
+any future calibration fit, checked whether the sign flip Task 37c's real
+submission showed for IYYI -- present even on the zero-noise `ideal`
+backend -- was a real convention bug anywhere in this project's own math,
+by computing `<psi|P|psi>` FOUR independent ways (Statevector API,
+explicit matrix contraction, an exact infinite-shot replay of the actual
+measurement-pipeline parity logic, and the EF reduced-matrix path used
+throughout the PEC/manifold pipeline). **Result: all four methods agree
+exactly (spread=0.000000) for IYYI and both controls** (IYYI: +0.961330;
+XYYX: -0.323311; IIIZ: +0.778596) -- there is no local/exact convention
+bug anywhere in this project's math. The sign flip is confined to
+`task37c_fusion_real_test.py`'s own real-submission bitstring bookkeeping:
+a follow-up check comparing real `ideal`-backend counts against the exact
+distribution found the outcome PROBABILITIES match almost exactly (real
+backend genuinely noise-free, as expected) but the bitstring LABELS are
+scrambled in a way that isn't a single fixed qubit-position permutation
+(the best of all 24 permutations matched only 8/16 outcomes) -- an open,
+unresolved, script-local bug, explicitly NOT contaminating the
+established real-data pipeline used everywhere else in iterations 30-37,
+and explicitly not chased further this session (flagged, deprioritized
+by mutual agreement, tracked as future work). **Task B
+(`task37b_h4_noise_model.py`)**: defined the reduced 5-parameter
+H4-native noise model for the upcoming joint calibration+H4 fit --
+theta = (p_ZZ, p_GPi2, delta_ZZ, delta_GPi2, p_readout), GPi deliberately
+EXCLUDED and held fixed (Phase 0 already showed it's tightly, genuinely
+known -- spending an identifiability degree of freedom re-learning an
+already-solved parameter would only starve the others). Every prior is
+honestly sourced: p_ZZ gets a REAL, tight Gaussian prior (Task 31A,
+mean=0.014593, std=0.000124); p_GPi2 gets a WEAK prior with a bound
+tightened to [0, 0.05] using a REAL constraint (Task 37 Phase 1B's own
+PEC-overhead measurement: gamma becomes astronomically infeasible, 1e5 to
+1e26 across this circuit's real gate counts, well before p_gpi2 reaches
+0.05-0.08, making anything above that operationally untestable regardless
+of the true value); delta_ZZ/delta_GPi2 get weak, uninformative Normal(0,
+0.01) priors (no real measurement exists for coherent bias at all); and
+p_readout gets task31h's original weak Uniform(0,0.02)-equivalent prior,
+after directly searching this project's own results files for any real
+readout-calibration data and confirming none exists (checked, not
+assumed -- `task0_fidelity_correction_results.json` turned out to be
+backend/hardware metadata, not calibration numbers). Self-tested cleanly.
+**Not yet used for anything** -- Task 37C (the actual joint
+calibration+H4 fit against this theta, with strict calibration/training/
+validation data-role separation) is next.
+
 **STATUS UPDATE (iteration 37 addendum, circuit-level branch, LOCAL
 BRANCH `local/attack-base-problem`, committed, `origin/main` untouched):
 after three consecutive estimator-side negative results this iteration

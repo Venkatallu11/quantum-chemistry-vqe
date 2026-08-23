@@ -1,0 +1,27 @@
+
+================================================================================================
+  task37a_iyyi_convention_lock.py -- four independent <psi|P|psi> computations, must agree
+================================================================================================
+
+  === slot=(u0+u1)  label=IYYI ===
+    1_statevector            +0.961330
+    2_explicit_matrix        +0.961330
+    3_measurement_pipeline   +0.961330
+    4_ef_reduced             +0.961330
+    spread = 0.000000   AGREE (PASS)
+
+  === slot=(u0+u1)  label=XYYX ===
+    1_statevector            -0.323311
+    2_explicit_matrix        -0.323311
+    3_measurement_pipeline   -0.323311
+    4_ef_reduced             -0.323311
+    spread = 0.000000   AGREE (PASS)
+
+  === slot=(u3+u5)  label=IIIZ ===
+    1_statevector            +0.778596
+    2_explicit_matrix        +0.778596
+    3_measurement_pipeline   +0.778596
+    4_ef_reduced             +0.778596
+    spread = 0.000000   AGREE (PASS)
+
+  -- OVERALL: ALL CASES AGREE across all 4 methods -- no convention bug found here --
