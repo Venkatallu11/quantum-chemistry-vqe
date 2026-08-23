@@ -1,24 +1,15 @@
 
 ================================================================================================
-  task37c_fusion_real_test.py -- original vs fused circuit, real submission, ideal/aria-1/forte-1
+  task37c_joint_calibration_h4_fit.py -- joint 15+5-param fit, train/validation SPLIT, no target leakage
 ================================================================================================
-  connected, backend=ionq_simulator
-  built 12 circuits (2 cases x 2 versions x 3 backends)
-    ideal: 4 circuits done
-    aria-1: 4 circuits done
-    forte-1: 4 circuits done
 
-  -- RESULTS: raw error vs exact, original vs fused, per backend --
+  data split: 525 training residuals, 231 held-out validation residuals (31% held out, stratified per slot, seed=37)
 
-  === IYYI (established validation case) ===
-    ideal    original_err=0.6487  fused_err=0.6449  (fused BETTER by 0.0038)
-    aria-1   original_err=0.6701  fused_err=0.6688  (fused BETTER by 0.0014)
-    forte-1  original_err=0.6733  fused_err=0.6679  (fused BETTER by 0.0054)
+  -- VALIDATION 1: ideal-data (noiseless raw, p=0) recovery, full data (no split needed) --
+    recovered energy err vs exact: 0.000203 kcal/mol  noise_hat={'p_zz': np.float64(1e-05), 'p_gpi2': np.float64(1e-05), 'delta_zz': np.float64(1e-05), 'delta_gpi2': np.float64(1e-05), 'p_readout': np.float64(0.0)}
+    IDEAL-DATA RECOVERY: PASS
 
-  === (u3+u5) (Task 33D-flagged group) ===
-    ideal    original_err=0.3075  fused_err=0.3094  (fused WORSE by 0.0019)
-    aria-1   original_err=0.3576  fused_err=0.3567  (fused BETTER by 0.0009)
-    forte-1  original_err=0.3496  fused_err=0.3544  (fused WORSE by 0.0048)
-
-  Results saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task37c_fusion_real_test_results.json
-
+  -- VALIDATION 2: adversarial rejection (TRAINING data only, labels shuffled within each slot) --
+    chi2/dof on TRAINING data (unshuffled): 0.1776
+    chi2/dof on SHUFFLED (adversarial):     0.3432
+    ADVERSARIAL REJECTION: FAIL -- STOP, not trustworthy

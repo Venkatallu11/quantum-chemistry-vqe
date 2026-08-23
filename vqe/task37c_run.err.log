@@ -1,2 +1,0 @@
-C:\Python313\Lib\site-packages\qiskit_ionq\ionq_backend.py:129: IonQTranspileLevelWarning: Transpiler default optimization_level=2. IonQ (QIS) recommends 0-1 to avoid aggressive re-synthesis; use transpile(..., optimization_level=1).
-  warn_bad_transpile_level()

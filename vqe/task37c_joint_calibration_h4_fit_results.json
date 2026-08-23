@@ -1,0 +1,7 @@
+{
+  "ideal_ok": true,
+  "adv_ok": false,
+  "chi2dof_train": 0.17760500873916488,
+  "chi2dof_adv": 0.34320589933914913,
+  "stopped_early": true
+}

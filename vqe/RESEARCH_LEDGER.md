@@ -1,5 +1,73 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 37, Task C, LOCAL BRANCH
+`local/attack-base-problem`, not yet committed, `origin/main` untouched --
+pure local computation, zero real submissions, REAL negative result):
+built and ran the actual joint calibration+H4 fit the proposal called
+for, extending Phase 1A's 2-noise-parameter prototype to Task 37B's full
+5-parameter model (`p_zz, p_gpi2, delta_zz, delta_gpi2, p_readout`).
+**Step 1, `task37c_extended_forward_model.py`**: generalized Task 30B's
+own `analytic_A_and_B` to support coherent per-gate-type angle bias and
+readout error, verified before use, not trusted blind -- (a) regression
+check: delta=0 reproduces the original function bit-for-bit (max diff
+5.4e-15); (b) the coherent-bias construction (`R(theta+delta, axis)`,
+built from IonQ's own verified GPi/GPi2/ZZ gate-matrix forms) cross-
+checked against `scipy.linalg.fractional_matrix_power` where that method
+is numerically reliable (GPi2, exact match) -- and, importantly, the
+cross-check FAILED as expected for GPi specifically (diff=1.43, a real
+branch-cut degeneracy at theta=pi), which is exactly why the direct
+rotation formula was used instead of blindly trusting
+`fractional_matrix_power` everywhere; (c) the readout-attenuation
+identity `(1-2p)^w` verified by direct simulation of a bit-flip channel
+in the Pauli-diagonalizing measurement frame (reusing Task 37A's own
+validated basis-rotation pipeline) -- caught and fixed one real bug in
+the self-test itself first (an earlier version wrongly mixed the
+UN-rotated density-matrix diagonal, which is only correct for Z/identity
+labels; failed loudly on the X/Y-containing test cases before being
+trusted). Readout error is applied as a SEPARATE multiplicative un-mixing
+step on the raw measured value (`m_raw / (1-2p)^w`), not folded into the
+A/B ratio -- disclosed explicitly: folding it into both A and B
+identically would cancel exactly in B/A and make p_readout completely
+unidentifiable through that pathway. **Step 2,
+`task37c_joint_calibration_h4_fit.py`**: added the proposal's own
+identifiability safeguard Phase 1A was missing -- a stratified per-slot
+70/30 train/validation split of the real H4 raw data (525 training / 231
+held-out residuals), so held-out generalization could be checked
+post-fit without ever touching the known exact energy for tuning.
+**Result: stopped at the SAME gate Phase 1A stopped at.** Ideal-data
+recovery passes cleanly (err=0.0002 kcal/mol). Adversarial rejection
+FAILS, reproducibly: chi2/dof on real training data 0.1776 vs 0.3432 on
+the same data with labels shuffled within each slot -- a ~1.93x ratio,
+against the established 3x bar, and essentially IDENTICAL in magnitude
+to Phase 1A's 2-parameter result (0.1636 vs 0.3339, ~2.04x). Because this
+check fails first, the fit halts by design before reaching the main fit
+or the train/validation generalization check -- neither the 5 fitted
+noise-parameter values nor an energy number exist from this run, and none
+should be reported as if they did. **Honest interpretation**: going from
+2 to 5 noise parameters did NOT rescue adversarial rejection -- the
+ratio barely moved (1.93x vs 2.04x, if anything very slightly worse).
+This is informative on its own: the earlier working hypothesis (Phase
+1A's own stated scope note) that under-parameterizing the noise model
+might be the reason for the adversarial-rejection failure appears WRONG,
+or at least not the dominant effect -- adding 3 more real, verified noise
+channels barely changed anything. The more likely explanation, not yet
+tested: fitting RAW (pre-PEC), uncorrected hardware data via ANY joint
+ratio-correction model may simply not carry enough real signal per
+residual to reliably out-perform a shuffled/adversarial arrangement of
+the same numbers, regardless of how rich the noise model is -- consistent
+with Task 36's own contrast, where the SAME kind of joint fit passed
+adversarial rejection by 52x, but on PEC-ALREADY-CORRECTED data, not raw
+data. **Not yet decided/discussed with the user**: whether Task 37C
+should be re-attempted on PEC-corrected (not raw) data instead (closer to
+Task 36's own winning setup, at the cost of the calibration values being
+partly baked into the data already -- the same tension Phase 1A's own
+docstring originally flagged as the reason raw data was used to begin
+with), or whether this whole joint-raw-data-fit direction should be
+retired in favor of extending Task 36's already-working joint-frame
+result some other way. See `task37c_extended_forward_model.py`'s own
+self-test (all 3 checks PASS) for the verified, reusable piece of this
+work that survives regardless of this negative result.
+
 **STATUS UPDATE (iteration 37, Tasks A+B, LOCAL BRANCH
 `local/attack-base-problem`, not yet committed, `origin/main` untouched --
 pure local computation, zero real submissions): resumed the self-
