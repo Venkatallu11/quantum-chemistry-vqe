@@ -1,0 +1,32 @@
+
+================================================================================================
+  task38c_sensitivity_analysis.py -- dE/dtheta and calibration-uncertainty variance, standard PEC pipeline
+================================================================================================
+
+  loaded real raw data (756 (slot,label) residuals, 21 slots)
+
+  E(theta_0) err vs exact = 6.6881 kcal/mol  (nominal calibration point: {'p_zz': np.float64(0.014593), 'p_gpi2': np.float64(0.0), 'delta_zz': np.float64(0.0), 'delta_gpi2': np.float64(0.0), 'p_readout': np.float64(0.0)})
+
+  -- computing g = dE/dtheta via finite differences (explicit per-param abs_step, not rel_step) --
+
+  param          g_i (kcal/mol per unit)       sigma_i    g_i*sigma_i (kcal/mol)    source
+  p_zz                         1768.5201     1.240e-04                    0.2193
+  p_gpi2                      21535.8946     8.100e-04                   17.4441
+  delta_zz                        0.0000     2.490e-04                    0.0000
+  delta_gpi2                      0.0789     1.610e-03                    0.0001
+  p_readout                    1002.9259     1.000e-02                   10.0293
+
+  V_cal = g^T Sigma_theta g = 404.9299 kcal/mol^2   (implied calibration-uncertainty std = 20.1229 kcal/mol)
+
+  -- per-parameter share of V_cal --
+    p_zz           0.0%
+    p_gpi2        75.1%
+    delta_zz       0.0%
+    delta_gpi2     0.0%
+    p_readout     24.8%
+
+  -- DECISION-TREE COMPARISON (per the proposal's own point 17) --
+    V_cal (this calculation)                         = 404.9299 kcal/mol^2  (std=20.1229)
+    V_other (Task 36 real bootstrap: shot+PEC-MC+manifold, FIXED calibration) = 0.2360 kcal/mol^2  (std=0.4858)
+    calibration share of (V_cal + V_other): 99.9%
+    VERDICT: V_cal DOMINATES -- pursue robust PEC / randomized compiling (proposal's 38D/38G branch)

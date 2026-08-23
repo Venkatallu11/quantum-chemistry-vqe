@@ -1,5 +1,67 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 38, Task C, LOCAL BRANCH
+`local/attack-base-problem`, not yet committed, `origin/main` untouched
+-- pure local computation, zero real submissions; ONE real bug caught
+and fixed before trusting the result): the gating calculation Task 38A
+was meant to precede -- `task38c_sensitivity_analysis.py` computes
+g=dE/dtheta (H4 energy sensitivity to the 5-param noise model, real raw
+hardware data, standard non-joint-frame PEC pipeline, Task 37C's own
+verified `analytic_A_and_B_5param`) and V_cal=g^T Sigma_theta g using
+the BEST REAL per-parameter uncertainty collected across Tasks 37B-E
+(p_zz: Task 31A's 0.000124; p_gpi2: Task 37D's data-driven Schur std
+0.00081, tighter/more real than the old weak prior; delta_zz/delta_gpi2:
+Task 37E's real repeated-submission SEMs; p_readout: still Task 37B's
+weak 0.01, no real measurement exists) -- then compares V_cal against
+Task 36's own real N_BOOT=80 bootstrap variance (std_joint=0.4858
+kcal/mol, V=0.236), which captures shot+PEC-sampling+manifold variance
+at FIXED calibration, reused directly rather than recomputed. **Bug
+caught before trusting anything**: first run crashed (`IndexError`) --
+`scipy.optimize._numdiff.approx_derivative` returns shape `(5,)`
+directly (not `(1,5)`) when the wrapped function returns a scalar
+wrapped in a length-1 array; indexing `J[0]` therefore silently pulled
+out a single scalar (one param's own derivative) instead of the full
+5-vector before crashing on the next line -- fixed by having the
+function return a plain scalar and using the Jacobian directly, per
+`approx_derivative`'s own documented "scalar or shape (m,)" convention.
+**Result, real and large**: V_cal = 404.93 kcal/mol^2 (implied
+calibration-uncertainty std = 20.12 kcal/mol) vs V_other = 0.236
+kcal/mol^2 (std=0.486) -- calibration uncertainty accounts for **99.9%**
+of the combined budget. This directly, quantitatively confirms the
+user's own redirected hypothesis: identifying every noise parameter
+better is not the leverage point -- the ENERGY'S OWN SENSITIVITY to the
+2 parameters that matter is. Per-parameter share of V_cal: **p_gpi2
+75.1%** (g=21536 kcal/mol per unit p_gpi2 -- an enormous sensitivity,
+even though Task 37D already tightened its uncertainty considerably),
+**p_readout 24.8%** (g=1003, driven almost entirely by having NO real
+calibration at all -- prior std=0.01 is the largest sigma of the five),
+p_zz/delta_zz/delta_gpi2 each ~0.0% (p_zz's real, tight calibration
+already makes its contribution negligible regardless of sensitivity;
+delta_zz/delta_gpi2 have near-zero ENERGY sensitivity too, consistent
+with -- and now explaining the practical irrelevance of -- Task 37D/E's
+finding that the H4 circuit family barely responds to these directions
+at all, at either the per-label OR the aggregate-energy level).
+**VERDICT (per the proposal's own decision tree): V_cal dominates --
+pursue robust PEC (Task 38D), not more calibration.** Disclosed
+limitation, not yet addressed: this is a LOCAL, first-order (linearized)
+estimate around theta_0 with an abs_step (2e-4 to 2e-3) comparable in
+scale to some of the sigma values used -- the qualitative verdict
+(massive calibration-sensitivity dominance) is unlikely to flip under a
+full nonlinear treatment, but the exact V_cal=404.93 magnitude should be
+read as a rough first-order number, not a precise final one, until
+cross-checked (e.g. by a real Monte-Carlo propagation of theta through
+the actual energy pipeline) -- flagged as real follow-up work, not done
+here. **Concrete implication for Task 38D**: robust-PEC variance
+reduction should target p_gpi2 and p_readout sensitivity specifically
+(98%+ of V_cal combined) -- not delta_zz/delta_gpi2 (Task 37's own real
+finding was about IDENTIFIABILITY of those two, not their IMPORTANCE to
+the final energy, and this task shows they are in fact nearly
+irrelevant to it regardless). Also flags a simpler, complementary lever
+worth considering alongside robust PEC: a real, standard p_readout
+calibration measurement (a well-established technique this project has
+simply never built) could directly remove ~25% of V_cal on its own,
+cheaply, without any new optimization machinery.
+
 **STATUS UPDATE (iteration 38, Task A, LOCAL BRANCH
 `local/attack-base-problem`, committed `2d8d01c`, `origin/main`
 untouched -- pure local, zero real submissions): user-directed pivot

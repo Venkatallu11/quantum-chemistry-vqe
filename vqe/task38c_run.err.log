@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task38c_sensitivity_analysis.py", line 151, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task38c_sensitivity_analysis.py", line 124, in main
+    print(f"  {name:<12}{g[i]:>26.4f}{SIGMA_DIAG[i]:>14.3e}{contributions[i]:>26.4f}")
+                         ~^^^
+IndexError: invalid index to scalar variable.

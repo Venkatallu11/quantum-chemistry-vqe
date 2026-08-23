@@ -1,0 +1,12 @@
+
+================================================================================================
+  task38c_sensitivity_analysis.py -- dE/dtheta and calibration-uncertainty variance, standard PEC pipeline
+================================================================================================
+
+  loaded real raw data (756 (slot,label) residuals, 21 slots)
+
+  E(theta_0) err vs exact = 6.6881 kcal/mol  (nominal calibration point: {'p_zz': np.float64(0.014593), 'p_gpi2': np.float64(0.0), 'delta_zz': np.float64(0.0), 'delta_gpi2': np.float64(0.0), 'p_readout': np.float64(0.0)})
+
+  -- computing g = dE/dtheta via finite differences (explicit per-param abs_step, not rel_step) --
+
+  param          g_i (kcal/mol per unit)       sigma_i    g_i*sigma_i (kcal/mol)    source
