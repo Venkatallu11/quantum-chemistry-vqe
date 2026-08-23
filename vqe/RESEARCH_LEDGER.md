@@ -1,5 +1,53 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 38, Task D corrected retry, LOCAL BRANCH
+`local/attack-base-problem`, not yet committed, `origin/main` untouched
+-- pure local computation, real data, zero synthetic-noise guessing,
+CLEAR REAL NEGATIVE RESULT): `task38d2_robust_pec_real_data.py` fixes
+the previous attempt's scale-mismatch problem by sidestepping it
+entirely -- instead of simulating an uncertain "true" p_gpi2
+distribution from scratch, apply a grid of candidate GPi2 corrections
+DIRECTLY to real raw data on TWO genuinely different real noise
+realizations (`task28b_optimized_raw.json`'s aria-1 AND forte-1
+backends -- Task 38C's own `energy_of_theta` reused unchanged, its
+real-data loader generalized to accept either backend instead of being
+hardcoded to forte-1 only). **Result: unambiguous, monotonic, and the
+OPPOSITE of what the (discredited) synthetic run suggested.** Baseline
+(p_gpi2_assumed=0, today's actual pipeline): err_aria-1=5.254,
+err_forte-1=5.973 kcal/mol -- the LOWEST error of every candidate
+tested, on BOTH backends. Every nonzero candidate tried (0.0001 through
+0.003, informed by Task 37D's own earlier residual estimate of ~0.0003)
+made BOTH backends' error WORSE, monotonically and substantially (by
+0.0008: ~23 kcal/mol on both; by 0.003: ~61 kcal/mol on both) -- no
+candidate improved the worst-case error on both real backends
+simultaneously; the closest to "helping" was only in cross-backend
+*consistency* (p_gpi2_assumed=0.0008 minimized the aria-1/forte-1
+spread at 0.445 vs baseline 0.719), never in actual accuracy. **Honest,
+important implication, not glossed over**: this directly REFUTES the
+premise, motivated by Task 37D's own earlier finding (p_gpi2=0.0003,
+"data-tighter than its prior"), that introducing a small nonzero GPi2
+correction would help. It calls that earlier finding's practical value
+into real question -- Task 37D's residual estimate came from a
+DIFFERENT context (a joint 15+5-parameter fit on ALREADY-PEC-corrected
+data), and evidently does not transfer to directly correcting raw data
+with a simple flat-scalar depolarizing model. **This also suggests the
+scalar-p_gpi2 correction MODEL ITSELF, not just its calibrated value,
+may be the wrong shape** -- Task 30B/31C's own original real GPi2
+calibration used 4 angle-dependent bins, not one flat scalar (a
+simplification Task 37B/37C/38 all inherited for tractability); this
+result is consistent with that simplification discarding real structure
+PEC needs, not merely with the scalar value being miscalibrated.
+**Conclusion for Task 38D as scoped**: the "robust PEC via a single
+assumed-p_gpi2 candidate search" idea does NOT beat the current
+zero-correction baseline on real data -- a genuine, disciplined negative
+result, and the current pipeline's own "do nothing to GPi2" choice is,
+empirically, the best of everything tested here. Real follow-up
+questions this opens, not pursued this session: (a) does an
+angle-dependent (multi-bin) GPi2 correction fare differently, and (b)
+does robust-PEC fare any better for p_readout once its real calibration
+(blocked this session by a real API quota error, see below) is
+available.
+
 **STATUS UPDATE (iteration 38, Task D + p_readout follow-up, LOCAL
 BRANCH `local/attack-base-problem`, not yet committed, `origin/main`
 untouched -- ~3 hours of real wall-clock local compute, ONE blocked

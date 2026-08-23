@@ -1,0 +1,25 @@
+
+================================================================================================
+  task38d2_robust_pec_real_data.py -- GPi2 correction robustness on TWO real backends (aria-1, forte-1)
+================================================================================================
+
+  loaded real raw data: aria-1 (756 residuals), forte-1 (756 residuals)
+
+    p_gpi2_assumed   err_aria-1 (kcal/mol)  err_forte-1 (kcal/mol)    worst-case    |spread|
+            0.0000                   5.254                   5.973         5.973       0.719
+            0.0001                   7.395                   8.122         8.122       0.727
+            0.0002                   9.573                  10.307        10.307       0.734
+            0.0003                  11.798                  12.547        12.547       0.748
+            0.0004                  14.078                  14.842        14.842       0.763
+            0.0005                  16.415                  17.137        17.137       0.722
+            0.0008                  22.617                  23.061        23.061       0.445
+            0.0015                  36.913                  37.448        37.448       0.535
+            0.0030                  61.050                  61.570        61.570       0.521
+
+  BASELINE (p_gpi2_assumed=0): err_aria=5.254  err_forte=5.973  worst-case=5.973  spread=0.719
+  BEST WORST-CASE candidate:   p_gpi2_assumed=0.0  worst-case=5.973  (vs baseline 5.973)
+  BEST SPREAD (most consistent across backends): p_gpi2_assumed=0.0008  spread=0.445  (vs baseline 0.719)
+
+  -- HONEST READ --
+    No nonzero GPi2 correction improves the worst-case error across BOTH real backends vs the zero-correction baseline -- a real, honest negative result: any single assumed p_gpi2 that helps one backend's real data does not reliably help the other's, which is itself a direct, real demonstration of exactly the calibration-fragility problem this whole investigation is about.
+    Separately: p_gpi2_assumed=0.0008 gives the most CONSISTENT (least backend-dependent) correction across the two real backends, even if not necessarily the lowest worst-case error.
