@@ -1,5 +1,33 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 38, Task A, LOCAL BRANCH
+`local/attack-base-problem`, committed `2d8d01c`, `origin/main`
+untouched -- pure local, zero real submissions): user-directed pivot
+after reviewing Iteration 37 end-to-end plus current PEC-robustness
+literature (context-aware GST, noise-agnostic mitigation, randomized
+compiling on trapped ions) -- conclusion: another larger joint-fit/
+calibration push is not the right next move (Task 37C/D/E already
+showed several noise directions can't be cheaply identified from this
+H4 circuit family); the estimator should instead become INSENSITIVE to
+the directions it can't identify. New plan, "Task 38": 38A integrate the
+verified gate-fusion win now (cheap, unconditional); 38C compute the H4
+energy's real sensitivity to calibration uncertainty (the gating
+calculation everything else depends on); then branch to robust-PEC
+optimization, randomized compiling, or neither, based on what 38C
+actually finds -- explicitly NOT building all of 38A-H blind. **38A
+done**: added `build_fused_measurement_circuit(base, basis_qc,
+native_target)` to `gate_fusion.py` as the one canonical way NEW
+circuit-building work should compose state-prep + basis-change from here
+on, instead of the unfused `base.compose(basis_qc)` pattern used
+throughout iterations 30-37 (~17 files, deliberately NOT retrofitted --
+each is an already-validated, committed real-data result; rewriting them
+risks silently changing what that result means). Verified via self-test
+regression check: identical output to the existing manual two-step
+process (unitary diff 1.4e-15, same fused gate counts) before trusting
+it. Every future Task 38+ real circuit should use this helper so the
+eventual real-hardware submission uses the reduced circuit without
+re-deriving the fusion call each time.
+
 **STATUS UPDATE (iteration 37, Task E real follow-up #2, LOCAL BRANCH
 `local/attack-base-problem`, not yet committed, `origin/main` untouched --
 8 REAL independent `ionq_simulator` submissions per backend, explicit
