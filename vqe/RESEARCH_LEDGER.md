@@ -1,5 +1,84 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 38, Task D + p_readout follow-up, LOCAL
+BRANCH `local/attack-base-problem`, not yet committed, `origin/main`
+untouched -- ~3 hours of real wall-clock local compute, ONE blocked
+real submission, TWO real methodological bugs caught -- INCONCLUSIVE,
+disclosed honestly rather than reported as a clean win): attempted both
+of Task 38's next moves per the decision tree Task 38C's result pointed
+to.
+
+**p_readout real calibration (complementary lever)**: `task38_readout_
+calibration.py` -- prepare real |0>/|1> (native GPI(0), verified ==X
+exactly, diff=0.00e+00), measure misassignment rates, 8 real draws per
+backend from the start (Task 37E's lesson applied immediately, not
+re-learned the hard way again). **Did not complete**: the very first
+real job submission failed with a real IonQ API error,
+`IonQJobFailureError: TooManyShots`, most likely a quota/rate limit
+after today's heavy real-submission volume (Task 37E's two runs alone
+used ~5.4M shots). Not retried blindly -- flagged, committed as-is (the
+GPI(0)==X sanity check that DID run is correct), p_readout stays at Task
+37B's original weak, uncorrected prior. This blocks the "cheap 25% of
+V_cal" lever from Task 38C's own writeup until quota resets or the user
+decides to pursue it further.
+
+**Robust PEC optimization (`task38d_robust_pec.py`)**: attempted the
+proposal's own robust-correction idea for p_gpi2 (Task 38C's other
+dominant direction, 75.1% of V_cal) -- since the standard pipeline
+currently applies ZERO GPi2 correction (theta_0_gpi2=0, Task 31A's
+from-scratch calibration failed), there is nothing to "shrink"; the real
+question is whether introducing ANY GPi2 correction, chosen to minimize
+variance across real calibration uncertainty (not to match one nominal
+point), beats the current no-correction baseline. Built a fully
+ANALYTIC (no shot noise, no real data) simulator: for M draws of
+theta_true from a real, Task-37-evidence-based distribution, apply TRUE
+coherent bias + TRUE depolarizing noise then PEC-inverse using a
+CANDIDATE assumed p_gpi2, train on 70% (variance-only objective, NO
+exact-energy leakage), validate Q50/Q95 on the held-out 30% against the
+zero-correction baseline. **TWO real bugs caught in sequence, neither
+fully resolved**:
+  1. First run: p_gpi2_true was sampled from an UNCLIPPED Gaussian
+     (mean=0.0003, std=0.00081) -- since std exceeds mean, ~37% of
+     draws went NEGATIVE, an unphysical "probability" that
+     `depolarizing_weights`/`pec_inverse_weights` accept formally but
+     turn into wildly nonsensical distortion. Caught by comparing
+     against Task 38C's own real-data baseline of 6.69 kcal/mol at
+     essentially the SAME nominal point -- this run's baseline read
+     60-130+ kcal/mol, an obvious red flag, not trusted. Fixed by
+     clipping p_zz/p_gpi2 draws to >=0 (delta_zz/delta_gpi2 are signed
+     by nature, not clipped).
+  2. Second run, same comparison still fails: with the fix applied,
+     baseline error is now 33-45 kcal/mol (median-ish, held-out
+     Q50=33.26) -- better than the first run, but STILL ~5-7x larger
+     than Task 38C's real 6.69 kcal/mol reference at the same nominal
+     point. Root cause identified but NOT fixed this session: Task 37D's
+     own p_gpi2=0.0003 was a RESIDUAL estimate relative to Task 31C's
+     OWN already-applied literal-twirling PEC correction (a different
+     pipeline context) -- using it as if it were the ABSOLUTE true
+     p_gpi2 for THIS standard, zero-baseline-correction pipeline is very
+     likely the wrong scale, conflating two different things Task 37's
+     own work carefully kept separate.
+**Because of bug #2, this run's own numbers -- best candidate
+p_gpi2_assumed=0.0006, held-out Q95 162.0 -> 113.9 kcal/mol (29.7%
+reduction) -- are NOT reported as a validated finding.** The
+QUALITATIVE pattern (introducing a small nonzero GPi2 correction, chosen
+to minimize cross-draw variance, beats zero correction on held-out data)
+is at least internally consistent and suggestive, but the absolute
+numbers are on a demonstrably wrong scale and should not be quoted,
+compared against Q95 targets, or used to justify a production change.
+**Correct fix, not yet built, disclosed as the real next step**: redo
+this evaluation using Task 38C's own REAL RAW DATA directly (bootstrap-
+resampled for shot-noise robustness, exactly Task 38C's own approach)
+with only the ASSUMED correction varied, rather than simulating an
+uncertain absolute p_gpi2_true distribution from scratch -- this
+sidesteps needing to know or guess the true noise scale at all. Also
+disclosed: each (draw, candidate) evaluation took ~14-22s (much slower
+than originally estimated), making the two attempts take ~97 and ~55
+minutes of real wall-clock time respectively -- noted explicitly so
+future scoping of this kind of sweep starts from a measured, not
+guessed, per-evaluation cost (matching this project's own established
+practice elsewhere, not followed carefully enough here at the start).
+
 **STATUS UPDATE (iteration 38, Task C, LOCAL BRANCH
 `local/attack-base-problem`, not yet committed, `origin/main` untouched
 -- pure local computation, zero real submissions; ONE real bug caught

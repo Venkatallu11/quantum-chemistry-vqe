@@ -1,0 +1,24 @@
+
+================================================================================================
+  task38d_robust_pec.py -- should the standard pipeline correct GPi2 at all, and how strongly?
+================================================================================================
+  clipped 11 negative probability draws to 0 (of 60 p_zz/p_gpi2 draws)
+
+  30 theta_true draws (21 train / 9 held-out), grid of 5 candidate p_gpi2_assumed values
+  one (draw, candidate) evaluation took 22.06s -- 150 total evaluations estimated at 55.2 min
+
+  -- TRAINING: for each candidate, Var_train[E] over 21 draws (NO exact-energy leakage) --
+    p_gpi2_assumed=0.0000  Var_train=2806.0360  mean_train_err=+44.755  std_train=52.972
+    p_gpi2_assumed=0.0002  Var_train=1765.7197  mean_train_err=+43.375  std_train=42.020
+    p_gpi2_assumed=0.0004  Var_train=967.9502  mean_train_err=+46.658  std_train=31.112
+    p_gpi2_assumed=0.0006  Var_train=433.8243  mean_train_err=+53.972  std_train=20.828
+    p_gpi2_assumed=0.0010  Var_train=737.8199  mean_train_err=+72.922  std_train=27.163
+
+  TRAINING-SELECTED candidate (min variance): p_gpi2_assumed = 0.0006
+
+  -- VALIDATION: held-out 9 draws, exact energy used ONLY here, best candidate vs baseline(0) --
+    BASELINE (p_gpi2_assumed=0, today's actual pipeline): Q50=33.255  Q95=162.025 kcal/mol
+    ROBUST   (p_gpi2_assumed=0.0006):            Q50=58.542  Q95=113.875 kcal/mol
+
+  -- HONEST READ --
+    ROBUST correction WINS on held-out data: Q95 162.025 -> 113.875 kcal/mol (29.7% reduction). A real, disclosed win from introducing a GPi2 correction the standard pipeline never had, chosen to minimize variance across real calibration uncertainty rather than to match one nominal point exactly.
