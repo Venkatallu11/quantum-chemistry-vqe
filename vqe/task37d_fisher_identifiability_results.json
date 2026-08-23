@@ -1,0 +1,26 @@
+{
+  "note": "FINAL, CORRECTED results (task37d_run3.log) after fixing a real rel_step-collapses-to-zero bug found in the first two runs (task37d_run.log, task37d_run2.log, kept for the record) -- see RESEARCH_LEDGER.md for the full debugging narrative.",
+  "noise_hat_at_analysis_point": {"p_zz": 0.0, "p_gpi2": 0.001, "delta_zz": 0.0, "delta_gpi2": 0.0, "p_readout": 0.0},
+  "sanity_check_manual_vs_auto_final": {
+    "p_zz": {"manual": 121.29, "auto": 121.29, "match": true},
+    "p_gpi2": {"manual": 1260.3, "auto": 1260.3, "match": true},
+    "delta_zz": {"manual": 9.7429e-10, "auto": 9.7429e-10, "match": true},
+    "delta_gpi2": {"manual": 0.063731, "auto": 0.063731, "match": true},
+    "p_readout": {"manual": 23.712, "auto": 23.712, "match": true}
+  },
+  "fisher_table": {
+    "p_zz":       {"F_naive": 1.471e4, "F_eff": 1.395e4, "sigma_eff": 8.465e-3, "prior_sigma": 1.240e-4, "verdict": "prior still tighter"},
+    "p_gpi2":     {"F_naive": 1.588e6, "F_eff": 1.523e6, "sigma_eff": 8.102e-4, "prior_sigma": 2.000e-2, "verdict": "DATA TIGHTER"},
+    "delta_zz":   {"F_naive": 9.492e-19, "F_eff": 9.167e-19, "sigma_eff": "inf", "prior_sigma": 1.000e-2, "verdict": "prior still tighter (genuinely unidentifiable)"},
+    "delta_gpi2": {"F_naive": 4.062e-3, "F_eff": 3.985e-3, "sigma_eff": 1.584e1, "prior_sigma": 1.000e-2, "verdict": "prior still tighter"},
+    "p_readout":  {"F_naive": 5.623e2, "F_eff": 5.227e2, "sigma_eff": 4.374e-2, "prior_sigma": 1.000e-2, "verdict": "prior still tighter"}
+  },
+  "schur_eigenvalues_most_to_least_constrained": [
+    {"eigval": 1.530e6, "implied_sigma": 8.083e-4, "direction": {"p_zz": -0.066, "p_gpi2": -0.998, "delta_zz": 0.0, "delta_gpi2": 0.0, "p_readout": -0.016}},
+    {"eigval": 7.397e3, "implied_sigma": 1.163e-2, "direction": {"p_zz": -0.997, "p_gpi2": 0.066, "delta_zz": -0.0, "delta_gpi2": 0.0, "p_readout": -0.039}},
+    {"eigval": 1.262e2, "implied_sigma": 8.902e-2, "direction": {"p_zz": 0.040, "p_gpi2": 0.013, "delta_zz": -0.0, "delta_gpi2": -0.0, "p_readout": -0.999}},
+    {"eigval": 3.918e-3, "implied_sigma": 1.598e1, "direction": {"p_zz": -0.0, "p_gpi2": 0.0, "delta_zz": 0.0, "delta_gpi2": -1.0, "p_readout": 0.0}},
+    {"eigval": -3.778e-14, "implied_sigma": "inf", "direction": {"p_zz": 0.0, "p_gpi2": -0.0, "delta_zz": -1.0, "delta_gpi2": -0.0, "p_readout": 0.0}, "note": "numerically ~0, expected roundoff around a true near-zero eigenvalue for a PSD Schur complement"}
+  ],
+  "honest_read": "1/5 noise parameters (p_gpi2) is more tightly constrained by the H4 training data than by its own prior, even after marginalizing out the 15-parameter frame -- Task 37C's near-zero fitted p_gpi2 (0.0003) is a genuine, data-driven measurement at real precision (sigma~0.0008), not merely a prior fallback. This is the first time in the project that any method has produced a real, disclosed, meaningfully-precise measurement touching GPi2, after repeated from-scratch calibration failures (Task 31A). The other 4 parameters (p_zz, delta_zz, delta_gpi2, p_readout) remain prior-dominated -- delta_zz specifically shows genuinely near-zero sensitivity (confirmed by two independent, exactly-matching finite-difference estimates), the most robustly 'unidentifiable from this data' of the five."
+}

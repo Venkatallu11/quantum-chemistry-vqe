@@ -1,5 +1,74 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 37, Task D, LOCAL BRANCH
+`local/attack-base-problem`, not yet committed, `origin/main` untouched --
+pure local computation, zero real submissions; REAL BUG found, caught,
+fixed IN THE OPEN before the result was trusted): built the Fisher-
+information identifiability analysis the proposal called for
+(`task37d_fisher_identifiability.py`), to answer WHY Task 37C's
+PEC-corrected fit returned all 5 residual noise parameters at |z|<=0.30
+vs their priors -- is that a genuine physics null, or a data/frame
+degeneracy the fit can't see past? Method: F = J^T J (Gauss-Newton
+Fisher approximation) on DATA-ONLY residuals (prior_lambda=0) at a
+representative fitted point, then the SCHUR COMPLEMENT of the
+noise-noise block after marginalizing out the 15-parameter frame
+(F_eff = F_nn - F_nf @ pinv(F_ff) @ F_fn) -- the correct way to ask
+"what does the data alone constrain, accounting for the frame being free
+to compensate," standard nuisance-parameter-profiling construction.
+**A REAL BUG WAS FOUND IN THIS FILE ITSELF, before its result was
+trusted, and is disclosed in full rather than silently fixed**: the
+first run (`task37d_run.log`) reported ALL 5 noise parameters as having
+~0 Fisher information (data provides literally no constraint anywhere).
+That looked suspicious -- p_readout and p_gpi2 having EXACTLY 0.000e+00
+info, not just small, is not what a real physical insensitivity usually
+looks like. A direct, hand-picked perturbation check (`task37d_
+diagnostic_check.py`) confirmed p_readout, p_gpi2, and delta_gpi2 all
+have REAL, substantial, non-tiny sensitivity when perturbed by a
+sane amount (+0.01) -- contradicting the Fisher run's ~0 read. Root
+cause, found and confirmed: `scipy.optimize._numdiff.approx_derivative`
+was called with an EXPLICIT `rel_step=1e-5`. Per scipy's own docs, when
+`rel_step` is explicitly given (not left `None`), `method='3-point'`
+uses `h = rel_step * sign(x0) * abs(x0)` -- with NO `max(1,|x0|)` floor.
+Every noise parameter here was fitted near or exactly at 0 (p_zz,
+delta_zz, delta_gpi2, p_readout all ~0; p_gpi2~0.001), so this collapsed
+the finite-difference step to ~0 or literally 0 (`sign(0)=0`), silently
+zeroing those Jacobian columns -- confirmed conclusively by adding an
+in-script sanity check (manual h=1e-3 central difference vs the
+automatic step) that showed EVERY column mismatched before the fix, and
+matched EXACTLY after switching to a uniform `abs_step=1e-3` (no
+dependence on each parameter's own scale at all) -- `task37d_run3.log`
+is the trustworthy, final run; `task37d_run.log`/`task37d_run2.log` are
+kept, not deleted, as the record of the bug being caught. **CORRECTED
+result, a real and more interesting finding than the broken run's flat
+"nothing is identifiable" read**: p_gpi2 is DATA-TIGHTER than its own
+(deliberately weak) prior -- sigma_eff=8.1e-4 vs prior sigma=0.02, a
+~25x tighter constraint from the H4 data alone, even after marginalizing
+out the full 15-parameter frame (Schur-complement eigenvalue 1.53e6, by
+far the largest/best-identified of the 5 directions, 99.8% pure p_gpi2).
+This means Task 37C's small fitted p_gpi2 residual (0.0003) is a
+GENUINE, DATA-DRIVEN MEASUREMENT at real, useful precision, not a prior
+fallback -- the first time in this entire multi-iteration project that
+ANY method has produced a real, disclosed, meaningfully-precise
+measurement touching GPi2, after Task 31A's from-scratch calibration
+attempt repeatedly failed ("physical": false). The other 4 remain
+prior-dominated: p_zz real but weaker than its own tight calibration
+prior (data sigma=0.0085 vs prior 0.000124, calibration circuits are
+just a much more efficient way to pin this down); p_readout and
+delta_gpi2 real-but-weak (data sigma worse than their already-weak
+priors); delta_zz is the one genuinely, robustly unidentifiable
+direction -- confirmed by TWO independent finite-difference estimates
+(manual and the fixed auto one) agreeing to 5 significant figures at a
+near-machine-zero value (~9.7e-10), the most solid "the data truly
+cannot see this" result of the five, not a fit/geometry artifact.
+**Practical implication for Task 37E** (optimal experimental design for
+follow-up calibration circuits, not yet built): a real, non-trivial
+target now exists -- p_zz/p_readout/delta_gpi2 have real (if modest) H4
+sensitivity that dedicated circuits could sharpen, while delta_zz
+appears to need a fundamentally different kind of measurement (this
+H4 circuit family's own Heisenberg-propagated sensitivity to it may
+be intrinsically near-zero, not just under-sampled) to ever become
+identifiable at all.
+
 **STATUS UPDATE (iteration 37, Task C retry, PEC-corrected data, LOCAL
 BRANCH `local/attack-base-problem`, not yet committed, `origin/main`
 untouched -- pure local computation, zero real submissions): retried

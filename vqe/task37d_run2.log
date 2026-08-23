@@ -1,0 +1,50 @@
+
+================================================================================================
+  task37d_fisher_identifiability.py -- Fisher information, frame-marginalized, for Task 37C's noise params
+================================================================================================
+
+  loaded 16 MC draws/label, using the SAME training split as Task 37C (525 residuals)
+
+  -- finding a representative near-optimal fit point (single LM run) --
+    noise_hat at this point: {'p_zz': np.float64(0.0), 'p_gpi2': np.float64(0.001), 'delta_zz': np.float64(0.0), 'delta_gpi2': np.float64(0.0), 'p_readout': np.float64(0.0)}
+
+  -- computing DATA-ONLY Jacobian (prior_lambda=0) via scipy's verified finite-difference machinery --
+    Jacobian shape: (530, 20)  (residuals x params, 15 frame + 5 noise)
+
+  -- SANITY CHECK: manual, generously-sized (0.001) perturbation vs approx_derivative's automatic step --
+     (catches finite-difference step-size artifacts before trusting the Jacobian below)
+    p_zz         manual(h=1e-3) ||dr/dtheta||=1.2129e+02   auto(approx_derivative) ||dr/dtheta||=9.0926e+01  <-- MISMATCH, approx_derivative's auto step is likely wrong for this param
+    p_gpi2       manual(h=1e-3) ||dr/dtheta||=1.2603e+03   auto(approx_derivative) ||dr/dtheta||=0.0000e+00  <-- MISMATCH, approx_derivative's auto step is likely wrong for this param
+    delta_zz     manual(h=1e-3) ||dr/dtheta||=9.7429e-10   auto(approx_derivative) ||dr/dtheta||=9.4588e-09  <-- MISMATCH, approx_derivative's auto step is likely wrong for this param
+    delta_gpi2   manual(h=1e-3) ||dr/dtheta||=6.3731e-02   auto(approx_derivative) ||dr/dtheta||=5.2642e-07  <-- MISMATCH, approx_derivative's auto step is likely wrong for this param
+    p_readout    manual(h=1e-3) ||dr/dtheta||=2.3712e+01   auto(approx_derivative) ||dr/dtheta||=0.0000e+00  <-- MISMATCH, approx_derivative's auto step is likely wrong for this param
+
+  -- p_readout ONE-SIDED check (its fitted value may sit at its clamp lower bound=0.0, which would crush a naive central-difference estimate) --
+    p_readout_hat = -0.000133  (clamp lower bound = 0.0)
+    one-sided forward derivative norm (h=1e-3): 4.7424e+01
+    one-sided forward derivative norm (h=2e-3): 5.1302e+01  (should roughly agree with the h=1e-3 estimate if genuinely linear near this point)
+
+  -- NAIVE (frame-ignoring) vs SCHUR-COMPLEMENT (frame-marginalized) per-parameter Fisher info --
+  param           naive F_ii   naive sigma      F_eff_ii     eff sigma   prior sigma   data vs prior
+  p_zz             8.268e+03     1.100e-02     8.055e+03     1.114e-02     1.240e-04prior still tighter
+  p_gpi2           0.000e+00           inf     0.000e+00           inf     2.000e-02prior still tighter
+  delta_zz         8.947e-17           inf     8.284e-17           inf     1.000e-02prior still tighter
+  delta_gpi2       2.771e-13           inf     2.579e-13           inf     1.000e-02prior still tighter
+  p_readout        0.000e+00           inf     0.000e+00           inf     1.000e-02prior still tighter
+
+  -- SCHUR-COMPLEMENT eigenvalues (marginal noise-subspace identifiability, most to least constrained) --
+    eigval[0]=8.055e+03  (implied sigma along this direction: 1.114e-02)
+      direction: p_zz=+1.000, p_gpi2=+0.000, delta_zz=+0.000, delta_gpi2=+0.000, p_readout=+0.000
+    eigval[1]=2.579e-13  (implied sigma along this direction: inf)
+      direction: p_zz=+0.000, p_gpi2=+0.000, delta_zz=+0.016, delta_gpi2=-1.000, p_readout=-0.000
+    eigval[2]=1.686e-17  (implied sigma along this direction: inf)
+      direction: p_zz=+0.000, p_gpi2=+0.000, delta_zz=-1.000, delta_gpi2=-0.016, p_readout=+0.000
+    eigval[3]=1.720e-30  (implied sigma along this direction: inf)
+      direction: p_zz=+0.000, p_gpi2=-1.000, delta_zz=-0.000, delta_gpi2=-0.000, p_readout=+0.000
+    eigval[4]=0.000e+00  (implied sigma along this direction: inf)
+      direction: p_zz=+0.000, p_gpi2=+0.000, delta_zz=+0.000, delta_gpi2=+0.000, p_readout=+1.000
+
+  condition number (max/min eigenvalue) of the frame-marginalized noise Fisher block: 8.055e+303
+
+  -- HONEST READ --
+    For EVERY one of the 5 noise parameters, the frame-marginalized data uncertainty is WIDER than the prior's own uncertainty -- the fitted values landing near the prior mean (Task 37C's own z~0 result) is consistent with the data providing close to NO additional constraint beyond the prior in any noise direction, once the frame is allowed to compensate. This does NOT prove the true residual noise is exactly zero -- it means this data, at this shot/MC-draw budget, with this circuit set, cannot tell the difference between zero and anything within the prior's own width.

@@ -1,0 +1,19 @@
+testing slot=u_0 label=IIIZ m_pec=-0.8508056755079348
+base (all-zero-ish) prediction: -0.9066747992781178
+  perturb p_zz by +0.01: pred=-0.9727591701182153  delta=-0.06608437
+  perturb p_gpi2 by +0.01: pred=-1.0  delta=-0.09332520
+  perturb delta_zz by +0.01: pred=-0.9067053859334319  delta=-0.00003059
+  perturb delta_gpi2 by +0.01: pred=-0.90671140216397  delta=-0.00003660
+  perturb p_readout by +0.01: pred=-0.9251783666103243  delta=-0.01850357
+
+-- p_readout specifically, perturbing POSITIVE only (since 0.0 sits at its clamp lower bound) --
+  p_readout=0.001: pred=-0.9084917828438054  delta=-0.00181698
+  p_readout=0.005: pred=-0.9158331305839574  delta=-0.00915833
+  p_readout=0.01: pred=-0.9251783666103243  delta=-0.01850357
+  p_readout=0.02: pred=-0.944452915914706  delta=-0.03777812
+
+-- delta_zz specifically, larger perturbations --
+  delta_zz=0.001: pred=-0.9066751031440115  delta=-0.00000030
+  delta_zz=0.01: pred=-0.9067053859334319  delta=-0.00003059
+  delta_zz=0.05: pred=-0.9075840197957529  delta=-0.00090922
+  delta_zz=-0.01: pred=-0.9067053859334329  delta=-0.00003059

@@ -1,0 +1,50 @@
+
+================================================================================================
+  task37d_fisher_identifiability.py -- Fisher information, frame-marginalized, for Task 37C's noise params
+================================================================================================
+
+  loaded 16 MC draws/label, using the SAME training split as Task 37C (525 residuals)
+
+  -- finding a representative near-optimal fit point (single LM run) --
+    noise_hat at this point: {'p_zz': np.float64(0.0), 'p_gpi2': np.float64(0.001), 'delta_zz': np.float64(0.0), 'delta_gpi2': np.float64(0.0), 'p_readout': np.float64(0.0)}
+
+  -- computing DATA-ONLY Jacobian (prior_lambda=0) via scipy's verified finite-difference machinery --
+    Jacobian shape: (530, 20)  (residuals x params, 15 frame + 5 noise, abs_step=0.001)
+
+  -- SANITY CHECK: manual, generously-sized (0.001) perturbation vs approx_derivative's step (now abs_step-based) --
+     (catches finite-difference step-size artifacts before trusting the Jacobian below)
+    p_zz         manual(h=1e-3) ||dr/dtheta||=1.2129e+02   auto(approx_derivative) ||dr/dtheta||=1.2129e+02
+    p_gpi2       manual(h=1e-3) ||dr/dtheta||=1.2603e+03   auto(approx_derivative) ||dr/dtheta||=1.2603e+03
+    delta_zz     manual(h=1e-3) ||dr/dtheta||=9.7429e-10   auto(approx_derivative) ||dr/dtheta||=9.7429e-10
+    delta_gpi2   manual(h=1e-3) ||dr/dtheta||=6.3731e-02   auto(approx_derivative) ||dr/dtheta||=6.3731e-02
+    p_readout    manual(h=1e-3) ||dr/dtheta||=2.3712e+01   auto(approx_derivative) ||dr/dtheta||=2.3712e+01
+
+  -- p_readout ONE-SIDED check (its fitted value may sit at its clamp lower bound=0.0, which would crush a naive central-difference estimate) --
+    p_readout_hat = -0.000133  (clamp lower bound = 0.0)
+    one-sided forward derivative norm (h=1e-3): 4.7424e+01
+    one-sided forward derivative norm (h=2e-3): 5.1302e+01  (should roughly agree with the h=1e-3 estimate if genuinely linear near this point)
+
+  -- NAIVE (frame-ignoring) vs SCHUR-COMPLEMENT (frame-marginalized) per-parameter Fisher info --
+  param           naive F_ii   naive sigma      F_eff_ii     eff sigma   prior sigma   data vs prior
+  p_zz             1.471e+04     8.245e-03     1.395e+04     8.465e-03     1.240e-04prior still tighter
+  p_gpi2           1.588e+06     7.935e-04     1.523e+06     8.102e-04     2.000e-02    DATA TIGHTER
+  delta_zz         9.492e-19           inf     9.167e-19           inf     1.000e-02prior still tighter
+  delta_gpi2       4.062e-03     1.569e+01     3.985e-03     1.584e+01     1.000e-02prior still tighter
+  p_readout        5.623e+02     4.217e-02     5.227e+02     4.374e-02     1.000e-02prior still tighter
+
+  -- SCHUR-COMPLEMENT eigenvalues (marginal noise-subspace identifiability, most to least constrained) --
+    eigval[0]=1.530e+06  (implied sigma along this direction: 8.083e-04)
+      direction: p_zz=-0.066, p_gpi2=-0.998, delta_zz=+0.000, delta_gpi2=+0.000, p_readout=-0.016
+    eigval[1]=7.397e+03  (implied sigma along this direction: 1.163e-02)
+      direction: p_zz=-0.997, p_gpi2=+0.066, delta_zz=-0.000, delta_gpi2=+0.000, p_readout=-0.039
+    eigval[2]=1.262e+02  (implied sigma along this direction: 8.902e-02)
+      direction: p_zz=+0.040, p_gpi2=+0.013, delta_zz=-0.000, delta_gpi2=-0.000, p_readout=-0.999
+    eigval[3]=3.918e-03  (implied sigma along this direction: 1.598e+01)
+      direction: p_zz=-0.000, p_gpi2=+0.000, delta_zz=+0.000, delta_gpi2=-1.000, p_readout=+0.000
+    eigval[4]=-3.778e-14  (implied sigma along this direction: inf)
+      direction: p_zz=+0.000, p_gpi2=-0.000, delta_zz=-1.000, delta_gpi2=-0.000, p_readout=+0.000
+
+  condition number (max/min eigenvalue) of the frame-marginalized noise Fisher block: 1.530e+306
+
+  -- HONEST READ --
+    1/5 noise parameters (p_gpi2) ARE more tightly constrained by the data than by the prior, even after frame-marginalization -- Task 37C's near-zero fitted values for these specific parameters are a more genuine physics finding, not just prior fallback.
