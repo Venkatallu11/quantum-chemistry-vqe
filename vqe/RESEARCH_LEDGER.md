@@ -1,5 +1,55 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 37, Task E, LOCAL BRANCH
+`local/attack-base-problem`, not yet committed, `origin/main` untouched --
+DESIGN/SIMULATION ONLY, zero real submissions, no bugs this run):
+`task37e_experimental_design.py` answers the question Task D's finding
+raised -- is delta_zz's near-total unidentifiability from H4 circuit
+data (Fisher info ~9e-19) a coincidence of how the current 525-residual
+training set happens to aggregate, or a real structural fact about this
+ansatz family? **Step 1**: broke the same sensitivity calculation down
+PER SLOT (not aggregated) across all 21 kept slots, real training data.
+Result: delta_zz is uniformly near-zero in EVERY single slot (largest
+individual slot contribution 7e-19, same order as the total) -- ruling
+out cancellation between slots; this really is structural, not a data-
+selection artifact. delta_gpi2, by contrast, shows real (if small)
+signal concentrated mostly in one slot ((u1+u3), 1.3e-3 of the 4.06e-3
+total), consistent with Task D's own "real but weak" read for that
+parameter. **Step 2**: proposed and NUMERICALLY VERIFIED (Statevector
+simulation matched hand-derived analytic formulas exactly, not asserted)
+two minimal, standard process-characterization circuits, reusing Task
+37C's own already-verified biased-gate matrices --
+    ZZ:   prepare |++>, apply ZZ(theta=0.25), measure <XI>.
+          Verified: <XI>=cos(2*pi*theta); d/d(delta_zz) at theta=0.25
+          numerically = -6.2791 vs analytic -6.2832, MATCH.
+    GPi2: prepare |0>, apply GPi2(phi=0), measure <Z>.
+          Verified: <Z> approx -sin(delta_gpi2); numerically slope=
+          -1.0000 vs analytic -1.0000, MATCH.
+These are exactly the kind of dedicated angle-bias probe any coherent-
+error characterization protocol uses -- their large sensitivity is
+expected BY DESIGN, in deliberate contrast to the H4 ansatz circuits,
+whose angles were optimized for a DIFFERENT objective (matching
+energy-relevant Pauli targets) and evidently sit at, or extremely near,
+a stationary point of every measured Pauli expectation with respect to
+a uniform ZZ-angle bias -- now confirmed both by Task D's aggregate
+Fisher analysis AND this task's per-slot breakdown, two independent
+checks agreeing. **Step 3**: converted each circuit's verified analytic
+slope into a Fisher-information-per-100k-shots number (standard
+single-Pauli Cramer-Rao, Var(<P>)=1-<P>^2), directly comparable to Task
+D's existing H4-aggregate numbers (same 100k-shot convention). Proposed
+ZZ circuit: 3.94e6 per 100k shots vs the existing H4 family's TOTAL
+delta_zz Fisher info of 9.5e-19 across all 21 slots -- a ~4e24x
+improvement (reflecting how close to exactly-zero the existing baseline
+is, not a claim about absolute precision). Proposed GPi2 circuit: 1.0e5
+per 100k shots vs the existing family's 4.06e-3 -- a ~2.5e7x
+improvement. **This is a proposal, not an action**: no real circuits
+were submitted. If pursued, it would be a genuinely new, small (2
+circuits, not a repeat of anything already run), cheap real submission
+that could plausibly convert delta_zz/delta_gpi2 from "unidentifiable by
+every method tried so far" to "directly, precisely measured" -- a real
+decision point for the user, per this project's standing real-hardware-
+cost discipline, not something to submit unilaterally.
+
 **STATUS UPDATE (iteration 37, Task D, LOCAL BRANCH
 `local/attack-base-problem`, not yet committed, `origin/main` untouched --
 pure local computation, zero real submissions; REAL BUG found, caught,

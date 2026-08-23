@@ -1,0 +1,26 @@
+
+================================================================================================
+  task37e_experimental_design.py -- why is delta_zz unidentifiable, and what circuit WOULD see it? (design only)
+================================================================================================
+
+  -- STEP 1: per-slot delta_zz/delta_gpi2 sensitivity breakdown (real training data) --
+    delta_zz:   total sum-of-squared-sensitivity across 21 slots = 9.492e-19  (largest single slot: (u0+u5)=7.028e-19)
+    delta_gpi2: total sum-of-squared-sensitivity across 21 slots = 4.062e-03  (largest single slot: (u1+u3)=1.337e-03)
+    delta_zz verdict: UNIFORMLY near-zero across every slot -- structural, not a cancellation artifact
+
+  -- STEP 2: verify the proposed dedicated calibration circuits (Statevector simulation, not hand-waved algebra) --
+    ZZ circuit (|++>, ZZ(theta=0.25), measure <XI>): {-0.02: 0.125333, -0.01: 0.062791, 0.0: 0.0, 0.01: -0.062791, 0.02: -0.125333}
+    numerical d<XI>/d(delta_zz) = -6.2791   analytic cos(2*pi*theta) formula predicts -6.2832   MATCH
+    GPi2 circuit (|0>, GPi2(phi=0), measure <Z>): {-0.02: 0.019999, -0.01: 0.01, 0.0: 0.0, 0.01: -0.01, 0.02: -0.019999}
+    numerical d<Z>/d(delta_gpi2) = -1.0000   analytic -sin(delta) formula predicts slope -1.0000   MATCH
+
+  -- STEP 3: Fisher-information-per-100k-shots, proposed circuits vs existing H4 aggregate --
+    proposed ZZ-angle-scan circuit:   Fisher info per 100,000 shots (ONE circuit) = 3.943e+06
+      vs existing H4 circuit family's TOTAL delta_zz Fisher info (all 21 slots, real training data): 9.492e-19
+      ratio: 4.153e+24x more informative per shot-equivalent
+    proposed GPi2-angle-scan circuit: Fisher info per 100,000 shots (ONE circuit) = 1.000e+05
+      vs existing H4 circuit family's TOTAL delta_gpi2 Fisher info (all 21 slots, real training data): 4.062e-03
+      ratio: 2.462e+07x more informative per shot-equivalent
+
+  -- HONEST READ --
+    Both proposed circuits are STANDARD, textbook process-characterization measurements (a Ramsey-style angle-bias probe), not a novel invention -- their large, verified sensitivity is expected: they were deliberately chosen to directly probe the gate parameter, unlike the H4 ansatz circuits, whose angles were optimized for a DIFFERENT objective (matching energy-relevant Pauli targets) and evidently sit at (or very near) a stationary point of Pauli expectations with respect to a uniform ZZ-angle bias for this specific ansatz -- a real, now double-confirmed structural property of this circuit family, not an artifact. This is a DESIGN PROPOSAL ONLY: no real circuits were submitted here. If pursued, this would be a genuinely NEW, small, cheap real submission (2 circuits, not a repeat of any existing iteration's work) that could plausibly convert delta_zz/delta_gpi2 from 'not identifiable by anything tried so far' to 'directly, precisely measured' -- worth discussing with the user before any real submission, per this project's standing real-hardware-cost discipline.
