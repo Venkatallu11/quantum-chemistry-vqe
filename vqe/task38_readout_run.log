@@ -1,0 +1,6 @@
+
+================================================================================================
+  task38_readout_calibration.py -- real symmetric readout-error measurement, 8 draws/backend
+================================================================================================
+  sanity: GPI(0) vs X, max diff = 0.00e+00  PASS
+  connected, backend=ionq_simulator

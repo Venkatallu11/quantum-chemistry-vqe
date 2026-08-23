@@ -1,0 +1,20 @@
+C:\Python313\Lib\site-packages\qiskit_ionq\ionq_backend.py:129: IonQTranspileLevelWarning: Transpiler default optimization_level=2. IonQ (QIS) recommends 0-1 to avoid aggressive re-synthesis; use transpile(..., optimization_level=1).
+  warn_bad_transpile_level()
+Traceback (most recent call last):
+  File "C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task38_readout_calibration.py", line 121, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task38_readout_calibration.py", line 85, in main
+    counts = get_counts_list(job)
+  File "C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\ionq_simulator_binding_curve.py", line 214, in get_counts_list
+    result = job.result()
+  File "C:\Python313\Lib\site-packages\qiskit_ionq\ionq_job.py", line 407, in result
+    self.wait_for_final_state(timeout=timeout, wait=wait, callback=callback)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\site-packages\qiskit\providers\job.py", line 128, in wait_for_final_state
+    status = self.status()
+  File "C:\Python313\Lib\site-packages\qiskit_ionq\ionq_job.py", line 560, in status
+    raise exceptions.IonQJobFailureError(
+    ...<3 lines>...
+    )
+qiskit_ionq.exceptions.IonQJobFailureError: IonQJobFailureError('Unable to retrieve result for job 01a02fbe-a86e-733b-aeb2-673287d7d252. Failure from IonQ API "TooManyShots: "')
