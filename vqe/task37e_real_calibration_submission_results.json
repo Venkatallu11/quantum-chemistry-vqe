@@ -1,0 +1,38 @@
+{
+  "ideal_ok": true,
+  "results": {
+    "ideal": {
+      "m_xi": 0.0009000000000000397,
+      "m_z": -0.0011399999999999744,
+      "delta_zz_hat": -0.0001432394487827121,
+      "delta_gpi2_hat": 0.0011399999999999744,
+      "se_delta_zz": 0.0005032921210448703,
+      "se_delta_gpi2": 0.0031622776601683794,
+      "significant_zz": false,
+      "significant_gpi2": false
+    },
+    "aria-1": {
+      "m_xi": 0.00716,
+      "m_z": -0.0005599999999999494,
+      "delta_zz_hat": -0.0011395493925379706,
+      "delta_gpi2_hat": 0.0005599999999999494,
+      "se_delta_zz": 0.0005032921210448703,
+      "se_delta_gpi2": 0.0031622776601683794,
+      "significant_zz": true,
+      "significant_gpi2": false
+    },
+    "forte-1": {
+      "m_xi": -0.0033199999999999896,
+      "m_z": -0.0019199999999999773,
+      "delta_zz_hat": 0.0005283944110650909,
+      "delta_gpi2_hat": 0.0019199999999999773,
+      "se_delta_zz": 0.0005032921210448703,
+      "se_delta_gpi2": 0.0031622776601683794,
+      "significant_zz": false,
+      "significant_gpi2": false
+    }
+  },
+  "slope_zz": -6.283185307179586,
+  "slope_gpi2": -1.0,
+  "shots": 100000
+}

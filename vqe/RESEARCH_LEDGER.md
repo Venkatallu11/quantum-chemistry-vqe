@@ -1,5 +1,45 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 37, Task E real follow-up, LOCAL BRANCH
+`local/attack-base-problem`, not yet committed, `origin/main` untouched --
+ONE real `ionq_simulator` submission, explicit user go-ahead given,
+`ionq_simulator` only, never real hardware): submitted the 2 dedicated
+calibration circuits Task 37E designed and analytically verified --
+`task37e_real_calibration_submission.py`, `ideal`/`aria-1`/`forte-1`,
+100k shots each, real native gates only (GPI2(0.25)x2 + real ZZGate(0.25)
+for the ZZ probe; real GPI2Gate(0)) with no synthetic bias injected --
+any nonzero reading is the simulator's own noise model, not something
+this script added. **Sanity check PASSED**: `ideal` backend read both
+circuits within shot noise of the exact-zero prediction (delta_zz_hat=
+-0.000143, delta_gpi2_hat=+0.001140, both well under their ~5e-4/3e-3
+shot-noise floors), confirming the circuit-building and measurement
+pipeline itself is correct before trusting the noisy backends. **Real
+result, first direct measurement of these two parameters in this entire
+37-iteration project**: aria-1 delta_zz_hat=-0.001140 (SE~5.0e-4, ~2.3
+sigma from zero -- the ONLY one of the 4 (backend, parameter) readings
+that clears the (fairly weak, single-submission) 2-SE bar). Every other
+reading -- aria-1's delta_gpi2 (+0.000560), forte-1's delta_zz
+(+0.000528) and delta_gpi2 (+0.001920) -- sits within its own
+shot-noise floor, not distinguishable from zero at this shot budget.
+**Disclosed, not glossed over**: aria-1 and forte-1 give OPPOSITE SIGNS
+for delta_zz (-0.00114 vs +0.00053) -- given this project's own prior,
+independently-established finding ([[project_ionq_simulator_cross_
+submission_drift]] in memory: real quantified drift-std aria-1=4.01,
+forte-1=2.31 kcal/mol-equivalent across repeated submissions of OTHER
+circuits), a SINGLE 100k-shot submission per backend is exactly the
+regime that finding warns is subject to real cross-submission variation
+-- this result should be read as a preliminary, single-draw measurement,
+not a stable calibration value. **Honest verdict, and explicit next
+step not yet taken**: this is genuinely new, real, disclosed information
+(the sanity check proves the measurement CAN see a real signal at this
+precision, and DID for aria-1's delta_zz) -- but before treating aria-1's
+delta_zz=-0.00114 as an actual calibration number to feed back into
+Task 37B/C/D's noise model, it needs the SAME repeated-draw treatment
+(matching the project's own established ~8-16-draw averaging convention
+used for every other real calibration value in this project, e.g. Task
+31A's ZZ/GPi) rather than trusting one submission. Not yet decided with
+the user whether to run that repeat-submission follow-up.
+
 **STATUS UPDATE (iteration 37, Task E, LOCAL BRANCH
 `local/attack-base-problem`, not yet committed, `origin/main` untouched --
 DESIGN/SIMULATION ONLY, zero real submissions, no bugs this run):
