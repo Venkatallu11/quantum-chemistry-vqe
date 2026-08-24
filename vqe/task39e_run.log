@@ -1,0 +1,11 @@
+
+================================================================================================
+  task39e_conditioned_correction.py -- self-test: no-op at theta=0, retained-fraction sanity
+================================================================================================
+
+  -- check 1: at theta=0 (zero noise), conditioning must be a no-op --
+    max diff (unconditioned vs conditioned) at theta=0: 2.290e-15   retained_A=1.000000  retained_B=1.000000
+    PASS
+
+  -- check 2: at real, nonzero calibration (ZZ=0.014593, GPi2=0), retained fraction should be well under 1.0 --
+    retained_A=0.920664  retained_B=1.000000  (real ancilla data retained 88.9%/89.8% of shots -- should be in a broadly comparable range, not wildly different, if this model is realistic)

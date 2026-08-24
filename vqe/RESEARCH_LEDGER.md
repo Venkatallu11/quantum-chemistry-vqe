@@ -1,5 +1,48 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 39, Tasks E+F, LOCAL BRANCH
+`local/attack-base-problem`, not yet committed, `origin/main` untouched
+-- pure local computation on already-collected real data, zero new
+submissions; the diagnosed fix confirmed real, but NOT sufficient on
+its own): Task D's own honest-read hypothesis -- the existing
+unconditional analytic PEC correction has no way to account for
+ancilla-postselection changing the surviving population's statistics --
+directly derived and fixed. **Task E**: postselecting on ancilla=0 is
+mathematically equivalent to projecting the register density matrix
+onto the EVEN-WEIGHT subspace with P_even=(I+Z(0)Z(1)Z(2)Z(3))/2 and
+renormalizing, BEFORE any Pauli trace -- applied to the SAME dm_A/dm_B
+`analytic_A_and_B_5param` already builds, nothing else about the
+verified gate-by-gate propagation changed. Verified before trusting it
+on real data: at theta=0 (zero noise), conditioning is an exact no-op
+(diff 2.3e-15, retained fraction exactly 1.0, as it must be since the
+ideal state is already 100% in the even-weight sector); at real
+calibration, the RAW (uncorrected) retained fraction came out 92.1%,
+broadly consistent with (a bit higher than, as expected since real
+hardware has additional noise sources this simplified model doesn't
+capture) the real observed 88.9%/89.8%. **Task F -- applying the fix to
+the real postselected data from Task C**: a real, substantial, but
+backend-ASYMMETRIC improvement. forte-1: postselected error dropped from
+14.390 (Task D's wrong, unconditional correction) to 7.309 kcal/mol -- a
+7.08 kcal/mol fix, most of the damage the conditioning bug caused.
+aria-1: only a small 0.195 kcal/mol improvement (10.069 -> 9.874) --
+the SAME fix helped far less here, a real, disclosed, not-yet-explained
+backend difference (plausibly: aria-1's real noise may simply not follow
+the assumed nominal depolarizing model as well as forte-1's does, a
+question this task didn't chase further). **Honest bottom line: the
+conditioning diagnosis was correct and the fix is real, but still NOT
+enough to beat the existing baseline** -- aria-1 remains 4.896 kcal/mol
+worse than the old no-ancilla baseline, forte-1 remains 1.112 kcal/mol
+worse. Neither reaches chemical accuracy (0.25/0.5 kcal/mol bars).
+**Remaining, disclosed, not-yet-addressed gaps**: (1) the new data used
+20,000 shots/circuit vs the old baseline's 100,000 -- a real, un-
+isolated shot-noise confound in this comparison; (2) p_gpi2 and
+p_readout are both still held at their uncorrected nominal (0)
+baseline throughout this whole comparison, even though Task 38C
+established these are the two directions actually driving the H4
+energy's calibration sensitivity -- the ancilla/conditioning work this
+iteration has not yet been combined with any GPi2/readout correction at
+all. Real, meaningful progress on a real bug, not yet a win.
+
 **STATUS UPDATE (iteration 39, Tasks B+C+D, LOCAL BRANCH
 `local/attack-base-problem`, not yet committed, `origin/main` untouched
 -- REAL `ionq_simulator` submission (546 circuits, 21 slots x 2

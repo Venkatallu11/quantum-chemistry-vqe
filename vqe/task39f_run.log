@@ -1,0 +1,24 @@
+
+================================================================================================
+  task39f_ancilla_analysis_conditioned.py -- same 3-way comparison, CONDITIONED correction for (c)
+================================================================================================
+
+  === aria-1 ===
+    (a) OLD baseline (no ancilla, 100k shots):                    err = +4.9778 kcal/mol
+    (b) NEW, ancilla, NOT postselected (20k):                     err = +10.2793 kcal/mol
+    (c-unconditional, Task D's original) postselected, WRONG correction: err = +10.0691 kcal/mol
+    (c-CONDITIONED, this task's fix) postselected, correct ratio: err = +9.8737 kcal/mol
+    retained fraction: 88.9%
+    conditioning fix changed |err| by +0.195 kcal/mol vs the unconditional (wrong) correction
+    net vs OLD baseline: -4.896 kcal/mol (still net LOSS vs old baseline)
+
+  === forte-1 ===
+    (a) OLD baseline (no ancilla, 100k shots):                    err = +6.1974 kcal/mol
+    (b) NEW, ancilla, NOT postselected (20k):                     err = +5.9039 kcal/mol
+    (c-unconditional, Task D's original) postselected, WRONG correction: err = +14.3902 kcal/mol
+    (c-CONDITIONED, this task's fix) postselected, correct ratio: err = +7.3092 kcal/mol
+    retained fraction: 89.8%
+    conditioning fix changed |err| by +7.081 kcal/mol vs the unconditional (wrong) correction
+    net vs OLD baseline: -1.112 kcal/mol (still net LOSS vs old baseline)
+
+  Chemical accuracy bars for reference: 0.25 kcal/mol (internal target), 0.5 kcal/mol (looser hardware bar).
