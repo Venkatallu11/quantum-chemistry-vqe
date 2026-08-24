@@ -1,0 +1,18 @@
+
+================================================================================================
+  task39g_conditioned_gpi2_sweep.py -- does a nonzero GPi2 correction help NOW, on postselected data?
+================================================================================================
+
+    p_gpi2_assumed      err_aria-1     err_forte-1    worst-case
+            0.0003           4.242           0.943         4.242
+            0.0004           3.592           0.278         3.592
+            0.0004           2.933           0.398         2.933
+            0.0005           2.264           1.085         2.264
+            0.0006           1.584           1.781         1.781
+            0.0006           0.894           2.485         2.485
+            0.0006           0.194           3.198         3.198
+
+  BASELINE (p_gpi2_assumed=0, this task's own conditioned-postselected result): worst-case=4.242
+  BEST candidate: p_gpi2_assumed=0.00055  worst-case=1.781
+
+  A nonzero GPi2 correction DOES help on the postselected data (58.0% worst-case reduction) -- different from Task 38D2's finding on the un-postselected data. Postselection changes which correction is optimal, a real and interesting result if it holds.

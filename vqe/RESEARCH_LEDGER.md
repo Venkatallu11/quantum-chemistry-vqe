@@ -1,5 +1,61 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 39, Task G, LOCAL BRANCH
+`local/attack-base-problem`, not yet committed, `origin/main` untouched
+-- pure local computation, REAL METHODOLOGICAL BUG CAUGHT IN THE OPEN,
+result explicitly NOT validated, disclosed before being trusted or
+acted on): swept p_gpi2_assumed (Task 39E's conditioned correction) on
+the real postselected data from Task C, mirroring Task 38D2's grid-
+search structure. Coarse sweep found large, real-looking improvements
+(worst-case 9.874 -> 2.485 kcal/mol at p_gpi2_assumed=0.0006); refining
+the grid to find where aria-1 and forte-1 might share a minimum found
+instead that they DON'T -- forte-1 bottoms out near 0.0004 (0.278
+kcal/mol, under the 0.5 looser bar and close to the 0.25 strict target)
+while aria-1 bottoms out near 0.0007 (0.516 kcal/mol) -- moving toward
+either backend's optimum makes the OTHER backend's error rise sharply
+(at 0.0004: aria=3.592; at 0.0007: forte=3.920), so no single shared
+p_gpi2_assumed value gets both under even 1.5 kcal/mol simultaneously
+in this grid.
+
+**STOP -- these numbers, including the promising-looking 0.278/0.516,
+are NOT a validated result and must not be treated as one.** Caught
+directly, before being reported as a finding: the grid search selected
+p_gpi2_assumed by directly minimizing `err_vs_exact_kcal` -- i.e., it
+used the KNOWN EXACT H4 ENERGY to choose the "best" correction
+parameter, with NO held-out train/validation split at all. This is
+EXACTLY the target-leakage failure mode this project's own established
+discipline exists to prevent (the same pattern that disqualified
+iteration 2's CDR result outright: "any method whose accuracy is gated
+by proximity-to-target... is disqualified regardless of the number";
+the same discipline Tasks 37C/38C/38D built explicit 70/30 stratified
+train/validation splits to guard against). A number this good, found by
+directly searching against the answer with no held-out check, could
+easily be a cherry-picked fit to this ONE real dataset's own specific
+noise realization rather than a real, generalizable calibration --
+exactly the kind of trap iteration 31's own 0.115 kcal/mol "one
+unreplicated run" turned out to be (it did not survive iteration 32's
+direct replication). **Also disclosed**: `task38d2_robust_pec_real_
+data.py`'s own earlier "BEST WORST-CASE"/"BEST SPREAD" candidate
+selection (iteration 38, Task D corrected retry) has this SAME
+methodological gap -- it also selected its reported candidate by
+directly minimizing error against the known exact energy, with no
+held-out split. That result's headline finding was negative (no
+correction beats baseline), which target leakage cannot manufacture in
+the wrong direction the same way it can produce a false positive here --
+but it was not actually leakage-free either, and should be understood
+with that caveat from now on rather than treated as fully rigorous.
+**Real, immediate next step, not yet done**: rebuild this GPi2 sweep
+with a proper stratified train/validation split of the real (slot,
+label) residuals (matching Task 38C/38D's own established 70/30
+convention) and a leakage-free TRAINING objective (variance/chi2 against
+the frame-predicted target, never the exact energy -- exactly Task 38D's
+own original, correctly-designed methodology, which this task should
+have reused instead of reintroducing the same leakage Task 38D2
+happened to also have). Until that is done, the honest, disclosed state
+is: postselection + the conditioning fix + SOME nonzero GPi2 correction
+looks promising in an UNVALIDATED exploratory sweep, and nothing more
+than that should be claimed.
+
 **STATUS UPDATE (iteration 39, Tasks E+F, LOCAL BRANCH
 `local/attack-base-problem`, not yet committed, `origin/main` untouched
 -- pure local computation on already-collected real data, zero new
