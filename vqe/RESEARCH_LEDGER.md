@@ -1,5 +1,81 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 39, Tasks B+C+D, LOCAL BRANCH
+`local/attack-base-problem`, not yet committed, `origin/main` untouched
+-- REAL `ionq_simulator` submission (546 circuits, 21 slots x 2
+backends x 13 groups, 20k shots each, explicit user go-ahead), CLEAR
+REAL NEGATIVE RESULT -- does NOT reach chemical accuracy, and is WORSE
+than the existing baseline): built and ran the actual end-to-end test
+Task 39A's positive local signal pointed to.
+
+**Task B**: adapted iteration 18's real-hardware-validated ancilla-
+parity leakage detector from its original abstract-gate/CX construction
+to the current native-gate (GPi/GPi2/ZZ) family, following the same
+safe compose-don't-re-transpile pattern Task 38A's fusion builder
+established. Verified before any submission, matching iteration 18's
+own two checks exactly: regression vs the abstract CX circuit (unitary
+diff 8.2e-16), marginal-register-state preservation (worst error 3.1e-15
+across all 36 state-prep angle sets), and ideal ancilla=0 certainty
+(worst p(ancilla=1) = 3.8e-30). All PASS.
+
+**Task C**: real submission, `optimized_native_circuit` (IonQ's own
+TrappedIonOptimizerPlugin included, matching exactly how the existing
+real baseline `task28b_optimized_raw.json` was itself collected, so the
+two are directly comparable without resubmitting a no-ancilla control).
+Deliberately reduced scope given today's earlier real quota failure:
+20,000 shots/circuit (not the usual 100,000), aria-1/forte-1 only (no
+`ideal` -- already verified exact locally in Task B). A 1-slot canary
+confirmed the API was accepting submissions again before committing to
+the full sweep; the full 42 slot-backend combinations (546 circuits)
+completed cleanly with per-slot incremental checkpointing, no quota
+failure this time.
+
+**Task D -- the real result, honestly reported, not spun**: three-way
+comparison (old no-ancilla 100k-shot baseline; new ancilla-present-but-
+NOT-postselected at 20k shots; new ancilla-postselected at 20k shots),
+identical correction (Task 37C's verified `analytic_A_and_B_5param`,
+nominal theta_0) and identical standard energy pipeline applied to all
+three, so any difference is real signal, not a pipeline artifact.
+    aria-1:  old=4.978, ancilla-no-ps=10.279, ancilla-postselected(88.9%
+             retained)=10.069 kcal/mol -- postselection gave a small real
+             improvement over the un-postselected ancilla data (-0.21),
+             but the ancilla's own cost (+5.30, matching iteration 18's
+             own finding that the extra gates cost something before any
+             denoising) was much larger -- NET 5.09 kcal/mol WORSE than
+             the old baseline.
+    forte-1: old=6.197, ancilla-no-ps=5.904, ancilla-postselected(89.8%
+             retained)=14.390 kcal/mol -- the ancilla alone was roughly
+             neutral here, but postselection made things dramatically
+             WORSE (+8.49) -- NET 8.19 kcal/mol WORSE than the old
+             baseline.
+**Neither backend reaches chemical accuracy (0.25 kcal/mol target, 0.5
+looser bar) -- both are roughly 20-30x over, and both are WORSE than
+the already-far-from-target baseline this project already had.** Most
+likely explanation, disclosed as a real hypothesis not yet confirmed:
+the correction applied (`analytic_A_and_B_5param`'s standard depolarizing
+ratio, theta_0 fixed) was derived for the UNCONDITIONAL noise channel --
+it has no way to account for the fact that POSTSELECTING on the ancilla
+changes the statistics of the surviving population conditionally, not
+just its size. Applying an unconditional correction formula to
+conditioned data is a real, disclosed mismatch this run did not resolve
+-- Task 39A's own local finding (p_gpi2 IS the dominant leakage-
+detectable direction) may still be correct as far as it goes, but this
+result shows that finding alone was not sufficient to translate into a
+working combined pipeline without also fixing the correction model
+itself to account for conditioning. **Honest verdict for the user's
+explicit question ("build it, run it on the free simulator, see if we
+hit chemical accuracy"): no, we do not hit chemical accuracy, and this
+specific combination (native ancilla-parity postselection + the
+existing unconditional analytic PEC correction) performs measurably
+worse in its current form than doing nothing extra at all.** Real next
+step, not yet done: either derive a postselection-aware correction (the
+conditional depolarizing/PEC-inverse formula under a known
+weight-preserving parity constraint, a real but nontrivial derivation),
+or test the SAME ancilla data against symmetry EXPANSION (using the
+detected-leakage population to construct a lower-bias estimator, per
+the user's own point 6, rather than simple discard-based verification)
+instead of straight postselection.
+
 **STATUS UPDATE (iteration 39, Task A, LOCAL BRANCH
 `local/attack-base-problem`, not yet committed, `origin/main` untouched
 -- pure local computation, ~3 minutes wall-clock, REAL POSITIVE

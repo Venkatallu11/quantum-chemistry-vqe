@@ -1,0 +1,13 @@
+
+================================================================================================
+  task39b_native_ancilla_parity.py -- native ancilla-parity circuit, verified before use
+================================================================================================
+
+  ancilla sub-circuit native gate counts: OrderedDict({'gpi2': 32, 'gpi': 16, 'zz': 4})
+  regression vs abstract CX circuit: unitary diff = 8.204e-16  PASS
+
+  -- verify_ancilla_scheme_native on 36 state-prep angle sets --
+    worst marginal-state error across all slots: 3.109e-15  PASS
+    worst ideal ancilla=1 probability across all slots: 3.839e-30  PASS (certain ancilla=0)
+
+  OVERALL: VERIFIED, safe to use downstream

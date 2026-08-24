@@ -1,0 +1,20 @@
+
+================================================================================================
+  task39d_ancilla_analysis.py -- old baseline vs ancilla-no-postselect vs ancilla-postselected
+================================================================================================
+
+  === aria-1 ===
+    (a) OLD baseline (no ancilla, 100k shots):        err = +4.9778 kcal/mol
+    (b) NEW, ancilla present, NOT postselected (20k): err = +10.2793 kcal/mol
+    (c) NEW, ancilla postselected (20k, retained 88.9% of shots): err = +10.0691 kcal/mol
+
+  === forte-1 ===
+    (a) OLD baseline (no ancilla, 100k shots):        err = +6.1974 kcal/mol
+    (b) NEW, ancilla present, NOT postselected (20k): err = +5.9039 kcal/mol
+    (c) NEW, ancilla postselected (20k, retained 89.8% of shots): err = +14.3902 kcal/mol
+
+  -- HONEST READ --
+    aria-1: adding the ancilla (before postselection) changed |err| by +5.302 (matches iteration 18's own finding that the extra gates cost something before any denoising); postselection then changed |err| by -0.210 vs the un-postselected ancilla data; net vs the OLD no-ancilla baseline: -5.091 kcal/mol (net LOSS vs the old baseline).
+    forte-1: adding the ancilla (before postselection) changed |err| by -0.294 (matches iteration 18's own finding that the extra gates cost something before any denoising); postselection then changed |err| by +8.486 vs the un-postselected ancilla data; net vs the OLD no-ancilla baseline: -8.193 kcal/mol (net LOSS vs the old baseline).
+
+  Chemical accuracy bars for reference: 0.25 kcal/mol (internal target), 0.5 kcal/mol (looser hardware bar).

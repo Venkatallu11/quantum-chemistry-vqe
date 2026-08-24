@@ -1,0 +1,10 @@
+
+================================================================================================
+  task39c_ancilla_real_submission.py -- CANARY (1 slot, forte-1 only)
+================================================================================================
+  ancilla circuit regression check: diff=8.204e-16  PASS
+  connected, backend=ionq_simulator
+    done: forte-1|u_0 (13 circuits, 20000 shots each)
+
+  CANARY PASSED -- API accepting submissions, safe to run full sweep
+  partial checkpoint saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task39c_ancilla_real_submission.partial.json
