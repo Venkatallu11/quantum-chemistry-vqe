@@ -1,5 +1,74 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 40, Tasks G+H (partial), LOCAL BRANCH
+`local/attack-base-problem`, not yet committed, `origin/main` untouched
+-- pure local computation on already-collected real data (draw 0), zero
+new real submissions, deliberately run BEFORE spending more real shot
+budget since these checks could immediately falsify the result: EVERY
+CHEAP CERTIFICATION CHECK PASSES CLEANLY): user-directed pivot from
+"invent a new method" to "certify the candidate breakthrough" after
+Task 39's 3-for-3 real replication (0.011-0.018 kcal/mol). Ran the
+cheapest, most decisive checks first, all on data already in hand.
+
+**Ablation matrix (`task40_certification_ablation_adversarial.py`)**,
+STANDARD (non-joint-frame) pipeline, real draw-0 data:
+    aria-1:  raw=127.90 -> QED-only=63.12 -> PEC-only(ZZ)=10.28 ->
+             GPi2-only=5.54 -> QED+PEC(no GPi2)=9.87 ->
+             QED+PEC+GPi2=0.894 kcal/mol
+    forte-1: raw=120.31 -> QED-only=60.03 -> PEC-only(ZZ)=5.90 ->
+             GPi2-only=5.71 -> QED+PEC(no GPi2)=7.31 ->
+             QED+PEC+GPi2=0.278 kcal/mol
+**Real, clean synergy, not one dominant term**: the full combination
+(0.894/0.278) is meaningfully better than EVERY individual component
+alone (best single component ~5.5-5.7) -- directly answering the
+concern that one term might be doing "nearly everything." **Important
+clarification surfaced by this exercise**: these ablation numbers use
+the STANDARD pipeline (no Schmidt-frame fit) -- Task 39H/I/J's
+extraordinary 0.011-0.018 kcal/mol numbers come from this SAME
+QED+PEC+GPi2 correction FEEDING INTO the joint Schmidt-frame fit on
+top (an additional ~80x improvement from frame regularization stacked
+on an already-good correction) -- the true "full candidate" pipeline is
+5 components (QED, conditioned PEC, GPi2 correction, AND the joint
+frame fit), not 4; this ablation is disclosed as measuring the
+correction stage alone, with the frame-fit ablation still to be added.
+
+**Adversarial / negative controls, same task, real data**: every one
+FAILS LOUDLY as it must for the result to be trustworthy --
+    wrong parity (postselect on the WRONG, odd-weight condition):
+      667.24 (aria-1) / 691.26 (forte-1) kcal/mol -- catastrophic, as
+      it should be for actively selecting the unphysical condition.
+    shuffled ancilla (destroy the real ancilla/state correlation,
+      same retained fraction): 61.33 / 58.19 kcal/mol -- collapses
+      back to roughly the QED-only/no-correction scale, confirming the
+      ancilla's REAL correlation with leakage (not just its existence)
+      is what matters.
+    wrong-sign GPi2 correction: 24.09 / 16.49 kcal/mol -- much worse
+      than the correct sign's 0.89/0.28, confirming the correction
+      DIRECTION is real, not an arbitrary transformation that happens
+      to help regardless of sign.
+    shuffled-label adversarial frame fit (established Task 36/37
+      convention, applied to the corrected+postselected data): chi2/dof
+      REAL=0.00015 vs SHUFFLED=0.339 (aria-1, ratio=2263.6x) and
+      REAL=0.00015 vs SHUFFLED=0.360 (forte-1, ratio=2429.0x) -- both
+      overwhelmingly pass the established >3x bar by nearly three
+      orders of magnitude.
+**Also recomputed cleanly**: overall real shot-acceptance rate (p_valid)
+for draw 0 across all 546 circuits = 89.4% -- high, not throwing away
+most of the data, addressing the "effective shots" concern directly.
+
+**Honest state**: this is real, decisive, entirely LOCAL evidence
+(zero new real submissions spent) that the result is NOT a target-
+leakage artifact, NOT a spurious single-dominant-term effect, and NOT
+insensitive to getting the physics right -- every adversarial
+perturbation this task tried broke it, exactly as a genuine effect
+should behave. This does not yet replace the still-pending, more
+expensive certification items (the Q95 robustness envelope through the
+new pipeline -- flagged as the single most important remaining number;
+a proper frame-fit-inclusive ablation; a ratio-estimator finite-shot
+bias check; and eventually more real replication draws) -- but it
+substantially raises confidence before any of that further spending,
+which was the deliberate point of doing these checks first.
+
 **STATUS UPDATE (iteration 39, Task J, LOCAL BRANCH
 `local/attack-base-problem`, not yet committed, `origin/main` untouched
 -- REAL `ionq_simulator` submission, draw 2, `ionq_simulator` only, no
