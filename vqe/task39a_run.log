@@ -1,0 +1,26 @@
+
+================================================================================================
+  task39a_leakage_sensitivity_diagnostic.py -- does the parity check see the dangerous noise?
+================================================================================================
+
+  -- baseline weight-2 population fraction at theta_0 (should be ~1.0 exactly for GPi/ZZ, non-trivial for GPi2 since it's genuinely noisy at theta_0 too) --
+    mean weight-2 fraction across 21 slots at theta_0: 0.914895
+
+  -- leakage sensitivity: d(weight-2 fraction)/d(theta_i), central difference, all 21 slots, mean --
+
+  param          d(weight-2 frac)/d(theta)   |sensitivity|
+  p_zz                             -5.1073          5.1073
+  p_gpi2                          -81.4957         81.4957
+  delta_zz                         -0.0000          0.0000
+  delta_gpi2                        0.0000          0.0000
+
+  -- readout: exact ODD-flip detection rate (n=4 register qubits) at a few real p_readout values --
+    p_readout=0.001  P(detected as leakage) = 0.0040  (negligible catch rate)
+    p_readout=0.002  P(detected as leakage) = 0.0080  (negligible catch rate)
+    p_readout=0.005  P(detected as leakage) = 0.0197  (meaningful fraction caught)
+    p_readout=0.010  P(detected as leakage) = 0.0388  (meaningful fraction caught)
+    p_readout=0.020  P(detected as leakage) = 0.0753  (meaningful fraction caught)
+
+  -- HONEST READ -- compare against Task 38C's own energy-sensitivity finding (p_gpi2 75.1% of V_cal, p_readout 24.8%, p_zz/delta_zz/delta_gpi2 each ~0%) --
+    Direction with the LARGEST leakage sensitivity: p_gpi2 (|d(frac)/d(theta)|=81.4957)
+    p_gpi2 IS both the dominant energy-sensitivity direction AND shows real leakage sensitivity -- a parity check has a real chance of catching exactly the error that matters most. Worth building the real combined circuit test.
