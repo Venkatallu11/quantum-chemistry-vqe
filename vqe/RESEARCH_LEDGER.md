@@ -1,5 +1,55 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 39, Task J, LOCAL BRANCH
+`local/attack-base-problem`, not yet committed, `origin/main` untouched
+-- REAL `ionq_simulator` submission, draw 2, `ionq_simulator` only, no
+real hardware budget touched: THIRD INDEPENDENT CONFIRMATION, the
+strongest real signal this project has produced in 39 iterations):
+draw 2 (own checkpoint, independent from draws 0/1) submitted and
+analyzed with the identical leakage-free procedure. **Both backends
+select the SAME candidate a third consecutive time** (aria-1: 0.0006,
+forte-1: 0.0004 -- three-for-three across three fully independent real
+submissions). Resulting informational-only errors: aria-1=0.0115,
+forte-1=0.0120 kcal/mol.
+
+**Full replication table, all three independent real draws:**
+| draw | aria-1 (kcal/mol) | forte-1 (kcal/mol) | aria-1 candidate | forte-1 candidate |
+|---|---|---|---|---|
+| 0 | 0.0132 | 0.0179 | 0.0006 | 0.0004 |
+| 1 | 0.0166 | 0.0141 | 0.0006 | 0.0004 |
+| 2 | 0.0115 | 0.0120 | 0.0006 | 0.0004 |
+
+All six real, independent energy-error numbers fall in a tight
+0.0115-0.0179 kcal/mol band (mean ~0.0142, spread ~0.006) -- comfortably
+under BOTH the 0.25 kcal/mol internal target and the 0.5 kcal/mol
+looser hardware bar, on EVERY single draw, with the EXACT SAME
+correction selected by a leakage-free (training-chi2/dof-only,
+never-touches-exact-energy) procedure every time. This is real evidence
+of a genuine, reproducible effect, not a fluke -- the diagnostic
+signature this project has learned to distinguish (iteration 25's
+drift quantification, iteration 31/32's non-replication, this session's
+own Task 37E reversal) is a result that changes sign or collapses
+toward the old baseline under independent repetition; this result did
+the opposite three times in a row. **Honest residual caveats, stated
+plainly, not overclaimed away**: (1) three draws, not the full 8-draw
+protocol this project's own drift-quantification work (iteration 25,
+Task 37E) used before trusting a number completely -- a real, if
+modest, remaining gap in rigor; (2) all draws used 20,000 shots/circuit,
+not this project's usual 100,000 -- the shot-noise floor at this real
+result's scale has not been separately isolated; (3) this is the
+STANDARD (non-joint-frame-external) chi2/dof-selected correction
+applied within a freely-FIT frame each time -- the specific mechanism
+combining ancilla postselection + conditioned correction + a real,
+nonzero GPi2 correction into this level of accuracy is not yet
+independently understood/explained, only empirically, repeatedly
+observed. **Given the strength and consistency of three-for-three real,
+independent confirmations, this now crosses from "promising exploratory
+finding" to "a real result meriting serious further scrutiny and very
+likely genuine" -- but per this project's own standing discipline, it
+is still not to be reported to Vadim or treated as final without either
+completing the fuller 8-draw protocol or otherwise independently
+corroborating it (e.g. at the original 100k-shot budget).**
+
 **STATUS UPDATE (iteration 39, Task I, LOCAL BRANCH
 `local/attack-base-problem`, not yet committed, `origin/main` untouched
 -- REAL `ionq_simulator` submission, draw 1 of a real replication check,

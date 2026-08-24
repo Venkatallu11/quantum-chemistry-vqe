@@ -1,0 +1,32 @@
+
+================================================================================================
+  task39h_leakage_free_gpi2_sweep.py -- LEAKAGE-FREE GPi2 selection (training chi2/dof, no exact energy)
+================================================================================================
+
+  === aria-1 ===
+    p_gpi2_assumed=0.0000   TRAIN chi2/dof=0.00040   VAL chi2/dof=0.00033 (n=231)
+    p_gpi2_assumed=0.0004   TRAIN chi2/dof=0.00018   VAL chi2/dof=0.00016 (n=231)
+    p_gpi2_assumed=0.0006   TRAIN chi2/dof=0.00016   VAL chi2/dof=0.00015 (n=231)
+    p_gpi2_assumed=0.0007   TRAIN chi2/dof=0.00017   VAL chi2/dof=0.00017 (n=231)
+    p_gpi2_assumed=0.0008   TRAIN chi2/dof=0.00019   VAL chi2/dof=0.00020 (n=231)
+
+    TRAINING-SELECTED (min TRAIN chi2/dof, no exact-energy leakage): p_gpi2_assumed=0.0006
+    held-out VALIDATION chi2/dof at that candidate: 0.00015
+    INFORMATIONAL ONLY (not used in selection): resulting energy err vs exact = +0.0115 kcal/mol
+
+  === forte-1 ===
+    p_gpi2_assumed=0.0000   TRAIN chi2/dof=0.00030   VAL chi2/dof=0.00023 (n=231)
+    p_gpi2_assumed=0.0004   TRAIN chi2/dof=0.00017   VAL chi2/dof=0.00015 (n=231)
+    p_gpi2_assumed=0.0006   TRAIN chi2/dof=0.00018   VAL chi2/dof=0.00020 (n=231)
+    p_gpi2_assumed=0.0007   TRAIN chi2/dof=0.00020   VAL chi2/dof=0.00024 (n=231)
+    p_gpi2_assumed=0.0008   TRAIN chi2/dof=0.00024   VAL chi2/dof=0.00030 (n=231)
+
+    TRAINING-SELECTED (min TRAIN chi2/dof, no exact-energy leakage): p_gpi2_assumed=0.0004
+    held-out VALIDATION chi2/dof at that candidate: 0.00015
+    INFORMATIONAL ONLY (not used in selection): resulting energy err vs exact = +0.0120 kcal/mol
+
+  -- SUMMARY (leakage-free selection) --
+    aria-1: selected p_gpi2_assumed=0.0006, TRAIN chi2/dof=0.00016, VAL chi2/dof=0.00015, informational err=+0.0115 kcal/mol
+    forte-1: selected p_gpi2_assumed=0.0004, TRAIN chi2/dof=0.00017, VAL chi2/dof=0.00015, informational err=+0.0120 kcal/mol
+
+  Chemical accuracy bars for reference: 0.25 kcal/mol (internal target), 0.5 kcal/mol (looser hardware bar).
