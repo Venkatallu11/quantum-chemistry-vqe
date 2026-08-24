@@ -1,5 +1,61 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 39, Task H, LOCAL BRANCH
+`local/attack-base-problem`, not yet committed, `origin/main` untouched
+-- pure local computation on already-collected real data; POTENTIALLY
+THE BEST REAL RESULT THIS PROJECT HAS EVER PRODUCED, reported with the
+maximum caution this project's own history says a number like this
+demands): `task39h_leakage_free_gpi2_sweep.py` redoes Task G's sweep
+with the leakage-free discipline Task G was missing -- for each
+candidate p_gpi2_assumed, the 15-parameter Schmidt frame is FIT FREELY
+(`fit_joint_frame`, U_hat unknown, never fixed to the ideal/exact
+value -- fixing it to U=I, the "obvious" alternative, would ALSO be
+leakage, since U=I directly encodes the exact classically-known ground
+truth at finer granularity than the aggregate energy) on a stratified
+70% TRAINING split; the candidate is selected by MINIMUM TRAINING
+chi2/dof alone -- no reference to the true state or exact energy
+anywhere in selection. Held-out 30% validation chi2/dof and the
+resulting energy vs exact are computed ONLY AFTER selection, purely
+informationally, exactly Task 38C/38D's own established convention.
+**Result**: aria-1 selects p_gpi2_assumed=0.0006 (TRAIN chi2/dof=
+0.00015, VAL chi2/dof=0.00016 -- essentially identical, no overfitting
+signal); forte-1 selects p_gpi2_assumed=0.0004 (TRAIN=0.00015,
+VAL=0.00015 -- also no overfitting signal). **Informational-only
+resulting energy errors: aria-1 = +0.0132 kcal/mol, forte-1 = +0.0179
+kcal/mol -- BOTH far under the 0.25 kcal/mol internal target AND the
+0.5 kcal/mol looser hardware bar**, by more than an order of magnitude,
+and dramatically better than this entire 39-iteration project's
+previous best-ever real point estimate (iteration 31's 0.115 kcal/mol,
+which itself did NOT survive iteration 32's direct replication).
+**MANDATORY CAUTION, applied here specifically because this project has
+been burned by exactly this pattern before, more than once, including
+THIS SESSION**: this is ONE real submission's worth of data per
+backend (Task C, a single sweep, not repeated draws) feeding a
+leakage-free BUT still single-shot analysis. Task 37E's own repeated-
+draw check this same session found a "significant" single-draw reading
+(aria-1 delta_zz, ~2.3 SE) completely reverse sign and collapse to
+noise across 8 real repeated draws. Iteration 31's own single-run 0.115
+kcal/mol headline did not replicate under iteration 32's direct
+re-analysis. **This number is NOT confirmed and must not be reported,
+acted on, or shown to Vadim as a real result until it survives an
+actual repeated-real-submission replication check** (matching the
+established ~8-draw protocol) -- the leakage-free training/validation
+split checked for OVERFITTING TO THIS DATASET'S OWN LABELS, which it
+passed cleanly, but it cannot and does not check for CROSS-SUBMISSION
+DRIFT (a completely different, independently-established real
+phenomenon on this project's own free simulator, quantified at
+std=4.01/2.31 kcal/mol on other circuits, iteration 25) -- the single
+biggest reason a promising-looking number on this project has
+previously turned out not to hold up. **Immediate, real next step, not
+yet done**: repeat the exact Task C submission (ancilla-augmented,
+20k-shot, 21-slot circuits) several more independent times on both
+backends, and check whether the SAME leakage-free selection procedure
+and resulting energy error reproduce -- if it does, even approximately,
+this is very likely a genuine, reportable result; if it reverses or
+collapses like Task 37E's single-draw finding did, it was noise dressed
+up as a discovery, and that must be disclosed exactly as honestly as
+this entry discloses the promising number itself.
+
 **STATUS UPDATE (iteration 39, Task G, LOCAL BRANCH
 `local/attack-base-problem`, not yet committed, `origin/main` untouched
 -- pure local computation, REAL METHODOLOGICAL BUG CAUGHT IN THE OPEN,
