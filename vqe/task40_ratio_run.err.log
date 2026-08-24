@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task40_ratio_bias_check.py", line 152, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task40_ratio_bias_check.py", line 115, in main
+    raise RuntimeError("expand()/CNOT convention check failed -- do not trust the bias numbers below")
+RuntimeError: expand()/CNOT convention check failed -- do not trust the bias numbers below

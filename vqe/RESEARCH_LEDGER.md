@@ -1,5 +1,40 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 40, ratio-estimator bias check, LOCAL BRANCH
+`local/attack-base-problem`, not yet committed, `origin/main` untouched
+-- pure local computation, ONE real bug caught in the sanity check
+itself before trusting the result): user's own point 11 -- ratio
+estimators can have E[A/B] != E[A]/E[B], a nonlinear bias that need not
+vanish at finite shots. Tested directly: built the exact 5-qubit noisy
+density matrix (register + ancilla, real calibration) for the
+established u_0/IYYI validation case, sampled MULTINOMIAL counts at
+five shot counts (1e3 to 1e6), postselected exactly as the real
+pipeline does, and compared the finite-shot conditioned expectation
+against the exact infinite-shot value, 50 trials per N to separate real
+bias from ordinary spread. **Bug caught before trusting anything**: the
+first run's own sanity check failed (marginal-state error 6.3e-3,
+p(ancilla=1) at "ideal" 5.5e-3 -- both small but clearly nonzero,
+correctly flagged and stopped rather than ignored). Root cause: GPi's
+own real (tiny) depolarizing noise is applied UNCONDITIONALLY in this
+script's density-matrix builder, so a "p_zz=0, p_gpi2=0" call is NOT
+the same as genuinely zero noise -- the sanity check was comparing a
+still-slightly-noisy state against a truly-noiseless reference, an
+apples-to-oranges mismatch in the CHECK itself, not the underlying
+ancilla/expand() mechanism. Fixed by adding an explicit `apply_noise`
+flag and comparing each check against the correct, matching reference
+(marginal-preservation checked against the SAME real-noise state;
+ancilla-certainty checked against a TRUE zero-noise state). Both checks
+then PASS to machine precision (6.8e-16, 1.0e-15). **Result: no hidden
+bias floor found.** At every tested N, the bias (mean estimate minus
+the exact value) is small compared to the trial-to-trial std (5-18% of
+std at every N, consistent with zero true bias plus ordinary sampling
+noise in a 50-trial mean), and the std itself shrinks correctly with
+shot count (0.0102 -> 0.00292 -> 0.00211 -> 0.0011 -> 0.00034 across
+N=1e3...1e6, tracking the expected ~1/sqrt(N) scaling). The ratio-
+estimator concern, a real mathematical possibility, does not show up as
+a real effect here -- one more certification check passed cleanly,
+entirely locally, before spending more real submission budget.
+
 **STATUS UPDATE (iteration 40, Tasks G+H (partial), LOCAL BRANCH
 `local/attack-base-problem`, not yet committed, `origin/main` untouched
 -- pure local computation on already-collected real data (draw 0), zero

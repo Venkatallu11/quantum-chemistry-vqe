@@ -1,0 +1,22 @@
+
+================================================================================================
+  task40_ratio_bias_check.py -- finite-shot postselection bias, does it vanish as N->infinity?
+================================================================================================
+
+  -- sanity check 1: expand()+CNOT marginal-state preservation, using the SAME (real-noise) dm --
+    marginal-state error: 6.782e-16   PASS
+
+  -- sanity check 2: TRUE zero-noise case must give ancilla=0 with certainty --
+    p(ancilla=1) at TRUE zero noise: 1.013e-15   PASS
+
+  slot=u_0 label=IYYI  TRUE (exact, infinite-shot) conditioned expectation = -0.953638
+
+     N shots   mean estimate    bias (mean-true)   std across trials
+        1000       -0.954147           -0.000509            0.010220
+       10000       -0.953633            0.000005            0.002917
+       20000       -0.953264            0.000374            0.002107
+      100000       -0.953488            0.000150            0.001100
+     1000000       -0.953662           -0.000024            0.000342
+
+  -- HONEST READ --
+  If bias shrinks toward 0 as N grows (roughly monotonically, well below the std at each N), this is ordinary, expected shot noise with no hidden ratio-estimator bias floor. If bias stays roughly CONSTANT (does not shrink) even at N=1,000,000, that would indicate a real, hidden systematic problem -- worth flagging explicitly either way.

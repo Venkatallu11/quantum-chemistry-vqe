@@ -1,0 +1,7 @@
+
+================================================================================================
+  task40_ratio_bias_check.py -- finite-shot postselection bias, does it vanish as N->infinity?
+================================================================================================
+
+  -- sanity check: expand()+CNOT convention, using theta=0 (fully ideal) case --
+    marginal-state error: 6.336e-03   p(ancilla=1) at ideal: 5.503e-03   FAIL -- STOP, convention bug
