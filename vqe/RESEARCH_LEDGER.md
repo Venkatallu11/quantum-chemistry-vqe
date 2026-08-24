@@ -1,5 +1,45 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 39, Task I, LOCAL BRANCH
+`local/attack-base-problem`, not yet committed, `origin/main` untouched
+-- REAL `ionq_simulator` submission, draw 1 of a real replication check,
+explicit user go-ahead given, `ionq_simulator` only, no real hardware
+budget touched: STRONG, ENCOURAGING, STILL-NOT-FINAL REPLICATION
+SIGNAL): Task H's headline number (aria-1=0.0132, forte-1=0.0179
+kcal/mol, leakage-free selection) is one real submission's worth of
+data -- per this project's own hardest-earned lesson (iteration 31's
+0.115 kcal/mol did not survive iteration 32's replication; this
+session's own Task 37E found a "significant" single-draw reading
+reverse sign under 8 real repeats), that alone is not enough to trust.
+Ran a SECOND, fully independent real submission of the exact same
+546-circuit ancilla sweep (`task39c_ancilla_real_submission.py --draw
+1`, own checkpoint file, does not touch or overwrite the original) and
+re-ran the IDENTICAL leakage-free selection procedure
+(`task39h_leakage_free_gpi2_sweep.py`, parameterized to read either
+checkpoint via `TASK39_CKPT_NAME`) on the new, independent data.
+**Result: the replication holds up, and holds up unusually well.**
+Both backends select the EXACT SAME p_gpi2_assumed candidate as the
+original draw (aria-1: 0.0006 both times; forte-1: 0.0004 both times)
+-- the SELECTION itself replicated, not just the final number, a much
+stronger signal than matching final numbers alone would be. The
+resulting informational-only energy errors: draw 0 aria-1=0.0132,
+forte-1=0.0179; draw 1 aria-1=0.0166, forte-1=0.0141 kcal/mol -- both
+draws land in the SAME tight, sub-0.02-kcal/mol range, comfortably
+under both the 0.25 and 0.5 kcal/mol bars, with NO sign reversal and no
+collapse toward the old (multi-kcal/mol) baseline the way Task 37E's
+false-positive single-draw finding did under its own replication check.
+**This is the opposite pattern from a noise artifact** -- a real
+finding would be expected to look exactly like this (stable candidate
+selection, consistent small final error); a fluke would more plausibly
+have looked like Task 37E's reversal. **Still explicitly not called
+confirmed**: two draws is a real, meaningful improvement in confidence
+over one, but this project's own established real-drift-quantification
+protocol (iteration 25, Task 37E) used 8 independent draws before
+trusting a number -- a third real submission (draw 2) was launched
+immediately after this result and was still in progress in parallel
+when this entry was written; see the next entry (if committed) for
+whether it also lands in the same tight range.
+
 **STATUS UPDATE (iteration 39, Task H, LOCAL BRANCH
 `local/attack-base-problem`, not yet committed, `origin/main` untouched
 -- pure local computation on already-collected real data; POTENTIALLY

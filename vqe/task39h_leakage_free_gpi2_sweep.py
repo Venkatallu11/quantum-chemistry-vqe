@@ -48,7 +48,8 @@ ZZ_ASSUMED = 0.014593
 GPI2_GRID = [0.0, 0.0004, 0.0006, 0.0007, 0.0008]  # covers the baseline plus the region Task G's
 # (unvalidated) exploratory sweep flagged as interesting for each backend
 VAL_FRACTION = 0.30
-NEW_CKPT = os.path.join(os.path.dirname(__file__), "task39c_ancilla_real_submission.partial.json")
+NEW_CKPT = os.path.join(os.path.dirname(__file__),
+                          os.environ.get("TASK39_CKPT_NAME", "task39c_ancilla_real_submission.partial.json"))
 
 _CACHE = {}
 

@@ -49,7 +49,7 @@ SHOTS = 20_000
 BACKENDS = ["aria-1", "forte-1"]
 RAW_CKPT = os.path.join(os.path.dirname(__file__), "ionq_simulator_binding_curve_checkpoints",
                          "task28b_optimized_raw.json")
-CKPT_PATH = os.path.join(os.path.dirname(__file__), "task39c_ancilla_real_submission.partial.json")
+CKPT_PATH_TEMPLATE = os.path.join(os.path.dirname(__file__), "task39c_ancilla_real_submission{suffix}.partial.json")
 RESULTS_PATH = os.path.join(os.path.dirname(__file__), "task39c_ancilla_real_submission_results.json")
 
 
@@ -81,25 +81,30 @@ def build_ancilla_measurement_circuits(register_native_4q, ancilla_native_5q, gr
     return circuits
 
 
-def load_partial():
-    if os.path.exists(CKPT_PATH):
-        with open(CKPT_PATH) as f:
+def load_partial(ckpt_path):
+    if os.path.exists(ckpt_path):
+        with open(ckpt_path) as f:
             return json.load(f)
     return {"done": {}}
 
 
-def save_partial(state):
-    with open(CKPT_PATH, "w") as f:
+def save_partial(state, ckpt_path):
+    with open(ckpt_path, "w") as f:
         json.dump(state, f, indent=2)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--canary", action="store_true")
+    ap.add_argument("--draw", type=int, default=0, help="replication draw index -- 0 is the original "
+                     "Task C sweep (task39c_ancilla_real_submission.partial.json, unchanged filename); "
+                     "1+ writes to a separate task39c_ancilla_real_submission_drawN.partial.json so "
+                     "independent replication draws never overwrite each other or the original")
     args = ap.parse_args()
+    ckpt_path = CKPT_PATH_TEMPLATE.format(suffix="" if args.draw == 0 else f"_draw{args.draw}")
 
     print("\n" + "=" * 96)
-    print(f"  task39c_ancilla_real_submission.py -- {'CANARY (1 slot, forte-1 only)' if args.canary else 'FULL SWEEP'}")
+    print(f"  task39c_ancilla_real_submission.py -- {'CANARY (1 slot, forte-1 only)' if args.canary else f'FULL SWEEP (draw {args.draw})'}")
     print("=" * 96)
 
     p = setup_fragment([0, 1, 2, 3], nelec=4, d=1.0, K=6, strict=True)
@@ -120,7 +125,7 @@ def main():
     backends_to_run = ["forte-1"] if args.canary else BACKENDS
     slots_to_run = [kept[0]] if args.canary else kept
 
-    state = load_partial()
+    state = load_partial(ckpt_path)
     for backend_name in backends_to_run:
         for name in slots_to_run:
             key = f"{backend_name}|{name}"
@@ -132,11 +137,11 @@ def main():
             job = submit_job(circuits, backend, backend_name, shots=SHOTS)
             counts = get_counts_list(job)
             state["done"][key] = {"groups": groups_by_slot[name], "counts": counts}
-            save_partial(state)
+            save_partial(state, ckpt_path)
             print(f"    done: {key} ({len(circuits)} circuits, {SHOTS} shots each)")
 
     print(f"\n  {'CANARY PASSED -- API accepting submissions, safe to run full sweep' if args.canary else 'FULL SWEEP COMPLETE'}")
-    print(f"  partial checkpoint saved -> {CKPT_PATH}")
+    print(f"  partial checkpoint saved -> {ckpt_path}")
 
 
 if __name__ == "__main__":
