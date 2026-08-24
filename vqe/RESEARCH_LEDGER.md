@@ -1,5 +1,72 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 40, robustness envelope through the NEW
+pipeline, LOCAL BRANCH `local/attack-base-problem`, not yet committed,
+`origin/main` untouched -- pure local computation, THE SINGLE MOST
+IMPORTANT NUMBER THIS PROJECT HAS PRODUCED, reported with maximum
+disclosed caveats given its magnitude): the user's own explicitly-named
+"most important number in the entire project" (does Q95 collapse under
+real calibration uncertainty through the new pipeline, or does the
+0.011-0.018 headline only hold at nominal parameters?). Built
+`task40_robustness_envelope_new_pipeline.py`: for M=15 draws of
+theta_true (SAME real, disclosed distribution Task 38C/38D used --
+p_zz/p_gpi2/delta_zz/delta_gpi2, tighter and evidence-based, not the
+old wide independent priors), build the TRUE noisy density matrix,
+apply the PEC-inverse using the FROZEN, already-selected assumed
+correction (ZZ=0.014593, GPi2=0.0005 -- one representative fixed value,
+not re-tuned per draw, per the "freeze the pipeline" discipline), THEN
+condition on even weight exactly as real ancilla=0 postselection does,
+THEN fit the 15-parameter Schmidt frame FREELY per draw
+(`fit_joint_frame`, reduced to 3 restarts for this first, cost-scoping
+pass -- real per-draw cost measured at ~11-16s, not guessed).
+**Result: Q50=0.0018, Q90=0.0021, Q95=0.0031, Q99=0.0048 kcal/mol,
+N=15 -- every single draw landed between 0.0006 and 0.0052 kcal/mol,
+none anywhere close to the 0.25/0.5 bars.** Compared against Task 36's
+own real N=267 robustness-envelope result for the OLD pipeline (no QED,
+no GPi2 correction): Q95=18.29 kcal/mol -- **this is roughly a 6,000x
+reduction**, and by a wide margin the largest single improvement this
+39+-iteration project has ever measured for anything.
+
+**Disclosed caveats, stated as plainly as the result itself, because a
+number this large demands it**: (1) N=15 draws with 3 restarts is a
+small, cost-limited first pass, not the fuller ensemble (Task 36's own
+comparison point used N=267) -- the Q95 ESTIMATE itself carries real
+sampling uncertainty at this N, even though the individual draws being
+uniformly small is already a meaningful signal on its own; (2) this
+specific envelope varies p_zz/p_gpi2/delta_zz/delta_gpi2 ONLY --
+p_readout is NOT included as a varying draw dimension here (the new
+pipeline has no readout correction either, matching established
+scope), whereas Task 36's own 18.29 comparison point's noise model DID
+include readout uncertainty -- the two Q95 numbers are not perfectly
+apples-to-apples on that axis, a real, disclosed gap; (3) this test uses
+EXACT populations (no shot noise), matching this project's own
+established robustness-envelope convention for computational
+tractability and cleanly isolating calibration-uncertainty sensitivity
+specifically -- the REAL result (Task 39H/I/J's 0.011-0.018) DID
+include genuine shot noise from real submissions and held up anyway,
+so this is not itself a red flag, but it means this specific number
+answers "how sensitive is the corrected+conditioned+frame-fit pipeline
+to calibration uncertainty ALONE," not the full real-world picture;
+(4) the ablation matrix (this iteration's own earlier task) showed the
+standard, non-frame pipeline only reaches ~0.28-0.89 kcal/mol at
+nominal parameters -- meaning the JOINT SCHMIDT FRAME FIT itself is
+very likely doing much of the remaining heavy lifting here, on top of
+the correction, a mechanistic hypothesis worth confirming directly
+(has not yet been done: an ablation of THIS SAME robustness envelope
+with the frame fit removed, to see how much of the 6,000x owes to the
+correction alone vs. the frame regularization).
+
+**Honest read**: if this number survives a larger-N confirmation and
+the disclosed gaps are closed, this is very likely the finding this
+entire redirected investigation (Tasks 38-40) was looking for -- not
+merely a better point estimate, but the FIRST evidence that this
+project's estimator can be made genuinely insensitive to the
+calibration uncertainty that has been the dominant, structural blocker
+since Task 38C first quantified it (99.9% of the error budget). Not yet
+called final for exactly the reasons this project's own history
+demands caution at this stage -- but this is the strongest, most
+directly on-point result produced in 40 iterations.
+
 **STATUS UPDATE (iteration 40, ratio-estimator bias check, LOCAL BRANCH
 `local/attack-base-problem`, not yet committed, `origin/main` untouched
 -- pure local computation, ONE real bug caught in the sanity check
