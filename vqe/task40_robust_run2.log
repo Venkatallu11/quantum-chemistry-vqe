@@ -1,0 +1,41 @@
+
+================================================================================================
+  task40_robustness_envelope_new_pipeline.py -- Q95 of the NEW pipeline under real calibration uncertainty
+================================================================================================
+
+  25 theta_true draws (clipped 8 negative probability draws to 0)
+  frozen assumed correction: ZZ=0.014593, GPi2=0.0005 (fixed for every draw)
+    draw 1/25: |err|=0.0000 kcal/mol  chi2/dof=0.00000  min_retained_frac=0.999  (45.0s)
+    draw 2/25: |err|=0.0039 kcal/mol  chi2/dof=0.00023  min_retained_frac=0.940  (14.1s)
+    draw 3/25: |err|=0.0019 kcal/mol  chi2/dof=0.00010  min_retained_frac=1.000  (13.7s)
+    draw 4/25: |err|=0.0017 kcal/mol  chi2/dof=0.00009  min_retained_frac=1.000  (12.4s)
+    draw 5/25: |err|=0.0018 kcal/mol  chi2/dof=0.00009  min_retained_frac=1.000  (13.5s)
+    draw 6/25: |err|=0.0021 kcal/mol  chi2/dof=0.00013  min_retained_frac=0.954  (15.0s)
+    draw 7/25: |err|=0.0015 kcal/mol  chi2/dof=0.00009  min_retained_frac=0.961  (14.7s)
+    draw 8/25: |err|=0.0008 kcal/mol  chi2/dof=0.00004  min_retained_frac=1.000  (15.0s)
+    draw 9/25: |err|=0.0019 kcal/mol  chi2/dof=0.00009  min_retained_frac=1.000  (12.7s)
+    draw 10/25: |err|=0.0002 kcal/mol  chi2/dof=0.00001  min_retained_frac=1.000  (15.0s)
+    draw 11/25: |err|=0.0090 kcal/mol  chi2/dof=0.00054  min_retained_frac=0.912  (18.5s)
+    draw 12/25: |err|=0.0001 kcal/mol  chi2/dof=0.00000  min_retained_frac=1.000  (16.0s)
+    draw 13/25: |err|=0.0006 kcal/mol  chi2/dof=0.00004  min_retained_frac=0.975  (15.0s)
+    draw 14/25: |err|=0.0003 kcal/mol  chi2/dof=0.00002  min_retained_frac=1.000  (17.9s)
+    draw 15/25: |err|=0.0016 kcal/mol  chi2/dof=0.00009  min_retained_frac=0.960  (19.5s)
+    draw 16/25: |err|=0.0003 kcal/mol  chi2/dof=0.00002  min_retained_frac=0.981  (18.7s)
+    draw 17/25: |err|=0.0020 kcal/mol  chi2/dof=0.00012  min_retained_frac=0.955  (18.9s)
+    draw 18/25: |err|=0.0019 kcal/mol  chi2/dof=0.00009  min_retained_frac=1.000  (15.1s)
+    draw 19/25: |err|=0.0000 kcal/mol  chi2/dof=0.00000  min_retained_frac=1.000  (16.8s)
+    draw 20/25: |err|=0.0001 kcal/mol  chi2/dof=0.00001  min_retained_frac=0.989  (17.9s)
+    draw 21/25: |err|=0.0001 kcal/mol  chi2/dof=0.00001  min_retained_frac=1.000  (18.1s)
+    draw 22/25: |err|=0.0019 kcal/mol  chi2/dof=0.00009  min_retained_frac=1.000  (15.6s)
+    draw 23/25: |err|=0.0016 kcal/mol  chi2/dof=0.00009  min_retained_frac=1.000  (14.1s)
+    draw 24/25: |err|=0.0009 kcal/mol  chi2/dof=0.00005  min_retained_frac=1.000  (15.6s)
+    draw 25/25: |err|=0.0018 kcal/mol  chi2/dof=0.00009  min_retained_frac=1.000  (12.8s)
+
+  total time: 433.8s  (17.4s/draw)
+
+  -- RESULT: Q50=0.0016  Q90=0.0021  Q95=0.0035  Q99=0.0078 kcal/mol  (N=25) --
+  errs sorted: [7.935e-07 5.791e-06 7.039e-05 7.747e-05 1.064e-04 1.537e-04 3.159e-04 3.223e-04 6.182e-04 8.396e-04 9.046e-04 1.509e-03 1.568e-03 1.648e-03 1.671e-03 1.836e-03 1.850e-03 1.862e-03 1.863e-03
+ 1.884e-03 1.890e-03 2.002e-03 2.083e-03 3.876e-03 9.021e-03]
+
+  -- COMPARISON: Task 36's OLD pipeline (no QED, no GPi2 correction), real N=267 robustness envelope: Q95=18.29 kcal/mol --
+  NEW pipeline Q95=0.0035 < 0.5 -- the architecture appears to genuinely close the robustness gap, not just hit a narrow calibration point. This would be a major finding.

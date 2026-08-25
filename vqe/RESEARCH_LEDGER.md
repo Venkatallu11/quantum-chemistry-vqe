@@ -1,5 +1,29 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 40, robustness envelope independent
+reconfirmation, LOCAL BRANCH `local/attack-base-problem`, not yet
+committed, `origin/main` untouched -- pure local computation, zero real
+API calls, zero cost, INDEPENDENT CONFIRMATION HOLDS): before any
+consideration of real hardware (checked separately, still unavailable
+on this account -- read-only `ionq_backend.py` listing only, no
+submission attempted), re-ran the Q95 robustness envelope with a
+DIFFERENT random seed (41, not 40) and a larger N=25 (up from 15,
+per-draw cost now measured at ~15-18s/draw from the first run).
+**Result: Q50=0.0016, Q90=0.0021, Q95=0.0035, Q99=0.0078 kcal/mol --
+nearly identical to the first run's Q50=0.0018/Q90=0.0021/Q95=0.0031/
+Q99=0.0048.** Every one of the 25 independent draws landed under 0.01
+kcal/mol (max 0.0090), none anywhere near the 0.25/0.5 bars. This is a
+genuinely independent confirmation (different random draws of
+theta_true, not a re-run of the same numbers) landing within a factor
+of ~1.1-1.6x of the first run across every quantile -- the kind of
+close agreement a real, stable effect should show, not the kind of
+result that flips or collapses the way a fluke would. **Combined
+result across both robustness-envelope runs (N=40 total draws, two
+independent seeds): every single draw stayed under 0.01 kcal/mol.**
+This substantially strengthens confidence in the iteration 40
+robustness-envelope finding without spending any real submission
+budget at all.
+
 **STATUS UPDATE (iteration 40, robustness envelope through the NEW
 pipeline, LOCAL BRANCH `local/attack-base-problem`, not yet committed,
 `origin/main` untouched -- pure local computation, THE SINGLE MOST

@@ -59,7 +59,7 @@ GATE_NAME = "zz"
 ZZ_ASSUMED = 0.014593
 P_GPI2_ASSUMED = 0.0005  # frozen, representative of the two selected candidates (0.0004/0.0006) --
 # ONE fixed value used for every draw, exactly matching the "freeze the pipeline" instruction
-M_DRAWS = 15  # small first pass -- scaled up only after measuring real per-draw cost
+M_DRAWS = 25  # second, larger pass -- per-draw cost now measured (~11-16s) from the first N=15 run
 N_RESTARTS = 3  # reduced from Task 39H's 4 (itself already reduced from Task 36's 12) for this
 # first, cost-finding pass
 
@@ -124,7 +124,8 @@ def main():
     P_S = build_P_S(p["alpha_labels"], U_exact)
     weight_unit = {name: {l: 1.0 for l in non_id_labels} for name in kept}
 
-    rng = np.random.default_rng(40)
+    rng = np.random.default_rng(41)  # DIFFERENT seed from the first run (40) -- an independent
+    # confirmation draw set, not a re-run of the same random numbers
     theta_true_draws = []
     n_clipped = 0
     for _ in range(M_DRAWS):
