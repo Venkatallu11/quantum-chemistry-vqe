@@ -1,5 +1,31 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 40, real replication draw 3 (4th independent
+real submission), LOCAL BRANCH `local/attack-base-problem`, not yet
+committed, `origin/main` untouched -- REAL `ionq_simulator` submission,
+`ionq_simulator` only, no real hardware budget touched): pushed real
+replication from N=3 toward the established N=8 protocol. Draw 3 (own
+checkpoint, independent from draws 0/1/2) submitted (546 circuits,
+20k shots, same frozen pipeline) and analyzed with the identical
+leakage-free procedure. **Four-for-four**: both backends select the
+SAME candidate a fourth consecutive time (aria-1: 0.0006, forte-1:
+0.0004). Resulting informational-only errors: aria-1=0.0105,
+forte-1=0.0192 kcal/mol.
+
+**Updated replication table, all four independent real draws:**
+| draw | aria-1 (kcal/mol) | forte-1 (kcal/mol) | candidates |
+|---|---|---|---|
+| 0 | 0.0132 | 0.0179 | 0.0006 / 0.0004 |
+| 1 | 0.0166 | 0.0141 | 0.0006 / 0.0004 |
+| 2 | 0.0115 | 0.0120 | 0.0006 / 0.0004 |
+| 3 | 0.0105 | 0.0192 | 0.0006 / 0.0004 |
+
+All eight real, independent energy-error numbers now fall in a tight
+0.0105-0.0192 kcal/mol band (mean ~0.0144), with the identical
+correction selected by the leakage-free procedure on every single one
+of four independent real submissions. Four draws remain to reach this
+project's own established 8-draw replication protocol.
+
 **STATUS UPDATE (iteration 40, ablation + adversarial controls
 independently reconfirmed on draw 1, LOCAL BRANCH
 `local/attack-base-problem`, not yet committed, `origin/main` untouched
