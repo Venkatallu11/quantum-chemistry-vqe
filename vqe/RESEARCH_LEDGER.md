@@ -1,5 +1,27 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 40, ablation + adversarial controls
+independently reconfirmed on draw 1, LOCAL BRANCH
+`local/attack-base-problem`, not yet committed, `origin/main` untouched
+-- pure local computation on already-collected draw-1 real data, zero
+new real submissions): Task 40G/H's ablation matrix and adversarial
+controls were originally run on draw 0's real data only. Re-ran the
+IDENTICAL, unmodified analysis against draw 1's independently-collected
+real data (parameterized via `TASK39_CKPT_NAME`) while draw 3's real
+submission ran in parallel. **Every finding independently reconfirms**:
+ablation shows the same synergy pattern (FULL beats every individual
+component on both backends: aria-1 1.896, forte-1 0.066 -- forte-1 even
+better than draw 0's 0.278); every adversarial control fails loudly
+again at closely matching magnitudes (wrong parity 651/673 vs draw 0's
+667/691; shuffled ancilla 54/55 vs 61/58; wrong-sign GPi2 20/13 vs
+24/16); the shuffled-label frame-fit check passes overwhelmingly again
+(2163.7x/2301.2x vs draw 0's 2263.6x/2429.0x -- both draws pass by
+essentially the same enormous margin, nowhere near the 3x bar). This is
+now the SECOND independent real dataset confirming every certification
+check, not just the first -- meaningfully strengthening confidence that
+none of Task 40's findings are an artifact specific to draw 0's own
+particular noise realization.
+
 **STATUS UPDATE (iteration 40, robustness envelope WITH p_readout
 uncertainty, LOCAL BRANCH `local/attack-base-problem`, not yet
 committed, `origin/main` untouched -- pure local computation, zero real

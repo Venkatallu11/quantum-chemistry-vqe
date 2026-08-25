@@ -56,7 +56,8 @@ K = 6
 GATE_NAME = "zz"
 ZZ_ASSUMED = 0.014593
 GPI2_SELECTED = {"aria-1": 0.0006, "forte-1": 0.0004}  # Task 39H/I/J's consistently-selected candidates
-NEW_CKPT = os.path.join(os.path.dirname(__file__), "task39c_ancilla_real_submission.partial.json")
+NEW_CKPT = os.path.join(os.path.dirname(__file__),
+                          os.environ.get("TASK39_CKPT_NAME", "task39c_ancilla_real_submission.partial.json"))
 
 _CACHE_UNC, _CACHE_COND = {}, {}
 

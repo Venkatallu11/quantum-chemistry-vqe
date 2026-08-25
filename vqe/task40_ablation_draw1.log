@@ -1,0 +1,40 @@
+
+================================================================================================
+  task40_certification_ablation_adversarial.py -- ablation matrix + adversarial controls, real data
+================================================================================================
+
+============================================================  ABLATION MATRIX (40G)  ============================================================
+
+  === aria-1 (p_gpi2_selected=0.0006) ===
+    raw (no ancilla, NO correction at all):  +121.2082 kcal/mol
+    QED only (postselected, NO correction):  +58.7803 kcal/mol
+    PEC only (no QED, ZZ-only correction):   +5.4331 kcal/mol
+    GPi2 only (no QED, +GPi2 correction):    +10.1326 kcal/mol
+    QED+PEC (postselect+conditioned, no GPi2): +6.0091 kcal/mol
+    QED+PEC+GPi2 (FULL CANDIDATE):            +1.8955 kcal/mol
+
+  === forte-1 (p_gpi2_selected=0.0004) ===
+    raw (no ancilla, NO correction at all):  +117.4515 kcal/mol
+    QED only (postselected, NO correction):  +56.0870 kcal/mol
+    PEC only (no QED, ZZ-only correction):   +4.5838 kcal/mol
+    GPi2 only (no QED, +GPi2 correction):    +5.4175 kcal/mol
+    QED+PEC (postselect+conditioned, no GPi2): +5.5559 kcal/mol
+    QED+PEC+GPi2 (FULL CANDIDATE):            +0.0664 kcal/mol
+
+=======================================================  ADVERSARIAL / NEGATIVE CONTROLS (40H)  =======================================================
+
+  === aria-1 ===
+    REAL candidate (correct everything):        +1.8955 kcal/mol
+    WRONG parity (postselect on ODD weight):    +651.2526 kcal/mol   FAILS LOUDLY as expected
+    SHUFFLED ancilla (destroy real correlation): +54.1751 kcal/mol   FAILS LOUDLY as expected
+    WRONG-SIGN GPi2 correction:                  +19.5368 kcal/mol   FAILS LOUDLY as expected
+
+  === forte-1 ===
+    REAL candidate (correct everything):        +0.0664 kcal/mol
+    WRONG parity (postselect on ODD weight):    +673.2625 kcal/mol   FAILS LOUDLY as expected
+    SHUFFLED ancilla (destroy real correlation): +55.4749 kcal/mol   FAILS LOUDLY as expected
+    WRONG-SIGN GPi2 correction:                  +13.1901 kcal/mol   FAILS LOUDLY as expected
+
+==================================================  SHUFFLED-LABEL ADVERSARIAL FRAME FIT (40H, established convention)  ==============================
+    aria-1: chi2/dof REAL=0.00016  SHUFFLED=0.33895  ratio=2163.7x  PASS (real data far more consistent than scrambled)
+    forte-1: chi2/dof REAL=0.00016  SHUFFLED=0.35984  ratio=2301.2x  PASS (real data far more consistent than scrambled)
