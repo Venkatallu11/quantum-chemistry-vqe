@@ -1,5 +1,50 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 40, robustness-envelope ablation, LOCAL
+BRANCH `local/attack-base-problem`, not yet committed, `origin/main`
+untouched -- pure local computation, zero real API calls, zero cost; A
+REAL, IMPORTANT CONFOUND CAUGHT AND DISCLOSED, changing how the
+headline "18.29 -> 0.003" number should be understood): extended the
+point-estimate ablation matrix (Task 40G) to the Q95/robustness level --
+for the SAME 12 fresh theta_true draws, three variants: FRAME ONLY (fit
+the joint Schmidt frame directly on TRUE RAW, uncorrected values, no
+QED, no PEC), CORRECTION ONLY (QED+conditioned-PEC+GPi2, standard
+non-frame combine), and FULL (correction + frame, the actual candidate).
+**Result**: FRAME ONLY Q50=0.0456, Q95=0.1986, max=0.2579 kcal/mol.
+CORRECTION ONLY Q50=4.633, Q95=10.014, max=15.879 kcal/mol -- by far
+the WORST of the three, ~50x worse than frame-only, confirming the
+correction alone (without the frame's regularization) is NOT sufficient
+for robustness, consistent with everything Tasks 37-38 already
+established about calibration sensitivity. FULL Q50=0.0019, Q95=0.0030,
+max=0.0041 kcal/mol -- the best by a wide margin, ~66x better than
+frame-only and ~3,338x better than correction-only.
+
+**The important, disclosed confound this ablation surfaced**: the
+earlier headline comparison ("Task 36's old pipeline Q95=18.29 -> this
+iteration's new pipeline Q95~0.003") is NOT a clean, single-variable
+test of "does the new mechanism help" -- Task 36's real Q95=18.29 was
+measured under the OLD, WIDE, independent robustness-envelope priors
+(`task31h_robustness_envelope.py`'s own `p_gpi2_true ~ Uniform(0,0.21)`
+etc.), while every new-pipeline test this iteration (including this
+ablation's own FRAME-ONLY variant) uses the TIGHTER, real-evidence-
+based Sigma_theta Task 38C/38D established. **FRAME ONLY, in this
+ablation, is effectively Task 36's OLD method (joint frame, no QED, no
+new correction) evaluated under the SAME tight, modern prior everything
+else here uses** -- making it the actually-fair, confound-free baseline
+for isolating what the NEW mechanism specifically contributes. Read
+that way: **FRAME-ONLY (old method, modern prior) Q95=0.1986 -> FULL
+(new method, same modern prior) Q95=0.0030 is a genuine, cleanly-
+isolated ~66x improvement directly attributable to QED+conditioned-PEC**
+-- still a real, substantial, positive finding, but the honest,
+mechanism-isolated number, not the larger, confound-mixed 18.29-based
+figure. Also genuinely notable on its own: FRAME-ONLY's Q95=0.1986 is
+already under the strict 0.25 kcal/mol internal target under this
+modern, tighter prior -- meaning part of why 18.29 looked so large
+historically may always have been the old envelope's overly pessimistic
+independent priors (exactly the question Task 38's own point 15,
+raised early in this redirection, asked and never got back to
+directly), not solely physics the old pipeline couldn't handle.
+
 **STATUS UPDATE (iteration 40, robustness envelope independent
 reconfirmation, LOCAL BRANCH `local/attack-base-problem`, not yet
 committed, `origin/main` untouched -- pure local computation, zero real

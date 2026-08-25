@@ -1,0 +1,26 @@
+
+================================================================================================
+  task40_robustness_envelope_ablation.py -- FRAME ONLY vs CORRECTION ONLY vs FULL, same draws
+================================================================================================
+
+  12 theta_true draws (seed=42, fresh)
+    draw 1/12: FRAME-ONLY=0.0457  CORRECTION-ONLY=4.6032  FULL=0.0018 kcal/mol  (23.2s)
+    draw 2/12: FRAME-ONLY=0.0438  CORRECTION-ONLY=4.7994  FULL=0.0020 kcal/mol  (22.0s)
+    draw 3/12: FRAME-ONLY=0.0454  CORRECTION-ONLY=4.6314  FULL=0.0019 kcal/mol  (21.1s)
+    draw 4/12: FRAME-ONLY=0.2579  CORRECTION-ONLY=15.8793  FULL=0.0041 kcal/mol  (29.4s)
+    draw 5/12: FRAME-ONLY=0.0455  CORRECTION-ONLY=4.5954  FULL=0.0019 kcal/mol  (20.9s)
+    draw 6/12: FRAME-ONLY=0.0451  CORRECTION-ONLY=4.6419  FULL=0.0019 kcal/mol  (21.5s)
+    draw 7/12: FRAME-ONLY=0.0463  CORRECTION-ONLY=4.5828  FULL=0.0018 kcal/mol  (26.3s)
+    draw 8/12: FRAME-ONLY=0.1330  CORRECTION-ONLY=3.2114  FULL=0.0002 kcal/mol  (26.0s)
+    draw 9/12: FRAME-ONLY=0.0452  CORRECTION-ONLY=4.6741  FULL=0.0019 kcal/mol  (20.7s)
+    draw 10/12: FRAME-ONLY=0.0453  CORRECTION-ONLY=4.6345  FULL=0.0019 kcal/mol  (19.7s)
+    draw 11/12: FRAME-ONLY=0.1500  CORRECTION-ONLY=5.2150  FULL=0.0005 kcal/mol  (28.5s)
+    draw 12/12: FRAME-ONLY=0.1042  CORRECTION-ONLY=0.3703  FULL=0.0000 kcal/mol  (28.3s)
+
+  total time: 328.6s
+  FRAME ONLY (no correction)       Q50=0.0456  Q95=0.1986  max=0.2579 kcal/mol
+  CORRECTION ONLY (no frame)       Q50=4.6330  Q95=10.0139  max=15.8793 kcal/mol
+  FULL (correction + frame)        Q50=0.0019  Q95=0.0030  max=0.0041 kcal/mol
+
+  -- HONEST READ --
+  If FRAME ONLY's Q95 is close to FULL's, the frame fit is doing nearly all the work and QED+conditioned-PEC is not essential for robustness (though Task 40G's point-estimate ablation already showed it matters for the nominal value). If FRAME ONLY's Q95 is much worse than FULL's (closer to the old pipeline's 18.29), the correction is doing real, essential work at the robustness level too, and the combination is genuinely synergistic, not frame-fit-dominated.
