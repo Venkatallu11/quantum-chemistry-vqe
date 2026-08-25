@@ -1,5 +1,42 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 40, robustness envelope WITH p_readout
+uncertainty, LOCAL BRANCH `local/attack-base-problem`, not yet
+committed, `origin/main` untouched -- pure local computation, zero real
+API calls, zero cost; ONE real bug caught and fixed before trusting
+anything, disclosed gap now closed honestly): closed the p_readout gap
+flagged in the earlier robustness-envelope entries -- p_readout is now
+a genuine varying draw dimension (Task 37B's own weak, disclosed prior,
+no real calibration exists for it), modeled via a symmetric bit-flip
+readout channel applied to BOTH the ancilla's own measurement (affecting
+which shots get postselected) and the register's own measurement
+(Task 37C's already-verified `readout_attenuation` factor, reused
+unchanged). **A real bug caught immediately, before trusting any
+numbers**: the first implementation mixed the ancilla's readout
+classically at the DIAGONAL level only, discarding every register-qubit
+coherence -- caught because p_readout~0 draws (which should exactly
+match the already-validated readout-free result) instead gave ~18
+kcal/mol, matching the OLD uncorrected baseline almost exactly -- the
+coherence the whole conditioning mechanism depends on was being thrown
+away before conditioning even ran. **Fixed** with a real Kraus-operator
+bit-flip channel on the ancilla qubit (preserves every register
+coherence exactly) followed by an exact projection onto the (now
+readout-noisy) ancilla=0 outcome -- a regression check against the
+already-validated readout-free function at p_readout=0 now passes
+EXACTLY (0.000e+00 diff) before any of the real numbers below were
+trusted. **Result: Q50=0.0027, Q90=0.0416, Q95=0.0491, Q99=0.0563
+kcal/mol, N=15 -- readout uncertainty is real and visible (draws with
+larger p_readout show clearly larger error, e.g. p_readout=0.02 ->
+err=0.058, a real, physically sensible, monotonic-ish pattern since
+this pipeline still has NO readout correction at all) -- Q95 is about
+14x worse than the readout-free envelope's ~0.003-0.0035, but STILL
+comfortably under both the 0.25 kcal/mol strict target and the 0.5
+looser bar (roughly 5x margin below 0.25).** This closes the most
+significant disclosed gap in the robustness-envelope certification
+honestly -- the earlier, readout-free Q95 numbers were not hiding a
+readout-shaped hole; the result holds up, just with a real, now-
+quantified, and still-comfortable readout-driven cost.
+
 **STATUS UPDATE (iteration 40, robustness-envelope ablation, LOCAL
 BRANCH `local/attack-base-problem`, not yet committed, `origin/main`
 untouched -- pure local computation, zero real API calls, zero cost; A

@@ -1,0 +1,12 @@
+
+================================================================================================
+  task40_robustness_envelope_with_readout.py -- closing the disclosed p_readout gap
+================================================================================================
+
+  15 draws (seed=43), p_readout ~ N(0.005, 0.01) bounded (0.0, 0.02) (Task 37B's own weak, disclosed prior)
+    draw 1/15: |err|=18.4983 kcal/mol  p_readout=0.00000  min_retained=0.968  (41.4s)
+    draw 2/15: |err|=19.6286 kcal/mol  p_readout=0.01726  min_retained=0.999  (40.8s)
+    draw 3/15: |err|=18.3266 kcal/mol  p_readout=0.00000  min_retained=1.000  (40.1s)
+    draw 4/15: |err|=18.3174 kcal/mol  p_readout=0.00146  min_retained=1.000  (38.3s)
+    draw 5/15: |err|=18.3042 kcal/mol  p_readout=0.00000  min_retained=1.000  (36.9s)
+    draw 6/15: |err|=18.5978 kcal/mol  p_readout=0.00000  min_retained=0.947  (39.1s)

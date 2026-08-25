@@ -1,0 +1,34 @@
+
+================================================================================================
+  task40_robustness_envelope_with_readout.py -- closing the disclosed p_readout gap
+================================================================================================
+
+  15 draws (seed=43), p_readout ~ N(0.005, 0.01) bounded (0.0, 0.02) (Task 37B's own weak, disclosed prior)
+
+  -- REGRESSION CHECK: at p_readout=0, must exactly match the already-validated readout-free function (task40_robustness_envelope_new_pipeline) --
+    max value diff: 0.000e+00   retained diff: 0.000e+00   PASS
+    draw 1/15: |err|=0.0010 kcal/mol  p_readout=0.00000  min_retained=0.968  (16.4s)
+    draw 2/15: |err|=0.0363 kcal/mol  p_readout=0.01726  min_retained=0.999  (17.6s)
+    draw 3/15: |err|=0.0006 kcal/mol  p_readout=0.00000  min_retained=1.000  (14.8s)
+    draw 4/15: |err|=0.0010 kcal/mol  p_readout=0.00146  min_retained=1.000  (13.5s)
+    draw 5/15: |err|=0.0018 kcal/mol  p_readout=0.00000  min_retained=1.000  (14.1s)
+    draw 6/15: |err|=0.0028 kcal/mol  p_readout=0.00000  min_retained=0.947  (15.7s)
+    draw 7/15: |err|=0.0002 kcal/mol  p_readout=0.00000  min_retained=0.987  (15.6s)
+    draw 8/15: |err|=0.0062 kcal/mol  p_readout=0.00941  min_retained=1.000  (14.6s)
+    draw 9/15: |err|=0.0019 kcal/mol  p_readout=0.00000  min_retained=1.000  (13.8s)
+    draw 10/15: |err|=0.0000 kcal/mol  p_readout=0.00000  min_retained=1.000  (16.7s)
+    draw 11/15: |err|=0.0052 kcal/mol  p_readout=0.00411  min_retained=0.968  (17.3s)
+    draw 12/15: |err|=0.0124 kcal/mol  p_readout=0.00567  min_retained=0.944  (17.1s)
+    draw 13/15: |err|=0.0027 kcal/mol  p_readout=0.00681  min_retained=1.000  (13.9s)
+    draw 14/15: |err|=0.0581 kcal/mol  p_readout=0.02000  min_retained=0.974  (18.7s)
+    draw 15/15: |err|=0.0452 kcal/mol  p_readout=0.01935  min_retained=1.000  (19.5s)
+
+  total time: 242.0s
+
+  -- RESULT (WITH p_readout uncertainty): Q50=0.0027  Q90=0.0416  Q95=0.0491  Q99=0.0563 kcal/mol --
+  errs sorted: [1.5275e-05 1.8684e-04 6.2765e-04 9.7546e-04 9.8539e-04 1.8014e-03 1.8653e-03 2.7329e-03 2.8279e-03 5.1520e-03 6.1525e-03 1.2435e-02 3.6321e-02 4.5198e-02 5.8121e-02]
+
+  -- COMPARISON --
+  WITHOUT readout uncertainty (2 prior runs, N=15/N=25): Q95~0.0031-0.0035 kcal/mol
+  WITH readout uncertainty (this run, N=15):      Q95=0.0491 kcal/mol
+  Still comfortably under the bars even with readout uncertainty included -- a real, more complete confirmation, not just a favorable simplification.
