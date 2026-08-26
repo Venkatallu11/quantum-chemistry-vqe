@@ -1,0 +1,15 @@
+
+================================================================================================
+  task43_batch_hw_submission.py -- THIRD REAL HARDWARE SUBMISSION (circuit-count scaling probe)
+================================================================================================
+  backend=qpu.forte-enterprise-1  shots=2000  -- 3 circuits, ONE batch job
+  slot=u_0, groups selected: [['XYYX', 'IYYI'], ['YXXY', 'IXXI'], ['XXYY', 'IIYY', 'XXII']]
+  gate counts per circuit: [{'gpi2': 80, 'gpi': 40, 'zz': 11, 'measure': 5, 'barrier': 1}, {'gpi2': 80, 'gpi': 40, 'zz': 11, 'measure': 5, 'barrier': 1}, {'gpi2': 80, 'gpi': 40, 'zz': 11, 'measure': 5, 'barrier': 1}]
+  connected to ionq_qpu.forte-enterprise-1
+
+  SUBMITTING NOW -- real hardware, real cost will be incurred (3 circuits, one batch job).
+  submitted. job_id=01a03b16-8a92-71fa-bd15-03419a95074b
+  job_id saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task43_batch_hw_submission_results.json (safe to check on this job later via its ID even if this process exits)
+
+  -- waiting for completion --
+  final status: JobStatus.DONE

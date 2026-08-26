@@ -1,5 +1,127 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 41, FIRST REAL QUANTUM HARDWARE SUBMISSION,
+LOCAL BRANCH `local/attack-base-problem`, not yet committed, `origin/main`
+untouched -- REAL `qpu.forte-enterprise-1` trapped-ion hardware, real
+money spent, explicit user authorization given with a $170 hard budget
+cap raised from an initial $35 specifically for this cost-discovery
+step): before any real-hardware submission, ran `task41_hw_cost_check.py`
+against IonQ's official read-only `GET /jobs/estimate` endpoint on both
+`qpu.forte-1` and `qpu.forte-enterprise-1` -- it returned real exec/queue
+time estimates but `cost=None` for every scenario on this account, so
+dollar cost could not be predicted in advance via the API. With explicit
+user go-ahead, submitted ONE real circuit (`task41_first_hw_submission.py`)
+to discover actual real-world cost directly: the SAME certified
+ancilla-augmented, native-gate (GPi/GPi2/ZZ) H4 measurement circuit this
+project's own pipeline already uses unchanged (u_0 slot, group=[XYYX,IYYI],
+120 1q-gates + 11 2q-gates, 5 qubits), 100 shots, on `qpu.forte-enterprise-1`.
+
+Job `01a03ad5-0399-7684-ada3-6d47d3cd00f4`: submitted 2026-08-25T21:30:33Z,
+started 21:35:10Z (~4.6 min queue -- far faster than the dashboard's own
+~2hr live estimate at submission time), completed 21:35:19Z (execution
+9.4s wall, `execution_duration_ms=6692`). Real measured counts obtained
+across 22 distinct 5-bit outcomes (100 total shots). Retrieved the full
+raw job metadata directly (bypassing the SDK's thin wrapper) looking for
+any cost field: `cost_model="2QGE_operations"`, `billed_quantum_compute_time_us=0`,
+`kwh=0.00857` -- **no explicit dollar figure appears anywhere in the API
+response.** Real cost was confirmed only via the user's own IonQ dashboard:
+**$25.79 was billed for this single 100-shot job.**
+
+**This is a critical, load-bearing real-world finding**: real hardware
+cost on `qpu.forte-enterprise-1` is dominated by something other than
+raw shot count (100 shots cost $25.79) -- almost certainly fixed/near-fixed
+per-circuit overhead tied to gate count and qubit count under the
+"2QGE_operations" pricing model, not a small per-shot marginal cost. This
+means the project's standard 20k-shot-per-circuit, hundreds-of-circuits-
+per-draw simulator protocol (used for all 4 real `ionq_simulator`
+replication draws so far) is **not affordable to replicate on real
+hardware** within the $170 budget -- naive linear extrapolation alone
+(100->20,000 shots) would suggest >$5,000 for one circuit, and even if
+cost is dominated by the fixed per-circuit/gate-count component rather
+than shots, roughly 5-6 more jobs of this size would exhaust the entire
+remaining budget (~$144.21 left). No further real-hardware submission
+should be made without deliberate, explicit per-job authorization given
+this now-confirmed real cost. This first job stands on its own as a
+genuine, real, non-fabricated proof that the project's certified
+ancilla-QED circuit construction runs correctly on real trapped-ion
+hardware and returns a sensible, non-degenerate distribution of real
+measured outcomes.
+
+**STATUS UPDATE (iteration 42, SECOND REAL HARDWARE SUBMISSION, cost-scaling
+probe, LOCAL BRANCH `local/attack-base-problem`, not yet committed): with
+explicit user go-ahead, submitted the IDENTICAL Task 41 circuit (u_0 slot,
+group=[XYYX,IYYI], ancilla-augmented native-gate H4 circuit, 120 1q + 11 2q
+gates, 5 qubits) to the SAME backend (`qpu.forte-enterprise-1`) with ONLY
+shots changed: 100 -> 500 (user-chosen 5x step, deliberately conservative
+vs a riskier 10x/max-shots jump, to bound worst-case budget exposure).
+
+Job `01a03b00-2b0b-751c-8f55-834368f0ec47`: completed, 500/500 shots.
+Real API-reported energy usage: `kwh` went from 0.00857 (100 shots, Task 41)
+to 0.02277 (500 shots) -- a **2.66x** increase for a 5x shot increase,
+i.e. sub-linear (execution_duration_ms similarly scaled 2.66x: 6692ms ->
+17786ms). Real dollar cost, confirmed via the user's own IonQ dashboard:
+**~$25.xx -- essentially the SAME as the first 100-shot job ($25.79).**
+
+**This is the key finding of the cost-scaling probe**: real hardware cost
+on `qpu.forte-enterprise-1` under the `2QGE_operations` pricing model is
+**overhead-dominated, not shot-dominated**, at least across the 100-500
+shot range tested. Practical implication: shots are close to "free" once
+the fixed per-circuit cost is paid, so the efficient use of a limited
+real-hardware budget is to spend it on FEWER circuits with MORE shots
+each (better statistical precision per dollar), not more circuits at low
+shot counts. It does NOT change the earlier finding that a full
+21-slot x 13-group energy reconstruction (273 circuits) remains
+unaffordable regardless of shot count (~$25/circuit x 273 ~ $6,825),
+since the dominant cost is per-circuit, not per-shot.
+
+Running budget: ~$50.79 of $170 spent across the two real-hardware jobs so
+far (~$119.21 remaining).
+
+**STATUS UPDATE (iteration 43, THIRD REAL HARDWARE SUBMISSION, circuit-
+count scaling probe, LOCAL BRANCH `local/attack-base-problem`, not yet
+committed): with explicit user go-ahead ("try more circuits at a time"),
+built a 3-circuit batch (u_0 slot, groups [XYYX,IYYI] / [YXXY,IXXI] /
+[XXYY,IIYY,XXII], the first identical to Task 41/42's own circuit),
+2000 shots each, submitted as ONE job to `qpu.forte-enterprise-1`.
+
+**First attempt** (job `01a03b16-...`) failed on all 3 child circuits
+with `QuotaExhaustedError` -- the real IonQ PROJECT-level budget setting
+(separate from the $170 figure communicated to me) was exhausted by the
+first two single-circuit jobs. `execution_duration_ms=null`/`started_at=
+null` on all children confirm nothing actually executed -- effectively
+$0 for this attempt. User raised the real project budget to $300 and
+authorized a retry.
+
+**Retry** (job `01a03b1a-...`) hit a second, unrelated real bug: qiskit-
+ionq 1.1.1's `job.result()`/`get_counts()` crashes on multi-circuit QPU
+jobs (`ionq.multi-circuit.v1`) -- the parent job's result payload holds
+child_job_ids, not per-circuit histograms, which the installed SDK
+version does not handle for QPU backends (this is a real SDK gap, not a
+circuit-construction bug; multi-circuit submission via `backend.run(list,
+shots=...)` itself worked fine). Fixed by bypassing `.result()` entirely:
+polled each child job's raw status directly and pulled its histogram via
+`IonQClient.get_results()`. Second real bug found this way: the
+"histogram" results endpoint returns RAW COUNTS (already summing to
+`shots`), not normalized probabilities -- reusing the SDK's own
+`_build_counts` (which assumes probabilities and multiplies by `shots`)
+silently produced counts inflated 2000x (sums of 4,000,000 instead of
+2,000). Caught immediately by checking `sum(counts.values())` against the
+known shot count (a real, disclosed near-miss -- would have silently
+corrupted any expectation value computed from it). Fixed by using the
+SDK's lower-level `map_output` (bit-order remapping only, no extra
+scaling) directly against the raw histogram counts.
+
+All 3 circuits completed successfully after the fix. Retained (ancilla=0)
+fractions: 91.5% / 90.2% / 90.1% -- closely matching the real
+`ionq_simulator`'s already-established 90.7%/91.5% for the same slot
+(Task 39C draw 0). At this larger 2000-shot precision, ⟨XYYX⟩=-0.0180 and
+⟨IYYI⟩=+0.0016 (real HW) vs -0.0456/-0.0719 and +0.0079/+0.0024
+(simulator) -- meaningfully tighter agreement than Task 41/42's 100-shot
+comparison, further real (non-fabricated) evidence the ancilla-QED
+circuit construction and noise model both hold up on real trapped-ion
+hardware. Real dashboard cost for job `01a03b1a-...` (3 circuits x 2000
+shots = 6000 total shots, one batch): pending user confirmation.
+
 **STATUS UPDATE (iteration 40, real replication draw 3 (4th independent
 real submission), LOCAL BRANCH `local/attack-base-problem`, not yet
 committed, `origin/main` untouched -- REAL `ionq_simulator` submission,

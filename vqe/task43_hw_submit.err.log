@@ -1,0 +1,27 @@
+C:\Python313\Lib\site-packages\qiskit_ionq\ionq_backend.py:129: IonQTranspileLevelWarning: Transpiler default optimization_level=2. IonQ (QIS) recommends 0-1 to avoid aggressive re-synthesis; use transpile(..., optimization_level=1).
+  warn_bad_transpile_level()
+Traceback (most recent call last):
+  File "C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task43_batch_hw_submission.py", line 119, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task43_batch_hw_submission.py", line 99, in main
+    result = job.result()
+  File "C:\Python313\Lib\site-packages\qiskit_ionq\ionq_job.py", line 438, in result
+    self._result = self._format_result(response)
+                   ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Python313\Lib\site-packages\qiskit_ionq\ionq_job.py", line 842, in _format_result
+    counts, probabilities = _build_counts(
+                            ~~~~~~~~~~~~~^
+        data[i],
+        ^^^^^^^^
+    ...<4 lines>...
+        sampler_seed=sampler_seed,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Python313\Lib\site-packages\qiskit_ionq\ionq_job.py", line 121, in _build_counts
+    output_probs = map_output(data, clbits, num_qubits)
+  File "C:\Python313\Lib\site-packages\qiskit_ionq\ionq_job.py", line 72, in map_output
+    bitstring = bin(int(value))[2:].rjust(num_qubits, "0")[::-1]
+                    ~~~^^^^^^^
+ValueError: invalid literal for int() with base 10: '06a8e1a4-1467-7fd9-8000-210f69309e78'

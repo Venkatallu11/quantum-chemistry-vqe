@@ -1,0 +1,69 @@
+
+================================================================================================
+  task43c_batch_hw_submission_v2.py -- RETRY, budget raised to $300, results-fetch bug fixed
+================================================================================================
+  backend=qpu.forte-enterprise-1  shots=2000  -- 3 circuits, ONE batch job
+  slot=u_0, groups selected: [['XYYX', 'IYYI'], ['YXXY', 'IXXI'], ['XXYY', 'IIYY', 'XXII']]
+  gate counts per circuit: [{'gpi2': 80, 'gpi': 40, 'zz': 11, 'measure': 5, 'barrier': 1}, {'gpi2': 80, 'gpi': 40, 'zz': 11, 'measure': 5, 'barrier': 1}, {'gpi2': 80, 'gpi': 40, 'zz': 11, 'measure': 5, 'barrier': 1}]  (num_qubits=5, num_clbits=5)
+  connected to ionq_qpu.forte-enterprise-1
+
+  SUBMITTING NOW -- real hardware, real cost will be incurred (3 circuits, one batch job).
+  submitted. job_id=01a03b1a-82c4-7525-9a3d-dff1f392deb2
+  job_id saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task43_batch_hw_submission_results.json
+
+  -- polling parent job status directly (avoiding the buggy SDK .result() path) --
+  parent final status: completed
+{
+  "id": "01a03b1a-82c4-7525-9a3d-dff1f392deb2",
+  "type": "ionq.multi-circuit.v1",
+  "status": "completed",
+  "name": "3 circuits",
+  "metadata": {
+    "shots": "2000",
+    "user_agent": "qiskit-ionq/1.1.1 (qiskit/2.4.2) os/Windows (python/3.13.7)",
+    "sampler_seed": "None",
+    "qiskit_header": "H4sIAEQbjmoC/+2QTQ6CMBSEr0K6VtM/UvAqhDQFG2zSAqWwUOPdfWXRgGtd6XLeTOdrpnogp90w3WSwwxzQOcsPGers0Cgrx6sKGk70VBIhKBUcF6LkOWOQ6aVfGpOe9MrFKGrN1C5mPhJMywKB0U66k8HcdUxWFeBUgHte19G0UCGtarTd2xjcJMhW0K1gW8HXSv/G8wm2/ncH84nkE8Ynhk8An9ojSjo1jvoSKzC8gjjkYuB5yL43J8PkP+cn5+S/Nmf9AvgHhcTtAwAA"
+  },
+  "backend": "qpu.forte-enterprise-1",
+  "submitter_id": "10427ba7-d41f-448e-93ec-a9c9cb2d1b90",
+  "project_id": "a8397288-752d-4a8d-a24e-912d4946174e",
+  "parent_job_id": null,
+  "session_id": null,
+  "dry_run": false,
+  "failure": null,
+  "cost_model": "2QGE_operations",
+  "shots": 2000,
+  "submitted_at": "2026-08-25T22:46:28.294Z",
+  "started_at": "2026-08-25T22:53:32.965Z",
+  "completed_at": "2026-08-25T23:00:41.402Z",
+  "execution_duration_ms": 205717,
+  "predicted_execution_duration_ms": 157776,
+  "predicted_wait_time_ms": null,
+  "output": {},
+  "child_job_ids": [
+    "06a8e1b4-5a32-74c9-8000-587210ed4fb6",
+    "06a8e1b4-5a3d-79cb-8000-04d985744aef",
+    "06a8e1b4-5a42-7f41-8000-18789fb45690"
+  ],
+  "settings": {},
+  "stats": {},
+  "results": {
+    "probabilities": {
+      "url": "/v0.4/jobs/01a03b1a-82c4-7525-9a3d-dff1f392deb2/results/probabilities/aggregated"
+    },
+    "ionq.result.probabilities-aggregate.json.v1": {
+      "id": "probabilities-aggregate",
+      "format": "ionq.result.probabilities-aggregate.json.v1",
+      "media_type": "application/json"
+    }
+  }
+}
+
+  REAL counts for child 06a8e1b4-5a32-74c9-8000-587210ed4fb6: {'01100': 238000, '01001': 290000, '00011': 172000, '10111': 26000, '01000': 242000, '00110': 190000, '00100': 190000, '01110': 206000, '01011': 272000, '11001': 22000, '00001': 228000, '00111': 218000, '00101': 242000, '00010': 236000, '01010': 206000, '10110': 28000, '00000': 222000, '01101': 270000, '01111': 236000, '10100': 22000, '11011': 24000, '11111': 28000, '10011': 24000, '11101': 12000, '11000': 14000, '10001': 28000, '10101': 28000, '11010': 24000, '11100': 18000, '10010': 14000, '11110': 18000, '10000': 12000}
+
+  REAL counts for child 06a8e1b4-5a3d-79cb-8000-04d985744aef: {'01001': 272000, '00010': 212000, '00011': 206000, '00101': 220000, '00110': 202000, '00000': 236000, '01010': 184000, '01111': 226000, '00001': 262000, '11110': 36000, '01100': 228000, '00100': 210000, '01101': 248000, '01000': 274000, '00111': 192000, '01110': 206000, '10001': 30000, '11111': 18000, '11010': 24000, '01011': 228000, '11001': 24000, '10101': 26000, '10100': 30000, '10110': 18000, '10111': 22000, '11000': 20000, '11011': 28000, '10010': 28000, '11101': 28000, '10000': 20000, '10011': 18000, '11100': 24000}
+
+  REAL counts for child 06a8e1b4-5a42-7f41-8000-18789fb45690: {'01011': 258000, '01001': 242000, '01100': 262000, '01010': 260000, '01101': 218000, '00010': 222000, '00011': 226000, '10100': 24000, '01110': 212000, '01111': 244000, '00000': 248000, '00110': 234000, '00101': 200000, '11000': 16000, '10000': 30000, '10101': 30000, '00001': 170000, '00100': 208000, '10010': 20000, '01000': 218000, '00111': 182000, '11001': 26000, '11110': 20000, '10111': 32000, '10110': 16000, '10011': 18000, '11010': 42000, '11111': 26000, '11101': 28000, '11011': 22000, '10001': 28000, '11100': 18000}
+
+  Full results saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task43_batch_hw_submission_results.json
+

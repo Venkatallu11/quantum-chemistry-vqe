@@ -1,0 +1,115 @@
+
+================================================================================================
+  task41_first_hw_submission.py -- FIRST REAL HARDWARE SUBMISSION (cost discovery)
+================================================================================================
+  backend=qpu.forte-enterprise-1  shots=100  -- ONE circuit only
+  circuit: u_0 slot, group=['XYYX', 'IYYI'], gate counts={'gpi2': 80, 'gpi': 40, 'zz': 11, 'measure': 5, 'barrier': 1}, qubits=5
+  connected to ionq_qpu.forte-enterprise-1
+
+  SUBMITTING NOW -- real hardware, real cost will be incurred.
+  submitted. job_id=01a03ad5-0399-7684-ada3-6d47d3cd00f4
+  job_id saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task41_first_hw_submission_results.json (safe to check on this job later via its ID even if this process exits)
+
+  -- waiting for completion (expect ~2 hour queue based on the dashboard's own live estimate) --
+  final status: JobStatus.DONE
+  REAL counts: {'00011': 5, '01111': 7, '00111': 6, '00110': 7, '00101': 8, '01100': 3, '01010': 3, '10110': 1, '01001': 2, '01101': 4, '01011': 11, '00100': 11, '00010': 5, '01110': 5, '00000': 4, '10011': 1, '11011': 2, '00001': 7, '01000': 4, '11000': 2, '11010': 1, '10001': 1}
+
+  -- FULL RAW JOB METADATA (looking for any cost/price field) --
+{
+  "id": "01a03ad5-0399-7684-ada3-6d47d3cd00f4",
+  "type": "ionq.circuit.v1",
+  "status": "completed",
+  "name": "circuit-10262",
+  "metadata": {
+    "shots": "100",
+    "user_agent": "qiskit-ionq/1.1.1 (qiskit/2.4.2) os/Windows (python/3.13.7)",
+    "sampler_seed": "None",
+    "qiskit_header": "H4sIAHoJjmoC/12OQQ6CMBBFr0K6VgMIVLkKIU3BBpu00KGwUOPdnWExAZd//ut//Qhv/DS/VHTTEkWdlKdEDG7qtFPhqaOh0yWTRSnlPUtzeSsqicioYO0svxi1J1L0du5Xu5yRrHKBRT+bQUX7NkQ2Ddp0xHvZtlQ6nFBOd8Yd6xRbDtk+5Ptw3Ydim4Q/H7Bs++9BBmwC1gA7gAXA66RSXodgHjSR4ivEkSPg+wM2srM6TAEAAA=="
+  },
+  "backend": "qpu.forte-enterprise-1",
+  "submitter_id": "10427ba7-d41f-448e-93ec-a9c9cb2d1b90",
+  "project_id": "a8397288-752d-4a8d-a24e-912d4946174e",
+  "parent_job_id": null,
+  "session_id": null,
+  "dry_run": false,
+  "failure": null,
+  "cost_model": "2QGE_operations",
+  "shots": 100,
+  "submitted_at": "2026-08-25T21:30:33.755Z",
+  "started_at": "2026-08-25T21:35:10.119Z",
+  "completed_at": "2026-08-25T21:35:19.545Z",
+  "execution_duration_ms": 6692,
+  "predicted_execution_duration_ms": 3197,
+  "predicted_wait_time_ms": null,
+  "output": {
+    "compilation": {
+      "precision": "1E-3",
+      "gate_basis": "ZZ",
+      "service_version": "v0.4",
+      "compiled_circuits": {
+        "ionq.native.v1": {
+          "id": "09dc2129-f8f7-4e50-82a3-b1f720493bd9",
+          "format": "ionq.native.v1",
+          "media_type": "application/json"
+        },
+        "ionq.qasm3.v1": {
+          "id": "1f8ba8fb-3288-4bfe-98cc-2efc6d14ea46",
+          "format": "ionq.qasm3.v1",
+          "media_type": "text/plain"
+        }
+      }
+    },
+    "error_mitigation": {
+      "debiasing": false,
+      "symmetry_verification": {
+        "applied": false,
+        "num_allowed_states": null
+      }
+    }
+  },
+  "child_job_ids": null,
+  "settings": {},
+  "stats": {
+    "qubits": 5,
+    "circuits": 1,
+    "gate_counts": {
+      "1q": 120,
+      "2q": 11,
+      "ZZq": 11,
+      "GPIq": 40,
+      "GPI2q": 80
+    },
+    "kwh": 0.00857,
+    "predicted_quantum_compute_time_us": 0,
+    "billed_quantum_compute_time_us": 0
+  },
+  "results": {
+    "shots": {
+      "url": "/v0.4/jobs/01a03ad5-0399-7684-ada3-6d47d3cd00f4/results/shots"
+    },
+    "histogram": {
+      "url": "/v0.4/jobs/01a03ad5-0399-7684-ada3-6d47d3cd00f4/results/histogram"
+    },
+    "probabilities": {
+      "url": "/v0.4/jobs/01a03ad5-0399-7684-ada3-6d47d3cd00f4/results/probabilities"
+    },
+    "ionq.result.shots.json.v2": {
+      "id": "6e9a6a0c-ad76-4de0-ade4-586235f03a10",
+      "format": "ionq.result.shots.json.v2",
+      "media_type": "application/json"
+    },
+    "ionq.result.histogram.json.v2": {
+      "id": "331fb20f-e7cd-4730-a283-fd583c09b60a",
+      "format": "ionq.result.histogram.json.v2",
+      "media_type": "application/json"
+    },
+    "ionq.result.probabilities.json.v2": {
+      "id": "f06ef699-67cc-4041-8b50-42ddc36a6d06",
+      "format": "ionq.result.probabilities.json.v2",
+      "media_type": "application/json"
+    }
+  }
+}
+
+  Full results saved -> C:\Users\Admin\projects\quantum-chemistry-vqe\vqe\task41_first_hw_submission_results.json
+

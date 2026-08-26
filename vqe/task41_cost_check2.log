@@ -1,0 +1,44 @@
+
+================================================================================================
+  task41_hw_cost_check.py -- REAL cost estimates, read-only, zero spend
+================================================================================================
+
+  ONE ancilla-augmented H4 measurement circuit (5 qubits, u_0/(XYYX,IYYI) group):
+    gate counts: {'gpi2': 80, 'gpi': 40, 'zz': 11}  -> 1q=120 2q=11 qubits=5
+
+  ONE plain (no ancilla) H4 measurement circuit (4 qubits, same slot/group):
+    gate counts: {'gpi2': 48, 'gpi': 24, 'zz': 7}  -> 1q=72 2q=7 qubits=4
+
+  Task 37E's own 2 tiny calibration circuits (already real-verified on the free simulator):
+    ZZ circuit:   gpi2=4 zz=1 gpi=1  -> 1q=5 2q=1 qubits=2
+    GPi2 circuit: gpi2=1             -> 1q=1 2q=0 qubits=1
+
+  -- REAL COST ESTIMATES (GET /jobs/estimate, official IonQ pricing, per single circuit) --
+
+  === qpu.forte-1 ===
+    Task37E ZZ-calib circuit     shots=   100  ->  cost=None None   exec_time=1890s  queue_time=6240310
+    Task37E ZZ-calib circuit     shots=  1000  ->  cost=None None   exec_time=9493s  queue_time=6240310
+    Task37E ZZ-calib circuit     shots= 10000  ->  cost=None None   exec_time=91134s  queue_time=6240310
+    Task37E GPi2-calib circuit   shots=   100  ->  cost=None None   exec_time=1739s  queue_time=6240310
+    Task37E GPi2-calib circuit   shots=  1000  ->  cost=None None   exec_time=7159s  queue_time=6240310
+    Task37E GPi2-calib circuit   shots= 10000  ->  cost=None None   exec_time=67793s  queue_time=6240310
+    ONE ancilla H4 circuit       shots=   100  ->  cost=None None   exec_time=4422s  queue_time=6240310
+    ONE ancilla H4 circuit       shots=  1000  ->  cost=None None   exec_time=48391s  queue_time=6240310
+    ONE ancilla H4 circuit       shots= 10000  ->  cost=None None   exec_time=480111s  queue_time=6240310
+    ONE plain H4 circuit         shots=   100  ->  cost=None None   exec_time=3382s  queue_time=6240310
+    ONE plain H4 circuit         shots=  1000  ->  cost=None None   exec_time=32417s  queue_time=6240310
+    ONE plain H4 circuit         shots= 10000  ->  cost=None None   exec_time=320372s  queue_time=6240310
+
+  === qpu.forte-enterprise-1 ===
+    Task37E ZZ-calib circuit     shots=   100  ->  cost=None None   exec_time=1259s  queue_time=9925790
+    Task37E ZZ-calib circuit     shots=  1000  ->  cost=None None   exec_time=7209s  queue_time=9925790
+    Task37E ZZ-calib circuit     shots= 10000  ->  cost=None None   exec_time=66712s  queue_time=9925790
+    Task37E GPi2-calib circuit   shots=   100  ->  cost=None None   exec_time=1074s  queue_time=9925790
+    Task37E GPi2-calib circuit   shots=  1000  ->  cost=None None   exec_time=5363s  queue_time=9925790
+    Task37E GPi2-calib circuit   shots= 10000  ->  cost=None None   exec_time=48246s  queue_time=9925790
+    ONE ancilla H4 circuit       shots=   100  ->  cost=None None   exec_time=4267s  queue_time=9925790
+    ONE ancilla H4 circuit       shots=  1000  ->  cost=None None   exec_time=37289s  queue_time=9925790
+    ONE ancilla H4 circuit       shots= 10000  ->  cost=None None   exec_time=367507s  queue_time=9925790
+    ONE plain H4 circuit         shots=   100  ->  cost=None None   exec_time=3033s  queue_time=9925790
+    ONE plain H4 circuit         shots=  1000  ->  cost=None None   exec_time=24947s  queue_time=9925790
+    ONE plain H4 circuit         shots= 10000  ->  cost=None None   exec_time=244093s  queue_time=9925790
