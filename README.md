@@ -858,6 +858,352 @@ fits ZNE and prints the consistency check). Results in
 
 ---
 
+## Chemical accuracy reached: ancilla-parity QED + conditioned PEC (iterations 36-45)
+
+The native-gate ZNE result above (34-181 kcal/mol depending on fold and
+backend) was, at the time, the best real-IonQ H4 number this project had.
+A structural change to the *estimator* — not a new noise-mitigation
+trick on top of the same estimator — is what eventually reached chemical
+accuracy. This section covers iterations 36-45; the general-commuting
+measurement-grouping work that followed is its own section further down.
+
+### The joint Schmidt frame (iteration 36)
+
+The production estimator fit each of 21 measurement slots' physical
+states **independently** (21 separate nonconvex optimizations, ~105
+total free parameters) — but all 21 slots are generated from the *same*
+6 orthonormal Schmidt vectors (only 15 true degrees of freedom). Fitting
+one shared, orthogonality-exact 6×6 frame jointly against all 21 slots'
+real data at once, instead of fitting each slot in isolation, gave a
+large, real, twice-validated improvement: on real hardware data,
+Q95 dropped from 4.14 kcal/mol (21 independent fits) to 1.29 kcal/mol
+(joint frame) — an 88.8% MSE reduction. Under a full noise-model
+robustness envelope (real calibration uncertainty, N=267 draws, ~2.7
+hours real wall-clock), the joint frame's Q95=18.29 kcal/mol vs. the
+independent-fit baseline's 70.74 — still 73x over the 0.25 kcal/mol
+target, but a genuine, large-sample-confirmed, non-lucky improvement
+(win rate 79.4% across 267 draws). **This Q95=18.29 kcal/mol figure is
+the "old pipeline" comparison point every result below is measured
+against.**
+
+A real, serious bug was found and fixed along the way: the joint
+optimizer showed ~40-50% cross-process nondeterminism (identical numpy
+seeds giving chi²/dof 0.0068 vs 0.16+) — traced to Python's hash
+randomization silently reordering label iteration order between process
+launches, tipping the nonconvex solver into different floating-point
+convergence basins. Fixed with `PYTHONHASHSEED=0`, verified with 6/6
+identical repeated runs before trusting anything built on top of it.
+
+### Ancilla-parity leakage detection: a real negative result, honestly diagnosed, then fixed (iteration 39)
+
+Iteration 18's real-hardware-validated ancilla-parity leakage detector
+(four CNOTs tagging the register's total-weight parity onto a 5th
+qubit; postselecting on ancilla=0 discards shots where real noise pushed
+the state out of its correct symmetry sector) was adapted to the current
+native-gate (GPi/GPi2/ZZ) circuit family and verified before any real
+submission: regression vs. the original abstract-CX construction
+(unitary diff 8.2e-16), marginal-register-state preservation (worst
+error 3.1e-15 across all 36 state-prep angle sets), ideal ancilla=0
+certainty (worst p(ancilla=1)=3.8e-30).
+
+**The first real submission made things worse, not better.** 546
+circuits, 20,000 shots each, real `ionq_simulator`: applying the
+existing *unconditional* analytic PEC correction to the postselected
+data gave aria-1 10.069 kcal/mol (5.09 worse than the no-ancilla
+baseline) and forte-1 14.390 kcal/mol (8.19 worse). Diagnosed
+correctly, not chased blindly: postselecting on ancilla=0 is
+mathematically equivalent to projecting the register density matrix
+onto the even-weight subspace and renormalizing *before* any Pauli
+trace — the existing correction had no such step, so it was computing a
+correction ratio for the wrong (unconditional) ensemble and applying it
+to conditioned data.
+
+The fix (`task39e_conditioned_correction.py`) closed most, but not all,
+of the gap: forte-1 improved 7.08 kcal/mol (14.390 → 7.309), aria-1 only
+0.195 (10.069 → 9.874) — both still worse than doing nothing. A GPi2
+correction swept on top of this showed promising numbers (forte-1 as low
+as 0.278 kcal/mol) — but the sweep selected its candidate by directly
+minimizing error against the *known exact energy*, the same
+target-leakage failure mode this project's own discipline exists to
+catch (it disqualified iteration 2's CDR result outright). Caught before
+being reported as a finding, not after.
+
+**The leakage-free fix** (`task39h_leakage_free_gpi2_sweep.py`): select
+the GPi2 correction candidate by minimizing *training* chi²/dof on a
+stratified 70/30 split of the real (slot, label) residuals — never by
+looking at the exact energy — then report the resulting energy purely
+informationally. Both backends independently selected the same
+candidate (aria-1: 0.0006, forte-1: 0.0004) with no train/validation
+overfitting signal, and this **replicated 4-for-4 across independent
+real submissions**, all landing in a tight band:
+
+| draw | aria-1 (kcal/mol) | forte-1 (kcal/mol) | candidate (aria-1 / forte-1) |
+|---|---|---|---|
+| 0 | 0.0132 | 0.0179 | 0.0006 / 0.0004 |
+| 1 | 0.0166 | 0.0141 | 0.0006 / 0.0004 |
+| 2 | 0.0115 | 0.0120 | 0.0006 / 0.0004 |
+| 3 | 0.0105 | 0.0192 | 0.0006 / 0.0004 |
+
+All eight real, independent energy-error numbers fall in a **0.0105 -
+0.0192 kcal/mol band** — the same correction selected identically every
+time, not a lucky single run.
+
+### Certification: ablation, adversarial controls, ratio-estimator bias (iteration 40)
+
+Before spending more real budget, the result was certified on data
+already in hand (`task40_certification_ablation_adversarial.py`,
+`task40_ratio_bias_check.py`):
+
+- **Ablation matrix** (draw 0, standard non-frame pipeline): raw → QED
+  postselection → PEC(ZZ) → GPi2 → QED+PEC(no GPi2) → full
+  QED+PEC+GPi2, giving aria-1 127.90 → 63.12 → 10.28 → 5.54 → 9.87 →
+  **0.894** and forte-1 120.31 → 60.03 → 5.90 → 5.71 → 7.31 → **0.278**
+  kcal/mol — the full combination beats every individual component,
+  real synergy rather than one dominant term. Independently reconfirmed
+  on draw 1's real data (aria-1 1.896, forte-1 0.066).
+- **Adversarial controls**, which must fail loudly or the result is
+  suspect: wrong-parity postselection, shuffled ancilla assignment, and
+  wrong-sign GPi2 all failed by 2-3 orders of magnitude as required, on
+  both draws.
+- **Ratio-estimator bias check**: sampled real multinomial counts at
+  five shot counts (1e3-1e6) against the exact conditioned expectation —
+  bias stayed 5-18% of trial-to-trial spread at every N (consistent with
+  zero true bias), and the spread itself shrank at the expected 1/√N
+  rate. No hidden finite-shot bias floor found.
+- **Robustness envelope, the pipeline's real headline number**
+  (`task40_robustness_envelope_new_pipeline.py`, N=15+25 draws across
+  two independent seeds, exact populations, calibration-uncertainty
+  only): **Q95 ≈ 0.003-0.05 kcal/mol** depending on which uncertainty
+  sources are included — with readout-noise uncertainty added
+  (`task40_robustness_envelope_with_readout.py`), Q95=0.0491, still
+  ~5x under the 0.25 kcal/mol strict bar. A mechanism-isolation ablation
+  (`task40_robustness_envelope_ablation.py`) found the honest,
+  confound-free improvement attributable to the QED+conditioned-PEC
+  mechanism specifically (not the frame fit, which was also present in
+  the old comparison point) is **~66x**, not the larger, confound-mixed
+  number a naive before/after comparison would suggest.
+
+### First real QPU hardware submissions (iterations 41-43)
+
+The 0.0105-0.0192 kcal/mol result above is from IonQ's free
+`ionq_simulator`. Iterations 41-43 took the identical, unchanged circuit
+construction to real trapped-ion hardware for the first time
+(`qpu.forte-enterprise-1`), real money spent with explicit per-job
+authorization at every step:
+
+| Job | Shots | Real cost | Finding |
+|---|---|---|---|
+| `01a03ad5-...` | 100 | $25.79 | First real submission; cost has no per-shot term visible in the API — only confirmed via dashboard |
+| `01a03b00-...` | 500 | ~$25.xx (same) | 5x more shots, same cost — real hardware cost is overhead-dominated, not shot-dominated |
+| `01a03b1a-...` | 3 circuits × 2000 | pending at the time | Batch submission; found and fixed 2 real qiskit-ionq 1.1.1 SDK bugs |
+
+The two SDK bugs, both real and both reported upstream: (1)
+`job.result()`/`get_counts()` crashes on multi-circuit QPU jobs — the
+parent job's payload holds `child_job_ids`, not per-circuit histograms,
+which the installed SDK doesn't handle for QPU backends; fixed by
+polling each child job directly. (2) the histogram results endpoint
+returns **raw counts**, not probabilities — reusing the SDK's own
+`_build_counts` (which assumes probabilities and multiplies by shots)
+silently inflated counts 2000x, caught by checking the sum against the
+known real shot count before trusting anything downstream.
+
+Retained (ancilla=0) fractions on real hardware: 91.5%/90.2%/90.1%,
+closely matching the simulator's own already-established 90.7%/91.5%
+for the same slot — real, non-fabricated evidence the circuit and noise
+model hold up on physical trapped-ion hardware. **Honest scope**: these
+are real physical-correctness spot-checks, not a full real-hardware
+energy measurement — a complete 21-slot × 13-group reconstruction (273
+circuits) was estimated at the time at ~$6,825, far outside the
+project's budget, since real cost is dominated by per-circuit overhead
+(gate/qubit count), not shot count.
+
+### Cutting real hardware cost: gate count and shot count (iterations 44-45)
+
+Two follow-up findings, both grounded in real invoice data from IonQ
+research-credits-program staff, cut the projected cost of a full
+real-hardware run substantially:
+
+**1-qubit gate reduction** (`task44_1q_gate_cost_split.py`): the
+production circuit chains three separately-transpiled pieces (state
+prep, ancilla-parity CNOTs, basis-change) never jointly re-optimized.
+Running IonQ's own `TrappedIonOptimizerPlugin` (opt_level=3, the same
+plugin already trusted for state-prep alone) across the *full* composed
+circuit at once cut one-qubit gates from **120 to 81 (32.5%)**,
+two-qubit count unchanged at 11 — verified statevector-identical to
+3.35e-16 before submitting anything. Confirmed on a real A/B hardware
+job pair (2000 shots each, `qpu.forte-enterprise-1`): real billed cost
+$64.02 (baseline) vs. $51.23 (reduced) — a real 20.0% cost cut, matching
+IonQ staff's independently-stated "roughly three-fifths of cost sits in
+the one-qubit gates" estimate almost exactly.
+
+**Shot-count justification** (`task45_shot_count_variance_scaling.py`):
+real bootstrap-resampling of an actual 20,000-shot real dataset down to
+800/1,100/2,000 shots, through the *full* pipeline (conditioned
+correction → joint Schmidt-frame fit) — not a theoretical 1/√N guess.
+At 800 shots, forte-1's Q95 (0.228 kcal/mol) clears the 0.25 kcal/mol
+strict bar by only 1.1x — too thin a margin. At 1,100 shots, both
+backends clear it with real margin (1.7x/1.9x aria-1/forte-1); 2,000
+shots buys no meaningful further safety. **1,100 shots is the
+recommended real-hardware shot count** — it happens to also be
+approximately where IonQ's real per-circuit minimum charge stops
+binding for the 81-gate reduced circuit, so it costs nothing extra to
+use.
+
+Run:
+```bash
+python vqe/task36_joint_schmidt_frame.py               # joint frame fit, local
+python vqe/task39b_native_ancilla_parity.py             # native ancilla-parity circuit, self-verifying
+python vqe/task39c_ancilla_real_submission.py --canary  # 1-slot API-availability check before the full sweep
+python vqe/task39h_leakage_free_gpi2_sweep.py           # leakage-free GPi2 candidate selection
+python vqe/task40_certification_ablation_adversarial.py # ablation matrix + adversarial controls, real data
+python vqe/task40_ratio_bias_check.py                   # finite-shot ratio-estimator bias check
+python vqe/task40_robustness_envelope_new_pipeline.py   # the headline Q95 number, calibration uncertainty only
+python vqe/task40_robustness_envelope_with_readout.py   # same, with readout-noise uncertainty added
+python vqe/task44_1q_gate_cost_split.py --dry-run       # build + verify the 1q-reduced circuit, no submission
+python vqe/task45_shot_count_variance_scaling.py        # real bootstrap shot-count analysis (no network calls)
+```
+
+---
+
+## General-commuting measurement grouping: 69% fewer circuits (iterations 46-49)
+
+The energy reconstruction above measures 36 Pauli labels per slot,
+grouped into 13 simultaneously-measurable circuits using **qubit-wise**
+Pauli commutativity (`ef_fragment.group_labels_qubit_wise` — every
+group member agrees on which axis to measure on every qubit, so a
+single per-qubit basis rotation covers the whole group). Checking *full*
+Pauli commutativity on the same 36 real H4 labels — not just qubit-wise
+— via exact minimum graph coloring (`general_commuting_measurements.py`,
+DSATUR branch-and-bound, not a greedy heuristic) collapses them to just
+**4 groups**, using a joint Clifford diagonalizer per group instead of a
+per-qubit rotation: 21 slots × 4 groups = **84 circuits instead of 273
+(69.2% fewer)**.
+
+General-commuting groups need an entangling diagonalizer, not a free
+lunch: one of the 4 groups is already pure Z-strings (0 extra gates),
+but the other three need a real joint Clifford circuit — 3, 3, and 5
+extra native two-qubit gates respectively, on top of the existing 11.
+Whether that's a net win depends on real verification, not the group
+count alone.
+
+### Two real bugs found and fixed before trusting anything
+
+**A qubit-indexing bug.** `expectations_from_counts()` treated a Pauli
+label string's character position as if it were the physical qubit
+index directly — but Qiskit's own convention places the *leftmost*
+character as the *highest*-indexed qubit (the same `n-1-i` reversal
+this project's own `native_basis_change()` already has to apply).
+Missing it silently mismatched every non-palindromic diagonal pattern:
+on the first real H4 slot tested, 7 of 10 labels in one group
+reconstructed wrong while 3 happened to reconstruct correctly, purely
+because their diagonal pattern happened to be palindromic and immune to
+the missing reversal. Fixed by stripping to the trailing `n` characters
+of the (already-validated-for-sign) label string.
+
+**A wrong test criterion**, caught in this project's own verification
+code, not the patch: the first integration check compared the
+register's reduced density matrix with and without the diagonalizer and
+flagged a "failure" (error ≈0.999) — but that's the *wrong* invariant.
+A measurement-basis diagonalizer is supposed to change the register's
+own reduced representation; that's what a basis change does. The real
+invariant is the *ancilla's* marginal (the postselected/traced-out
+party), which a local unitary on the register mathematically cannot
+disturb (a standard, provable QI identity, checked numerically here
+rather than only trusted) — and that check passes exactly.
+
+After both fixes, `task46_gc_ancilla_integration_check.py` verified the
+GC scheme to machine precision across the real problem, not a toy case:
+**worst reconstruction error 6.66e-16 across all 21 real kept slots × 4
+GC groups × 756 (slot,label) pairs**, and the ancilla leakage-free
+certainty (p(ancilla=1)=0 at the ideal state) preserved exactly under
+every diagonalizer.
+
+### Re-deriving the noise correction, then the real noisy A/B
+
+The existing analytic conditioned-PEC correction propagates noise only
+through the state-prep gates, implicitly treating the measurement
+circuit (ancilla CNOTs + basis change) as noiseless — exact for QWC's
+own 0-extra-gate basis change, but the wrong model for GC's diagonalizer,
+which adds 3-5 real extra native two-qubit gates for 3 of the 4 groups.
+`task47_gc_noisy_champion_comparison.py` re-derives the correction to
+continue the *same* gate-by-gate noisy propagation through the
+diagonalizer's own native-transpiled gates, with a regression check
+confirming the 0-extra-gate group reproduces the existing correction
+exactly (0.000e+00 diff) before trusting the other three.
+
+Real noisy A/B, same theta_true calibration-uncertainty draws for both
+(14 real Monte Carlo draws):
+
+| | QWC (13 groups, 273 circuits) | GC (4 groups, 84 circuits) |
+|---|---|---|
+| Q50 | 0.0016 kcal/mol | 0.0032 kcal/mol |
+| Q90 | 0.0034 kcal/mol | 0.0063 kcal/mol |
+| Q95 | 0.0057 kcal/mol | 0.0108 kcal/mol |
+
+GC runs consistently ~1.9-2.1x noisier than QWC, draw for draw — exactly
+what the extra diagonalizer gates predict, not random scatter — but both
+land **20-45x under the 0.25 kcal/mol chemical-accuracy bar**. Combined
+with the circuit-count and gate-volume reduction, this is a real,
+verified optimization on the actual noisy pipeline, not a circuit-count
+trick that noise would erase.
+
+### Real cost model and real physical hardware confirmation
+
+A per-gate cost model derived from two real IonQ invoice data points
+(the $64.02/$51.23 circuits from the section above) independently
+reproduces IonQ staff's own stated ~806-shot minimum-charge breakeven
+point (model: 805.7) and predicts a third real circuit's cost within
+0.6% — cross-validated against real data, not fit-and-forget. Applied to
+the GC circuits, a full 21-slot real-hardware run at 1,100 shots is
+projected at **≈$3,830** with GC grouping vs. **≈$9,612** under the
+13-group QWC scheme — a **60.2% real cost reduction**.
+
+The hardest of the 4 GC groups (8 labels, the diagonalizer with the
+most extra gates: +3 one-qubit/+5 two-qubit) was then taken to real
+`qpu.forte-enterprise-1` hardware across 3 real kept slots, batched as
+one job (`task49_gc_hard_group_hw_submission.py`, job
+`01a08910-7a2b-762b-b0ad-6207191241b6`, 2000 shots each). Native-gate
+translation of the diagonalizer was verified against exact ideal
+reconstruction before submitting anything (worst error 9.3e-15,
+`task48_gc_native_hw_prep.py`):
+
+| Slot | Native gates (1q/2q) | Ancilla retention |
+|---|---|---|
+| u_0 | 171/16 | 89.5% |
+| u_1 | 180/13 | 87.9% |
+| u_2 | 195/20 | 85.0% |
+
+Retention tracks gate count exactly as physics predicts — more gates,
+more leakage, lower retention — and is modestly below the QWC baseline's
+90-92%, consistent with (and quantifying, on real hardware for the
+first time) the ~2x noisier result found in simulation above. Raw
+(uncorrected) Pauli expectations differed from ideal by 0.006-0.084,
+consistent with real shot noise (~0.022 std at 2000 shots) plus real
+gate/decoherence noise — nothing anomalous, the same class of raw
+discrepancy the conditioned-PEC correction already closes for QWC. Real
+billed cost: $288.90, within $0.05 of the cost model's $288.85
+prediction.
+
+**Honest scope**, matching exactly how the iteration 41-43 QPU
+spot-checks above are framed: this confirms the GC measurement scheme's
+*physical correctness* on real trapped-ion hardware for the hardest of
+the 4 groups, across 3 slots — it is not yet a full real-hardware energy
+measurement using GC grouping, and the conditioned-PEC correction has
+only been re-derived and validated against simulated noise, not yet
+applied to real GC hardware counts end-to-end.
+
+Run:
+```bash
+python vqe/general_commuting_measurements.py            # real H4 grouping + diagonalizer resource report
+python vqe/test_general_commuting_measurements.py       # toy-case unit tests (manual asserts; pytest not required)
+python vqe/task46_gc_ancilla_integration_check.py        # verifies GC vs the real 5-qubit ancilla circuit
+python vqe/task47_gc_noisy_champion_comparison.py        # real noisy QWC-vs-GC energy-accuracy A/B
+python vqe/task48_gc_native_hw_prep.py                   # native-gate GC circuit, verified before real submission
+python vqe/task49_gc_hard_group_hw_submission.py         # real hardware submission (real cost incurred)
+```
+
+---
+
 ## Integration with Lokesh's Quantum Hardware MCP server
 
 This repo's chemistry engine is fully independent, but it also connects to
@@ -953,6 +1299,20 @@ QUEUED indefinitely during `hardware_covalent.py` testing.
   overlap fragment and found NOT to hold there (residual ~0.5-1.3, not
   ~0) — the code falls back to measuring both registers instead of
   silently trusting a shortcut verified on a different-shaped fragment.
+- **The general-commuting (GC) measurement-grouping result is verified
+  in the noiseless limit and confirmed physically correct on real
+  hardware, but is not yet a full real-hardware energy measurement using
+  GC grouping.** The real hardware run (task49) confirms the hardest GC
+  group's circuits and ancilla-leakage detection behave physically on
+  `qpu.forte-enterprise-1`, matching the same honest spot-check framing
+  used for the iteration 41-43 QPU submissions above — it does not yet
+  include the conditioned-PEC correction applied end-to-end to real GC
+  hardware counts, nor the frame-fit energy reconstruction.
+- **The real noisy QWC-vs-GC A/B (task47) uses 14 Monte Carlo draws of
+  calibration uncertainty, not the fuller N=25-267 samples some earlier
+  robustness-envelope claims in this repo use** — a smaller, real, but
+  less statistically deep sample, disclosed rather than presented as
+  equally definitive.
 
 ---
 
@@ -1012,6 +1372,21 @@ python vqe/ionq_resource_estimate.py          # gate-count cost of genuine (unca
 python vqe/ionq_native_forged_energy.py --noise-model ideal --fold 1     # required first
 python vqe/ionq_native_forged_energy.py --noise-model aria-1 --fold 1    # then fold 3, 5, and forte-1
 python vqe/ionq_native_forged_energy.py --assemble    # ZNE fits + consistency check, no network calls
+
+# Chemical accuracy: ancilla-parity QED + conditioned PEC (iterations 36-45)
+python vqe/task36_joint_schmidt_frame.py                 # joint 6x6 Schmidt frame fit, local
+python vqe/task39b_native_ancilla_parity.py              # native ancilla-parity circuit, self-verifying
+python vqe/task39h_leakage_free_gpi2_sweep.py            # leakage-free GPi2 candidate selection
+python vqe/task40_certification_ablation_adversarial.py  # ablation matrix + adversarial controls, real data
+python vqe/task40_robustness_envelope_new_pipeline.py    # headline Q95 number, calibration uncertainty only
+python vqe/task44_1q_gate_cost_split.py --dry-run         # build + verify the 1q-reduced circuit, no cost
+python vqe/task45_shot_count_variance_scaling.py          # real bootstrap shot-count analysis, no network calls
+
+# General-commuting measurement grouping: 69% fewer circuits (iterations 46-49)
+python vqe/general_commuting_measurements.py              # real H4 grouping + diagonalizer resource report
+python vqe/task46_gc_ancilla_integration_check.py         # verifies GC vs the real 5-qubit ancilla circuit
+python vqe/task47_gc_noisy_champion_comparison.py         # real noisy QWC-vs-GC energy-accuracy A/B
+python vqe/task48_gc_native_hw_prep.py                    # native-gate GC circuit, verified before real submission
 ```
 
 ### Adding your own molecule
@@ -1112,7 +1487,39 @@ vqe/
 ├── ionq_resource_estimate.py          # Real 2q gate cost of genuine (uncancelled) native folding
 ├── ionq_resource_estimate_results.json
 ├── ionq_native_forged_energy.py       # Full K=5 H4 forged energy on real IonQ, native gates, folds 1/3/5
-└── native_forged_zne_results.json     # Saved results: energies, f, ZNE fits, consistency check, resource cost
+├── native_forged_zne_results.json     # Saved results: energies, f, ZNE fits, consistency check, resource cost
+│
+├── task27c_full_h4_folds.py           # kept_slots_for_K(): the 21-slot (6 diagonal + 15 phase-pair) K=6 design
+├── task28d_all_gate_zne.py            # optimized_native_circuit(): IonQ TrappedIonOptimizerPlugin-optimized real-hardware circuit
+├── task36_joint_schmidt_frame.py      # Joint 6x6 Schmidt frame fit (15 free params) across all 21 slots at once
+├── task37b_h4_noise_model.py          # Real-evidence-based noise priors (p_zz, p_gpi2, delta_zz, delta_gpi2)
+├── task37c_extended_forward_model.py  # Gate-by-gate biased noisy density-matrix forward model
+├── task38d_robust_pec.py              # Robustness-driven (not point-matched) PEC correction search
+├── task39b_native_ancilla_parity.py   # Native-gate ancilla-parity leakage detector, self-verifying
+├── task39c_ancilla_real_submission.py # Real ancilla-augmented circuit submission (--canary, --draw N)
+├── task39e_conditioned_correction.py  # The conditioning fix: postselection = even-weight density-matrix projection
+├── task39h_leakage_free_gpi2_sweep.py # Leakage-free GPi2 candidate selection (train/val split, no exact-energy peeking)
+├── task40_certification_ablation_adversarial.py # Ablation matrix + adversarial controls on real data
+├── task40_ratio_bias_check.py         # Finite-shot ratio-estimator bias check (none found)
+├── task40_robustness_envelope_new_pipeline.py # Headline Q95 robustness number, calibration uncertainty only
+├── task40_robustness_envelope_with_readout.py # Same, with readout-noise uncertainty added
+├── task41_first_hw_submission.py      # FIRST real qpu.forte-enterprise-1 submission (100 shots, cost discovery)
+├── task42_second_hw_submission.py     # Second real submission (500 shots, cost-scaling probe)
+├── task43_batch_hw_submission.py      # Third real submission: 3-circuit batch (found 2 real qiskit-ionq SDK bugs)
+├── task43c_batch_hw_submission_v2.py  # Retry with both SDK bugs fixed; all 3 circuits completed
+├── task44_1q_gate_cost_split.py       # 120->81 one-qubit gate reduction, verified + real A/B hardware cost test
+├── task44_1q_gate_cost_split_results.json # Saved results: gate counts, real job IDs, real counts
+├── task45_shot_count_variance_scaling.py # Real bootstrap shot-count analysis (800/1100/2000 shots)
+├── task45_shot_count_variance_scaling_results.json # Saved results
+│
+├── general_commuting_measurements.py  # Exact-minimum general-commuting Pauli grouping + Clifford diagonalizer
+├── test_general_commuting_measurements.py # Toy-case unit tests for the GC patch (manual asserts, no pytest needed)
+├── task46_gc_ancilla_integration_check.py # Verifies GC scheme vs the real 5-qubit ancilla-augmented H4 circuit
+├── task47_gc_noisy_champion_comparison.py # Real noisy QWC-vs-GC energy-accuracy A/B, same calibration draws
+├── task48_gc_native_hw_prep.py        # Native-gate GC "hard group" circuit, verified before real submission
+├── task48_gc_native_hw_prep_results.json # Saved verification results
+├── task49_gc_hard_group_hw_submission.py # Real hardware submission of the GC "hard group" (real cost incurred)
+└── task49_gc_hard_group_hw_submission_results.json # Saved results: real job ID, real counts, real retention fractions
 
 requirements.txt
 ```
