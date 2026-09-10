@@ -1,0 +1,36 @@
+﻿
+================================================================================================
+  task45_shot_count_variance_scaling.py (v2) -- REAL pipeline, bootstrap-based shot-count scaling
+================================================================================================
+
+  -- SANITY CHECK: N=20,000, NO resampling (real original data) -- must match the documented real result --
+    aria-1: err=+0.0098 kcal/mol  (documented real result: ~0.0132/0.0179; must be in the same sub-0.02 ballpark, NOT orders of magnitude off)
+    forte-1: err=+0.0129 kcal/mol  (documented real result: ~0.0132/0.0179; must be in the same sub-0.02 ballpark, NOT orders of magnitude off)
+
+  real data source: task39c_ancilla_real_submission.partial.json (draw 0)
+  N_TRIALS=10 bootstrap resamples per (N, backend)
+
+  === aria-1 (p_gpi2_selected=0.0006) ===
+    N=   800 shots: mean=+0.1089  std=0.0368  Q50=0.1055  Q90=0.1520  Q95=0.1581 kcal/mol
+    N=  1100 shots: mean=+0.0821  std=0.0411  Q50=0.0753  Q90=0.1286  Q95=0.1461 kcal/mol
+    N=  2000 shots: mean=+0.0653  std=0.0555  Q50=0.0568  Q90=0.0950  Q95=0.1533 kcal/mol
+    N= 20000 shots: mean=+0.0123  std=0.0047  Q50=0.0126  Q90=0.0169  Q95=0.0191 kcal/mol
+
+  === forte-1 (p_gpi2_selected=0.0004) ===
+    N=   800 shots: mean=+0.1199  std=0.0685  Q50=0.0890  Q90=0.2237  Q95=0.2275 kcal/mol
+    N=  1100 shots: mean=+0.0846  std=0.0329  Q50=0.0906  Q90=0.1058  Q95=0.1301 kcal/mol
+    N=  2000 shots: mean=+0.0624  std=0.0304  Q50=0.0612  Q90=0.0905  Q95=0.1043 kcal/mol
+    N= 20000 shots: mean=+0.0169  std=0.0043  Q50=0.0170  Q90=0.0228  Q95=0.0232 kcal/mol
+
+  -- COMPARISON vs chemical-accuracy bars (0.25 strict / 0.5 loose kcal/mol) --
+    aria-1 N=   800: Q95=0.1581 kcal/mol  (1.6x under the 0.25 kcal/mol strict bar)
+    aria-1 N=  1100: Q95=0.1461 kcal/mol  (1.7x under the 0.25 kcal/mol strict bar)
+    aria-1 N=  2000: Q95=0.1533 kcal/mol  (1.6x under the 0.25 kcal/mol strict bar)
+    aria-1 N= 20000: Q95=0.0191 kcal/mol  (13.1x under the 0.25 kcal/mol strict bar)
+    forte-1 N=   800: Q95=0.2275 kcal/mol  (1.1x under the 0.25 kcal/mol strict bar)
+    forte-1 N=  1100: Q95=0.1301 kcal/mol  (1.9x under the 0.25 kcal/mol strict bar)
+    forte-1 N=  2000: Q95=0.1043 kcal/mol  (2.4x under the 0.25 kcal/mol strict bar)
+    forte-1 N= 20000: Q95=0.0232 kcal/mol  (10.8x under the 0.25 kcal/mol strict bar)
+
+  Results saved -> C:\Users\Admin\Projects\quantum-chemistry-vqe\vqe\task45_shot_count_variance_scaling_results.json
+
