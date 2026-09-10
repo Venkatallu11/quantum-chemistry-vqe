@@ -1,0 +1,27 @@
+﻿
+================================================================================================
+  task47_gc_noisy_champion_comparison.py -- REAL A/B: QWC+champion vs GC+champion, same draws
+================================================================================================
+  GC group 0: 10 labels, abstract 2q=0, NATIVE gate counts after to_native(): {}
+  GC group 1: 10 labels, abstract 2q=3, NATIVE gate counts after to_native(): {'gpi2': 30, 'gpi': 15, 'zz': 3}
+  GC group 2: 8 labels, abstract 2q=3, NATIVE gate counts after to_native(): {'gpi2': 28, 'gpi': 14, 'zz': 3}
+  GC group 3: 8 labels, abstract 2q=5, NATIVE gate counts after to_native(): {'gpi2': 46, 'gpi': 23, 'zz': 5}
+
+  -- REGRESSION CHECK: GC group with 0 extra gates must exactly match the existing QWC-style conditioned correction (a 0-gate diagonalizer changes nothing physically) --
+    max diff (trivial-group GC vs existing QWC-style correction): 0.000e+00   retained: gc=1.018957 qwc=1.018957   PASS
+
+  -- REAL A/B: 15 theta_true draws, N_RESTARTS=3 (matching task40's own established convention exactly) --
+    draw 1/15: QWC |err|=0.0000  GC |err|=0.0000 kcal/mol  (103.3s)
+    draw 2/15: QWC |err|=0.0039  GC |err|=0.0073 kcal/mol  (102.9s)
+    draw 3/15: QWC |err|=0.0019  GC |err|=0.0038 kcal/mol  (84.2s)
+    draw 4/15: QWC |err|=0.0017  GC |err|=0.0034 kcal/mol  (84.8s)
+    draw 5/15: QWC |err|=0.0018  GC |err|=0.0036 kcal/mol  (86.7s)
+    draw 6/15: QWC |err|=0.0021  GC |err|=0.0040 kcal/mol  (102.3s)
+    draw 7/15: QWC |err|=0.0015  GC |err|=0.0029 kcal/mol  (87.8s)
+    draw 8/15: QWC |err|=0.0008  GC |err|=0.0016 kcal/mol  (79.4s)
+    draw 9/15: QWC |err|=0.0019  GC |err|=0.0037 kcal/mol  (64.5s)
+    draw 10/15: QWC |err|=0.0002  GC |err|=0.0003 kcal/mol  (75.0s)
+    draw 11/15: QWC |err|=0.0090  GC |err|=0.0172 kcal/mol  (72.8s)
+    draw 12/15: QWC |err|=0.0001  GC |err|=0.0001 kcal/mol  (73.9s)
+    draw 13/15: QWC |err|=0.0006  GC |err|=0.0012 kcal/mol  (71.4s)
+    draw 14/15: QWC |err|=0.0003  GC |err|=0.0007 kcal/mol  (70.9s)

@@ -1,0 +1,25 @@
+﻿
+================================================================================================
+  task48_gc_native_hw_prep.py -- native-gate GC group-3 circuit, verified before real submission
+================================================================================================
+
+  'hard' GC group (index 3): 8 labels, abstract 1q=3 2q=5
+  group: ['IIYY', 'IYIY', 'IYYI', 'XZXZ', 'XZZX', 'YIYI', 'YYII', 'ZXZX']
+  native-transpiled diagonalizer gate counts: {'gpi2': 46, 'gpi': 23, 'zz': 5}
+
+  slot=u_0: full circuit native gate counts: {'gpi2': 114, 'gpi': 57, 'zz': 16}
+    p(ancilla=1) ideal: 6.916e-27  (must be ~0)
+    worst reconstruction error this slot: 9.328e-15
+
+  slot=u_1: full circuit native gate counts: {'gpi2': 120, 'gpi': 60, 'zz': 13}
+    p(ancilla=1) ideal: 6.841e-30  (must be ~0)
+    worst reconstruction error this slot: 8.964e-15
+
+  slot=u_2: full circuit native gate counts: {'gpi2': 130, 'gpi': 65, 'zz': 20}
+    p(ancilla=1) ideal: 3.869e-27  (must be ~0)
+    worst reconstruction error this slot: 5.839e-16
+
+  -- OVERALL: worst reconstruction error across all 3 slots: 9.328e-15  PASS -- SAFE TO SUBMIT
+
+  saved -> C:\Users\Admin\Projects\quantum-chemistry-vqe\vqe\task48_gc_native_hw_prep_results.json
+

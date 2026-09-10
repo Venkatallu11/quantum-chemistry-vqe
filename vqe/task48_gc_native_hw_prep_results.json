@@ -1,0 +1,25 @@
+{
+  "hard_group_index": 3,
+  "group": [
+    "IIYY",
+    "IYIY",
+    "IYYI",
+    "XZXZ",
+    "XZZX",
+    "YIYI",
+    "YYII",
+    "ZXZX"
+  ],
+  "native_diag_counts": {
+    "gpi2": 46,
+    "gpi": 23,
+    "zz": 5
+  },
+  "target_slots": [
+    "u_0",
+    "u_1",
+    "u_2"
+  ],
+  "worst_recon_err": 9.327607347225617e-15,
+  "safe_to_submit": true
+}
