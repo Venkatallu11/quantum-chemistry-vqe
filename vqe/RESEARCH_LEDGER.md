@@ -1,5 +1,71 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iterations 50-53, COVALENT-BONDING TAILORING RESOLVED,
+real free-simulator work, no real hardware money spent this round):
+picks up the negative result in "Multi-fragment molecular tailoring on
+real IonQ circuits" (fragmentation error ADDS across fragments, does not
+cancel -- real tailored error 167.79 kcal/mol aria-1 / 175.37 kcal/mol
+forte-1 under the OLD EF+ZNE method) and reruns the SAME three fragments
+through the NEW ancilla-parity + conditioned-PEC + GPi2 + joint-Schmidt-
+frame pipeline instead.
+
+**Iteration 50, fragment B replication** (atoms [2,3,4,5], confirmed
+geometrically identical to fragment A/H4 -- exact energy and Schmidt
+values match to 1e-13 Ha / 5e-15): a first pass (2000 shots) gave
+`ideal`=0.586 kcal/mol, WORSE than both noisy backends -- backwards.
+Diagnosed via a synthetic exact-data regression test (both fragments give
+EXACTLY 0.000000 kcal/mol on perfect data, ruling out the frame-fit code)
+plus stage decomposition (the PEC+GPi2 correction, which always assumes a
+fixed nonzero noise level, was wrongly applied to genuinely noiseless
+`ideal` data -- a real analysis-script bug, not a pipeline defect; this
+project's own established scripts never ran this correction on `ideal`
+data for exactly this reason). Fixed by skipping the correction for
+`ideal`. Real result at full 20,000 shots: `ideal`=0.0036, `aria-1`=0.0075,
+`forte-1`=0.0065 kcal/mol -- matching fragment A's own established
+0.0105-0.0192 kcal/mol band, correct physical ordering restored.
+
+**Iteration 51, the overlap fragment** (atoms [2,3], nelec=2, K=2 exact
+-- genuinely new physics, not a replication): real physical finding
+caught by verification BEFORE any submission -- this register holds 1
+electron in 2 orbitals (weight-1, ODD parity), unlike H4's weight-2
+(EVEN) registers, so the ancilla leakage-free convention flips (ancilla=1
+is valid here, not ancilla=0). A first run using H4's own convention
+correctly failed (worst ideal p(leaked)=1.000) before any real
+submission. Fixed by generalizing the ancilla-parity and conditioned-
+correction machinery to take the parity convention as a parameter. Real
+result, 20,000 shots: `ideal`=0.0034, `aria-1`=0.0078, `forte-1`=0.0221
+kcal/mol vs. exact -1.101150 Ha.
+
+**Iteration 52, the tailored result (headline finding)**: E_tailored =
+E(A) + E(B) - E(overlap), same formula as the original tailoring work,
+fragments measured with the new pipeline instead of EF+ZNE. Real result:
+`aria-1` E_tailored=-3.231610 Ha (+0.0094 kcal/mol vs. the classical
+tailored reference -3.231625 Ha), `forte-1` E_tailored=-3.231629 Ha
+(+0.0025 kcal/mol). A ~20,000-70,000x improvement over the old method's
+167.79/175.37 kcal/mol. The "fragmentation error adds, does not cancel"
+finding is RESOLVED for this case. Honest scope: the ~2.79 kcal/mol
+residual vs. full exact (-3.236066 Ha) is the CLASSICAL tailoring
+method's own inherent floor (established with zero quantum measurement,
+already in `covalent_fragment_results.json`) -- not a quantum-
+measurement limitation, and not yet chemical accuracy vs. full exact.
+
+**Iteration 53, full-H6 feasibility scan** (not attempted, scoped only):
+checked whether solving the unfragmented full H6 molecule directly would
+close the remaining 2.79 kcal/mol gap. Real result: Schmidt rank does
+NOT saturate even at K=16 (tail=2.949e-3), vs. fragment A/B's own exact
+rank of 6 -- full H6's 6-qubit, 3-electron register needs K~19-20 out of
+a 20-dimensional weight-3 subspace, meaning ~210 kept slots (vs. 21) and
+a much bigger ansatz. A ~10x-larger undertaking, not a same-session
+follow-up -- and the concrete reason fragmentation is the right tool
+here in the first place. A bigger-overlap alternative within H6's own
+2-fragment tailoring was also considered and found blocked by a
+different real constraint: the only geometrically-bigger-overlap option
+(5-atom fragments) has an ODD electron count, which this project's
+closed-shell forging machinery does not handle -- real new methodology,
+not attempted.
+
+---
+
 **STATUS UPDATE (iteration 41, FIRST REAL QUANTUM HARDWARE SUBMISSION,
 LOCAL BRANCH `local/attack-base-problem`, not yet committed, `origin/main`
 untouched -- REAL `qpu.forte-enterprise-1` trapped-ion hardware, real

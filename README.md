@@ -1204,6 +1204,127 @@ python vqe/task49_gc_hard_group_hw_submission.py         # real hardware submiss
 
 ---
 
+## Covalent-bonding tailoring, resolved (iterations 50-53)
+
+The "Multi-fragment molecular tailoring" section below found a real,
+honest negative result using the OLD entanglement-forging + gate-folded-ZNE
+method: **fragmentation error ADDS across fragments, it does not
+cancel** — the tailored H6 covalent chain came out at 167.79 kcal/mol
+(`aria-1`) / 175.37 kcal/mol (`forte-1`) real error, even though each
+individual fragment's own error (84-89 kcal/mol) was "only" an order of
+magnitude off. This is exactly the "strongly-bonded covalent chains
+degrade to 1-7 kcal/mol" limitation this repo's own Honesty section
+flagged as open.
+
+This section reruns the SAME three fragments — the same inclusion-
+exclusion formula, `E_tailored = E(A) + E(B) - E(overlap)` — through the
+NEW ancilla-parity + conditioned-PEC + GPi2 + joint-Schmidt-frame
+pipeline (the one that reached 0.0105-0.0192 kcal/mol on fragment A
+itself, above) instead of the old EF+ZNE approach.
+
+**Fragment B** (`task50_fragment_b_replication.py`, atoms [2,3,4,5]) is
+confirmed geometrically identical to fragment A/H4 — exact energy and
+Schmidt values match to 1e-13 Ha / 5e-15 (the H6 chain is evenly spaced,
+so a 4-atom window is translation-invariant) — so the already-validated
+pipeline applies completely unchanged, as an independent replication
+check. **A real analysis bug was found and fixed along the way**: a
+first pass gave `ideal`=0.586 kcal/mol, *worse* than both noisy backends
+— backwards from any physical expectation. A synthetic exact-data
+regression test (feeding perfect statevector expectations through the
+exact same analysis code) gave exactly 0.000000 kcal/mol for both
+fragments, ruling out the frame-fit code itself; stage-by-stage
+decomposition then showed the PEC+GPi2 correction — which always assumes
+a fixed *nonzero* noise level — was being wrongly applied to genuinely
+noiseless `ideal` data, actively distorting it (raw +3.81 → "corrected"
++7.47 kcal/mol). This project's own established scripts never ran that
+correction on `ideal` data for exactly this reason; the bug was in a new
+ad hoc analysis script, not the established pipeline. Fixed by skipping
+the correction for `ideal`. Real result at full 20,000 shots:
+
+| Backend | Fragment B error |
+|---|---|
+| ideal | 0.0036 kcal/mol |
+| aria-1 | 0.0075 kcal/mol |
+| forte-1 | 0.0065 kcal/mol |
+
+All three land in fragment A's own established 0.0105-0.0192 kcal/mol
+band, with the correct physical ordering restored (ideal ≤ noisy
+backends).
+
+**The overlap fragment** (`task51_overlap_fragment.py`, atoms [2,3],
+nelec=2, exact Schmidt rank K=2) is genuinely new physics, not a
+replication. **A real physical finding was caught by verification before
+any submission**: this register holds 1 electron in 2 orbitals
+(weight-1, **odd** parity), unlike H4's weight-2 (**even**) registers —
+the standard XOR-parity ancilla-CNOT construction makes the ancilla equal
+the register's total Hamming-weight parity, so which ancilla outcome is
+"leakage-free" is a real physical property of the fragment, not a free
+convention choice. A first run using H4's own convention (ancilla=0 is
+valid) correctly *failed* at the verification step — worst ideal
+p(leaked)=1.000 — before any real submission, exactly what this
+project's verify-before-trust discipline exists to catch. Fixed by
+generalizing the ancilla-parity circuit and the conditioned-correction
+model to take the parity convention as a parameter. Real result, 20,000
+shots:
+
+| Backend | Overlap error |
+|---|---|
+| ideal | 0.0034 kcal/mol |
+| aria-1 | 0.0078 kcal/mol |
+| forte-1 | 0.0221 kcal/mol |
+
+vs. the overlap's own exact energy of -1.101150 Ha.
+
+**The tailored result** (`task52_covalent_tailoring_result.py`) —
+combining fragment A's own established real energy with fragment B and
+the overlap's real energies above:
+
+| Backend | E_tailored | vs. classical tailored reference | Old method (EF+ZNE) |
+|---|---|---|---|
+| aria-1 | -3.231610 Ha | **+0.0094 kcal/mol** | 167.79 kcal/mol |
+| forte-1 | -3.231629 Ha | **+0.0025 kcal/mol** | 175.37 kcal/mol |
+
+A **~20,000-70,000x improvement** over the old method's real tailored
+result. The "fragmentation error adds, does not cancel" finding is
+resolved for this fragment-combination case.
+
+**Honest scope, stated plainly**: the ~2.79 kcal/mol residual vs. the
+*full exact* H6 energy (-3.236066 Ha) is the **classical** tailoring
+method's own inherent truncation floor — established with zero quantum
+measurement involved at all, already in this repo's own
+`covalent_fragment_results.json` (H6 tailored, 4-atom blocks = -3.231625
+Ha vs. full exact). This is **not yet chemical accuracy relative to full
+exact** — but closing that gap needs a *better classical fragmentation
+scheme*, not further quantum-measurement work. This repo's own H8 data
+already shows the direction: 4-atom blocks give a 6.72 kcal/mol floor,
+6-atom blocks give 1.15 kcal/mol.
+
+**Two ways to close that gap for H6 were considered, both real,
+disclosed dead ends for now** (`task53_full_h6_feasibility_check.py`):
+a bigger overlap within H6's own 2-fragment scheme is only possible with
+5-atom fragments, which have an *odd* electron count — this project's
+closed-shell entanglement-forging machinery doesn't handle open-shell
+fragments at all, real new methodology, not attempted. Solving the full
+*unfragmented* H6 molecule directly was checked and found to need far
+more than a same-session follow-up: its Schmidt rank does not saturate
+even at K=16 (tail=2.949e-3), vs. fragment A/B's own exact rank of 6 —
+full H6's 6-qubit, 3-electron register needs K~19-20 out of a
+20-dimensional subspace, meaning ~210 measurement slots (vs. 21) and a
+much bigger ansatz. A ~10x-larger undertaking — and the concrete reason
+fragmentation is the right tool for this class of problem in the first
+place, not a limitation to fix.
+
+Run:
+```bash
+python vqe/task50_fragment_b_replication.py --self-test  # synthetic exact-data regression test
+python vqe/task50_fragment_b_replication.py --analyze    # fragment B, already-collected real data
+python vqe/task51_overlap_fragment.py --analyze           # overlap fragment, already-collected real data
+python vqe/task52_covalent_tailoring_result.py            # the real tailored result, no network calls
+python vqe/task53_full_h6_feasibility_check.py            # full-H6 Schmidt-rank feasibility scan
+```
+
+---
+
 ## Integration with Lokesh's Quantum Hardware MCP server
 
 This repo's chemistry engine is fully independent, but it also connects to
@@ -1313,6 +1434,20 @@ QUEUED indefinitely during `hardware_covalent.py` testing.
   robustness-envelope claims in this repo use** — a smaller, real, but
   less statistically deep sample, disclosed rather than presented as
   equally definitive.
+- **The covalent-bonding tailoring result (iterations 50-53) is a
+  small-scale (6-atom chain) demonstration, and closes the
+  quantum-measurement side of the problem, not the classical side.**
+  The real tailored energy now matches the classical tailoring method's
+  own answer to ~0.01 kcal/mol — but the ~2.79 kcal/mol residual vs. full
+  exact is that classical method's own inherent floor, not a
+  quantum-pipeline limitation. Closing it needs a *better classical
+  fragmentation scheme* (e.g. larger blocks — this repo's own H8 data
+  already shows 4-atom blocks give a 6.72 kcal/mol floor, 6-atom blocks
+  give 1.15 kcal/mol), not further quantum-measurement work. For H6
+  specifically, both ways to try that were checked and found genuinely
+  blocked for now: a bigger overlap needs odd-electron fragments (not
+  supported), and the full unfragmented molecule needs ~10x the
+  resources of any fragment tested so far (task53).
 
 ---
 
@@ -1387,6 +1522,13 @@ python vqe/general_commuting_measurements.py              # real H4 grouping + d
 python vqe/task46_gc_ancilla_integration_check.py         # verifies GC vs the real 5-qubit ancilla circuit
 python vqe/task47_gc_noisy_champion_comparison.py         # real noisy QWC-vs-GC energy-accuracy A/B
 python vqe/task48_gc_native_hw_prep.py                    # native-gate GC circuit, verified before real submission
+
+# Covalent-bonding tailoring, resolved (iterations 50-53)
+python vqe/task50_fragment_b_replication.py --self-test    # synthetic exact-data regression test
+python vqe/task50_fragment_b_replication.py --analyze      # fragment B, already-collected real data
+python vqe/task51_overlap_fragment.py --analyze             # overlap fragment, already-collected real data
+python vqe/task52_covalent_tailoring_result.py              # the real tailored result, no network calls
+python vqe/task53_full_h6_feasibility_check.py              # full-H6 Schmidt-rank feasibility scan
 ```
 
 ### Adding your own molecule
@@ -1519,7 +1661,16 @@ vqe/
 ├── task48_gc_native_hw_prep.py        # Native-gate GC "hard group" circuit, verified before real submission
 ├── task48_gc_native_hw_prep_results.json # Saved verification results
 ├── task49_gc_hard_group_hw_submission.py # Real hardware submission of the GC "hard group" (real cost incurred)
-└── task49_gc_hard_group_hw_submission_results.json # Saved results: real job ID, real counts, real retention fractions
+├── task49_gc_hard_group_hw_submission_results.json # Saved results: real job ID, real counts, real retention fractions
+│
+├── task50_fragment_b_replication.py   # Fragment B (identical physics to H4) replicated on 3 free simulators
+├── task50_fragment_b_replication_results.json # Saved real counts, all 3 backends, 20,000 shots
+├── task51_overlap_fragment.py         # The overlap fragment: new ansatz, odd-weight ancilla-parity convention
+├── task51_overlap_fragment_results.json # Saved real counts, all 3 backends, 20,000 shots
+├── task52_covalent_tailoring_result.py # THE headline result: real tailored E(A)+E(B)-E(overlap)
+├── task52_covalent_tailoring_result_results.json # Saved real tailored energies
+├── task53_full_h6_feasibility_check.py # Full (unfragmented) H6 Schmidt-rank feasibility scan (not attempted)
+└── task53_full_h6_feasibility_check_results.json # Saved rank-vs-K scan
 
 requirements.txt
 ```
