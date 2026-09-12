@@ -1,0 +1,30 @@
+{
+  "E_A": {
+    "aria-1": -2.166371910862598,
+    "forte-1": -2.1663669416429934
+  },
+  "E_B": {
+    "aria-1": -2.166376,
+    "forte-1": -2.166377
+  },
+  "E_overlap": {
+    "aria-1": -1.101138,
+    "forte-1": -1.101115
+  },
+  "results": {
+    "aria-1": {
+      "E_tailored": -3.2316099108625984,
+      "err_vs_classical_kcal": 0.009468576675057011,
+      "err_vs_full_exact_kcal": 2.7962381509892325
+    },
+    "forte-1": {
+      "E_tailored": -3.2316289416429935,
+      "err_vs_classical_kcal": 0.002473418321690612,
+      "err_vs_full_exact_kcal": 2.7842961559924846
+    }
+  },
+  "old_method_kcal": {
+    "aria-1": 167.79,
+    "forte-1": 175.37
+  }
+}
