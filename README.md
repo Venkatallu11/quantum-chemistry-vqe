@@ -21,9 +21,16 @@ Each link re-uses the *exact same* validated measurement method on a
 harder or more different molecule than the last — real IonQ free
 simulators, real hardware spot-checks, every limitation disclosed below.
 
+**Project status: not finished, stated plainly.** Every number below
+comes from real circuits actually run — but on free, noise-modeled
+simulators, at a limited scale. Only one narrow real-hardware
+circuit-correctness check has been run so far (see below); the full
+real-hardware campaign, for H4 and everything past it, is the next step
+and needs more time and resources.
+
 ---
 
-## 1. Chemical accuracy, on real hardware
+## 1. Chemical accuracy, on real IonQ simulators
 
 H4 (4 electrons, 8 qubits) split via **entanglement forging** into two
 independently-measured 4-qubit registers. Four techniques stacked to get
@@ -47,9 +54,13 @@ replicated across 4 independent submissions each (8 numbers total):**
 
 *(chemical accuracy = 1 kcal/mol — this is 50-95x under the bar.)*
 
-Confirmed physically real on actual `qpu.forte-enterprise-1` trapped-ion
-hardware (job `01a08910-7a2b-762b-b0ad-6207191241b6`), with real billed
-cost matching a from-scratch cost model to within $0.05.
+One real-hardware spot-check has been run on actual
+`qpu.forte-enterprise-1` trapped-ion hardware (job
+`01a08910-7a2b-762b-b0ad-6207191241b6`) confirming the measurement
+circuits behave physically as expected, with real billed cost matching a
+from-scratch cost model to within $0.05. **This is a circuit-correctness
+check, not the full chemical-accuracy campaign on real hardware — that
+full real-hardware run has not been done yet.**
 
 ---
 
