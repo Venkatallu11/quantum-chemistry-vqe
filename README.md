@@ -14,7 +14,8 @@ below is a real, reproducible computation. Nothing is hardcoded.
 
 ```
 H4 (chemical accuracy)  →  H6 covalent chain (167.79 → 0.0094 kcal/mol)
-        →  LiH  →  formaldehyde (a real carcinogen)  →  hydrogen peroxide
+        →  LiH  →  formaldehyde  →  hydrogen peroxide  →  acetaldehyde
+                (four real carcinogens/ROS molecules, none built for)
 ```
 
 Each link re-uses the *exact same* validated measurement method on a
@@ -62,6 +63,50 @@ from-scratch cost model to within $0.05. **This is a circuit-correctness
 check, not the full chemical-accuracy campaign on real hardware — that
 full real-hardware run has not been done yet.**
 
+### An important caveat, found by external review — read this before trusting the number above
+
+An IonQ reviewer (Vadim Karpusenko) read this repository's own code and
+raised a real, correct point: the 0.0105-0.0192 kcal/mol number above
+comes from a **joint Schmidt-frame fit** whose reconstruction basis is
+built directly from the exact, classically pre-computed FCI Schmidt
+vectors — and the circuits' own state-prep angles are separately fit to
+reproduce those same exact vectors. In plain terms: **this is not yet a
+blind variational calculation.** The target answer is supplied to the
+circuit construction and to the reconstruction basis; what's being
+measured is whether real, noisy hardware (plus error mitigation) can
+reproduce a state whose identity is already known — a genuine and
+useful test of the noise-mitigation stack, but a different and weaker
+claim than "found an unknown ground state from scratch."
+
+**Removing the frame fit** — keeping only the physics-based correction
+stack (ancilla-parity postselection + conditioned PEC + GPi2 correction),
+with no reference anywhere to the exact Schmidt vectors in reconstruction
+— gives a real, honest, harder number. On any single real 20,000-shot
+draw this is **inconsistent**: aria-1 ranged 1.50-2.24 kcal/mol across 3
+independent real draws (never under the 1 kcal/mol bar), forte-1 ranged
+0.07-1.86 kcal/mol (passed on 1 of 3 draws). Diagnosed, not guessed: this
+turned out to be mostly ordinary shot noise, not a systematic bias —
+confirmed by **combining the raw measurement counts from all 3 already-
+collected real draws** (60,000 real shots/circuit-equivalent, zero new
+spending, zero oracle information anywhere in this step):
+
+| Backend | No-frame-fit error, single draw (range) | No-frame-fit error, 3 draws combined |
+|---|---|---|
+| aria-1 | 1.50 – 2.24 kcal/mol | **0.3630 kcal/mol** ✓ |
+| forte-1 | 0.07 – 1.86 kcal/mol | **0.8645 kcal/mol** ✓ |
+
+Both pass chemical accuracy without any oracle information in the
+reconstruction step — though with a much thinner margin than the
+frame-fit number, and the circuits themselves are still built from
+exact-Schmidt-vector-fit angles, disclosed here plainly rather than left
+implicit. Reproducible with `vqe/task60_h4_no_frame_fit_multidraw.py`.
+A parallel attempt to also reduce circuit count via general-commuting
+grouping (4 groups instead of 13) was tried and made things *worse*
+(ideal-backend error jumped to 0.88 kcal/mol) — a real, understood,
+disclosed finding: denser measurement groups dilute per-label shot
+statistics, trading circuit-count efficiency for statistical precision.
+See `vqe/task59_h4_gc_no_frame_fit.py`.
+
 ---
 
 ## 2. A real negative result, resolved
@@ -95,9 +140,9 @@ the direction: 4-atom blocks floor at 6.72 kcal/mol, 6-atom blocks at
 
 ---
 
-## 3. Does it generalize? Three molecules it was never built for
+## 3. Does it generalize? Four molecules it was never built for
 
-The validated pipeline was never designed around H4 specifically. Three
+The validated pipeline was never designed around H4 specifically. Four
 genuinely different real molecules tested it:
 
 | Molecule | What it is | Real error (ideal / aria-1 / forte-1) |
@@ -105,10 +150,11 @@ genuinely different real molecules tested it:
 | **LiH** | Heteronuclear, real p-orbitals — not an H-chain | 0.018 / 0.053 / 0.092 kcal/mol |
 | **Formaldehyde (CH2O)** | A real IARC Group 1 confirmed human carcinogen | 0.0036 / 0.0246 / 0.0303 kcal/mol |
 | **Hydrogen peroxide (H2O2)** | The real reactive-oxygen-species molecule behind oxidative DNA damage | 0.0022 / 0.1351 / 0.0975 kcal/mol |
+| **Acetaldehyde (CH3CHO)** | A real IARC Group 1 carcinogen, ethanol's toxic metabolite; a genuinely harder (6e,6o), weight-3 register shape, generic (non-optimized) ansatz | 0.0125 / 0.2122 / 0.1230 kcal/mol |
 
-All nine numbers land **inside or near chemical accuracy** — on real
+All twelve numbers land **inside chemical accuracy** — on real
 molecules, independently cross-checked against a separate exact reference
-computation before any quantum measurement (zero deviation in all three
+computation before any quantum measurement (zero deviation in all four
 cases).
 
 **Said plainly, no overclaiming:** this is an electronic-structure
@@ -165,14 +211,17 @@ specific Hamiltonian is more noise-sensitive. Not yet understood.
 ## Run it yourself
 
 ```bash
-python vqe/task40_robustness_envelope_new_pipeline.py   # H4 headline: Q95 ~0.003-0.05 kcal/mol
-python vqe/task52_covalent_tailoring_result.py           # the real tailored H6 result, no network calls
-python vqe/task54_lih_new_molecule.py --analyze          # LiH, already-collected real data
-python vqe/task55_formaldehyde_carcinogen.py --analyze   # formaldehyde, already-collected real data
-python vqe/task56_hydrogen_peroxide.py --analyze         # H2O2, already-collected real data
+python vqe/task40_robustness_envelope_new_pipeline.py         # H4 headline: Q95 ~0.003-0.05 kcal/mol
+python vqe/task40_certification_ablation_adversarial.py       # H4 WITHOUT the frame fit, single draw
+python vqe/task60_h4_no_frame_fit_multidraw.py                # H4 without the frame fit, 3 draws combined -> chemical accuracy
+python vqe/task52_covalent_tailoring_result.py                # the real tailored H6 result, no network calls
+python vqe/task54_lih_new_molecule.py --analyze                # LiH, already-collected real data
+python vqe/task55_formaldehyde_carcinogen.py --analyze         # formaldehyde, already-collected real data
+python vqe/task56_hydrogen_peroxide.py --analyze                # H2O2, already-collected real data
+python vqe/task57_acetaldehyde_carcinogen.py --analyze          # acetaldehyde, already-collected real data
 ```
 
-Full iteration-by-iteration history (56 iterations, every bug found and
+Full iteration-by-iteration history (60 iterations, every bug found and
 fixed, every negative result kept in) is preserved in git history and in
 `vqe/RESEARCH_LEDGER.md` for anyone who wants the whole story.
 

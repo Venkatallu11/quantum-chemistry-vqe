@@ -1,0 +1,10 @@
+{
+  "aria-1": {
+    "err_kcal": 0.3629665670595269,
+    "pass_chemical_accuracy": true
+  },
+  "forte-1": {
+    "err_kcal": 0.8644723879657774,
+    "pass_chemical_accuracy": true
+  }
+}

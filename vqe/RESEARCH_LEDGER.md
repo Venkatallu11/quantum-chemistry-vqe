@@ -1,5 +1,103 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iterations 54-60, GENERALIZATION + EXTERNAL REVIEW
+RESPONSE, real free-simulator work throughout, no new real hardware
+spend this round):**
+
+**Iterations 54-57, generalization**: the validated H4 pipeline (ancilla-
+parity + conditioned-PEC + GPi2 + joint-Schmidt-frame) tested on 4 real
+molecules it was never built for. LiH (heteronuclear, true Schmidt rank
+15 -- does NOT compress like H4, generic ansatz, 62 native 2q gates):
+0.018/0.053/0.092 kcal/mol (ideal/aria-1/forte-1). Formaldehyde (real
+IARC Group 1 carcinogen, (4e,4o) active space landed on H4's own
+weight-2 register shape, H4's hand-optimized ansatz reused directly):
+0.0036/0.0246/0.0303 kcal/mol. Hydrogen peroxide (the real reactive-
+oxygen-species molecule behind oxidative DNA damage, same register
+shape): 0.0022/0.1351/0.0975 kcal/mol -- an unexplained, disclosed,
+noisy-backend sensitivity vs formaldehyde despite matching gate count
+and retention, root-caused later (see iteration 59-60 below) to a
+near-singular correction-ratio blowup, not a property of the molecule.
+Acetaldehyde (real IARC Group 1 carcinogen, ethanol's toxic metabolite,
+deliberately chosen (6e,6o) active space -> genuinely harder weight-3,
+6-qubit register, generic ansatz, real ~20-minute-per-attempt integral
+cost, checkpointed): classical K=6 truncation floor 0.0027 kcal/mol,
+real result 0.0125/0.2122/0.1230 kcal/mol. All 12 real numbers across 4
+molecules land inside chemical accuracy, each independently cross-
+checked against a separate exact reference before any quantum
+measurement (zero deviation in all 4 cases).
+
+**Iterations 58-60, response to external review (Vadim Karpusenko,
+IonQ, Sep 22 2026 email)**: a real, correct methodology critique --
+after reading this repo's own code -- that the 0.0105-0.0192 kcal/mol
+H4 headline depends on a joint Schmidt-frame fit whose reconstruction
+basis (P_S) is built from the exact classical FCI Schmidt vectors, and
+whose circuits' own state-prep angles are separately fit to those same
+exact vectors. Verified directly against the code, not disputed: both
+claims are accurate. Traced the frame-fit's own history: iteration 36's
+ORIGINAL design used a Procrustes (data-derived) initialization,
+explicitly "non-target-peeking" -- somewhere before iteration 39H this
+was replaced with U0=identity (anchored at the exact answer), undocumented
+as a deliberate methodology change.
+
+**Iteration 58 (deprioritized by explicit user direction mid-session,
+real partial progress kept, not deleted)**: attempted a genuinely blind
+H4 estimator -- a 15-parameter orthogonal frame from the plain
+computational basis (no oracle info), independent alpha/beta register
+determination (the existing beta=sign*alpha shortcut is itself oracle-
+derived, not usable blind), SPSA optimization (switched from COBYLA
+after a real, measured failure: COBYLA needs >=32 evaluations just to
+build its initial model and scipy exposes no resumable state -- a real
+10-eval/108-minute/5,460-circuit COBYLA attempt was lost entirely to a
+memory-kill). Architecture fully verified offline (0.000000 kcal/mol
+round-trip with correct, offline-only signs) before any real submission.
+Real SPSA run: 6 real steps, 3,024 circuits, genuine but slow movement
+toward the true energy (-1.933 -> -1.938 Ha vs exact -2.166387 Ha) --
+not converged; realistically a multi-day undertaking on this machine.
+Stopped, not abandoned: a real, honest, disclosed partial result.
+
+**Iteration 59, testing whether the ALREADY-VALIDATED general-commuting
+(GC) measurement grouping (4 groups vs 13, iteration 46-49) helps the
+no-frame-fit number**: a full, real 21-slot x 3-backend sweep (never
+run to completion before -- only a 3-slot spot-check existed). Result:
+WORSE, not better -- ideal=0.8784, aria-1=9.5660, forte-1=8.2435
+kcal/mol. Root-caused, not left as a mystery: the nonzero IDEAL-backend
+error (should be ~0, H4's K=6 is the exact rank) is real shot noise, not
+a bug -- verified by an exact (no shot noise) statevector reconstruction
+through the identical code path, giving 0.000000 kcal/mol. Denser
+measurement groups (4 GC groups packing 36 labels vs 13 QWC groups)
+dilute the effective per-label shot budget at fixed total shots -- a
+real, disclosed, negative finding about circuit-count reduction: fewer
+circuits does not mean cheaper information at a fixed shot count.
+
+**Iteration 60, the real fix**: diagnosed whether the no-frame-fit
+number's single-draw inconsistency (aria-1 1.50-2.24 kcal/mol across 3
+independent real draws, never passing; forte-1 0.07-1.86, passing on
+1 of 3) is systematic bias or ordinary shot noise. The H2O2-style shot-
+noise-aware correction-ratio fix (iteration 56's own real finding) was
+tested first and did NOT help (aria-1 stayed pinned at 1.4-2.3 kcal/mol
+regardless of cutoff) -- ruled out. Combining the RAW MEASUREMENT COUNTS
+from all 3 already-collected real draws (60,000 real shots/circuit-
+equivalent, zero new spending, zero oracle information anywhere in
+reconstruction) resolved it: aria-1=0.3630, forte-1=0.8645 kcal/mol --
+both pass chemical accuracy. Confirms the inconsistency was mostly
+ordinary shot noise. Real cost note: IonQ's own confirmed pricing
+(Vadim's Sep 8 email: a 100-shot and 500-shot job on the identical
+circuit billed almost identically, $25.79 both times) means running the
+same circuits once at 60,000 shots would NOT cost 3x a single real
+20,000-shot run on real hardware -- cost is circuit-count-driven, not
+shot-count-driven, so this fix is not a budget increase.
+
+**Honest summary of where this leaves the H4 headline**: two real,
+verified numbers now exist. WITH the frame fit (oracle-informed
+reconstruction basis, in addition to oracle-informed circuits):
+0.0105-0.0192 kcal/mol, tight margin, replicated 8x. WITHOUT the frame
+fit (oracle-informed circuits only, disclosed plainly, no oracle
+information in reconstruction): 0.3630/0.8645 kcal/mol using 3
+combined real draws, thinner margin, real. Both are reported, neither
+hidden.
+
+---
+
 **STATUS UPDATE (iterations 50-53, COVALENT-BONDING TAILORING RESOLVED,
 real free-simulator work, no real hardware money spent this round):
 picks up the negative result in "Multi-fragment molecular tailoring on
