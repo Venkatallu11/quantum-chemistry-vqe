@@ -190,14 +190,64 @@ def fit_slot_data_only(P_S, measured, weights, seed, n_restarts=N_RESTARTS):
     return SlotFit(vector=v, weighted_sse=float(best.fun), n_obs=len(labels))
 
 
-def split_slots(kept, seed=60, val_fraction=VAL_FRACTION):
+def split_labels(kept, labels, seed=60, val_fraction=VAL_FRACTION):
+    """Split measured Pauli labels INSIDE EACH SLOT.
+
+    This is a real held-out test: fit the 5 state parameters using only the
+    training labels for that same slot, then score the fitted state on
+    labels that were not used by the fit. Splitting whole slots would not be
+    a meaningful generalization test here because this estimator has one
+    independent state per slot and there is intentionally no shared frame.
+    """
     rng = np.random.default_rng(seed)
-    kept = list(kept)
-    n_val = max(1, int(round(len(kept) * val_fraction)))
-    val_idx = set(rng.choice(len(kept), size=n_val, replace=False).tolist())
-    train = [name for i, name in enumerate(kept) if i not in val_idx]
-    val = [name for i, name in enumerate(kept) if i in val_idx]
+    train = {}
+    val = {}
+    for i, name in enumerate(kept):
+        labels_here = list(labels)
+        n_val = max(1, int(round(len(labels_here) * val_fraction)))
+        val_idx = set(
+            rng.choice(len(labels_here), size=n_val, replace=False).tolist()
+        )
+        train[name] = [
+            label for j, label in enumerate(labels_here) if j not in val_idx
+        ]
+        val[name] = [
+            label for j, label in enumerate(labels_here) if j in val_idx
+        ]
     return train, val
+
+def fit_and_score_candidate(corrected, weights, P_S, kept, train_labels, val_labels):
+    """Fit each slot on its training observables; score only held-out labels."""
+    fits = {}
+    sse = 0.0
+    n = 0
+    for i, name in enumerate(kept):
+        train_measured = {
+            label: corrected[name][label] for label in train_labels[name]
+        }
+        train_weights = {
+            label: weights[name][label] for label in train_labels[name]
+        }
+        fit = fit_slot_data_only(
+            P_S,
+            train_measured,
+            train_weights,
+            seed=6000 + i,
+        )
+        fits[name] = fit
+
+        a = fit.vector
+        for label in val_labels[name]:
+            pred = float(np.real(a @ P_S[label] @ a))
+            residual = pred - float(corrected[name][label])
+            sse += float(weights[name][label]) * residual * residual
+            n += 1
+
+    # Every slot has 5 physical degrees of freedom (unit real vector in R^6).
+    # Count those fitted parameters only in the denominator; no exact target
+    # or exact energy enters this score.
+    dof = max(1, n - len(kept) * (K - 1))
+    return fits, float(sse / dof)
 
 
 def load_pooled_postselected(checkpoint_paths, kept, backend_name):
@@ -353,7 +403,14 @@ def run_backend(backend_name, checkpoint_paths, verbose=True):
     assert n_ok == len(p["targets"])
 
     diag, plus, kept = kept_slots_for_K(K)
-    train_slots, val_slots = split_slots(kept, seed=60)
+    # The held-out split is within each slot, not across slots: the estimator
+    # has deliberately NO shared cross-slot model.
+    train_labels, val_labels = split_labels(
+        kept,
+        non_id,
+        seed=60,
+        val_fraction=VAL_FRACTION,
+    )
 
     # P_S uses the known Schmidt coordinate basis, but NO fitted frame is ever
     # constructed. This is exactly the disclosed oracle boundary for this task.
@@ -388,39 +445,30 @@ def run_backend(backend_name, checkpoint_paths, verbose=True):
             non_id,
             fixed_solutions,
         )
-        fits_train = fit_all_slots(
+        _, val_score = fit_and_score_candidate(
             corrected,
             weights,
             P_S,
-            train_slots,
-            seed_base=6000,
+            kept,
+            train_labels,
+            val_labels,
         )
-        train_score = fit_residual_score(fits_train)
-
-        fits_val = fit_all_slots(
-            corrected,
-            weights,
-            P_S,
-            val_slots,
-            seed_base=7000,
-        )
-        val_score = fit_residual_score(fits_val)
 
         row = {
             "p_gpi2": float(p_gpi2),
-            "train_chi2_dof": train_score,
-            "val_chi2_dof": val_score,
+            "heldout_chi2_dof": float(val_score),
         }
         candidates.append(row)
 
         if verbose:
             print(
                 f"  p_gpi2={p_gpi2:.4f}  "
-                f"train_chi2/dof={train_score:.6g}  "
-                f"heldout_chi2/dof={val_score:.6g}"
+                f"heldout chi2/dof={val_score:.6g}"
             )
 
-    winner = min(candidates, key=lambda r: r["train_chi2_dof"])
+    # Candidate selection is based solely on held-out measurement residuals.
+    # There is no exact-energy objective anywhere in this loop.
+    winner = min(candidates, key=lambda r: r["heldout_chi2_dof"])
     best_p = float(winner["p_gpi2"])
 
     # Final reconstruction on ALL data. Exact energy enters only here, as an
@@ -448,10 +496,9 @@ def run_backend(backend_name, checkpoint_paths, verbose=True):
     )
     E, errs = energy_report(p, full, K)
 
-    print("\n  SELECTED BY MEASUREMENT-ONLY CRITERION")
+    print("\n  SELECTED BY HELD-OUT MEASUREMENT-ONLY CRITERION")
     print(f"    p_gpi2 = {best_p:.7f}")
-    print(f"    training chi2/dof = {winner['train_chi2_dof']:.6g}")
-    print(f"    held-out chi2/dof = {winner['val_chi2_dof']:.6g}")
+    print(f"    held-out chi2/dof = {winner['heldout_chi2_dof']:.6g}")
 
     print("\n  INFORMATIONAL ENERGY CHECK (NOT USED IN SELECTION)")
     print(f"    E = {E:.10f} Ha")
@@ -465,8 +512,8 @@ def run_backend(backend_name, checkpoint_paths, verbose=True):
         "pooled_draws": len(checkpoint_paths),
         "shots_per_circuit_per_draw": observed_shots_per_circuit,
         "total_shots_per_circuit": total_shots,
-        "train_slots": train_slots,
-        "validation_slots": val_slots,
+        "train_labels_by_slot": train_labels,
+        "validation_labels_by_slot": val_labels,
         "candidates": candidates,
         "winner": winner,
         "final_energy_ha": E,
