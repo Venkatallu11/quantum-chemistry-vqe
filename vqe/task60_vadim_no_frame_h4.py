@@ -84,7 +84,7 @@ import sys
 from dataclasses import dataclass
 
 import numpy as np
-from scipy.optimize import minimize
+from scipy.optimize import least_squares
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -150,45 +150,93 @@ def _spectral_initializer(P_S, measured, weights):
     return v / nrm
 
 
+def vector_to_angles(v):
+    """Convert a real unit vector to the five Givens-sphere angles.
+
+    Starting from e0, successive rotations in planes (0,i) generate every
+    point on S^(K-1). A global sign is irrelevant for a pure state, so the
+    input is oriented with v[0] >= 0 when possible.
+    """
+    v = np.asarray(v, dtype=float)
+    v = v / max(np.linalg.norm(v), FIT_FLOOR)
+    if v[0] < 0:
+        v = -v
+
+    theta = np.zeros(K - 1, dtype=float)
+    # For the construction a_i = sin(theta_i) * product_{j>i} cos(theta_j).
+    # Recover angles from the last coordinate backwards using prefix norms.
+    work = v.copy()
+    for i in range(K - 1, 0, -1):
+        r = float(np.linalg.norm(work[:i]))
+        theta[i - 1] = np.arctan2(float(work[i]), max(r, FIT_FLOOR))
+        if abs(np.cos(theta[i - 1])) > FIT_FLOOR:
+            work[:i] /= np.cos(theta[i - 1])
+        work[i] = 0.0
+        nrm = float(np.linalg.norm(work[:i]))
+        if nrm > FIT_FLOOR:
+            work[:i] *= r / nrm
+    return theta
+
+
+def angles_to_vector(theta):
+    """Five-angle Givens parameterization of a real K-dimensional unit vector."""
+    theta = np.asarray(theta, dtype=float)
+    if theta.shape != (K - 1,):
+        raise ValueError(f'expected {K-1} angles, got {theta.shape}')
+    a = np.zeros(K, dtype=float)
+    a[0] = 1.0
+    for i, t in enumerate(theta, start=1):
+        old0 = a[0]
+        c = float(np.cos(t))
+        s = float(np.sin(t))
+        a[0] = old0 * c
+        a[i] = old0 * s
+    return a
+
+
 def fit_slot_data_only(P_S, measured, weights, seed, n_restarts=N_RESTARTS):
-    """Independent 5-parameter pure-state fit with NO target initialization."""
+    """Independent five-angle physical-state fit with NO target initialization.
+
+    This is the same normalized real-pure-state manifold as the prior
+    implementation, but removes the flat radial/scaling direction of
+    v -> v/||v||. The five fit variables are all physical coordinates.
+    """
     labels = list(measured)
     Ps = [np.real_if_close(np.asarray(P_S[l])).astype(float) for l in labels]
     ms = np.asarray([measured[l] for l in labels], dtype=float)
     ws = np.asarray([weights.get(l, 1.0) for l in labels], dtype=float)
     ws = np.maximum(ws, 1.0)
 
-    def objective(v):
-        nrm = np.linalg.norm(v)
-        if not np.isfinite(nrm) or nrm < FIT_FLOOR:
-            return 1e30
-        a = v / nrm
+    def residuals(theta):
+        a = angles_to_vector(theta)
         pred = np.asarray([float(a @ P @ a) for P in Ps], dtype=float)
-        return float(np.sum(ws * (pred - ms) ** 2))
+        return np.sqrt(ws) * (pred - ms)
 
-    rng = np.random.default_rng(seed)
     v_spec = _spectral_initializer(P_S, measured, weights)
-    inits = [v_spec, np.ones(K, dtype=float) / np.sqrt(K)]
-    # Deterministic, target-free random restarts.
+    theta_spec = vector_to_angles(v_spec)
+    rng = np.random.default_rng(seed)
+    inits = [theta_spec, np.zeros(K - 1, dtype=float)]
     for _ in range(max(0, n_restarts - len(inits))):
-        v = rng.normal(size=K)
-        v /= max(np.linalg.norm(v), FIT_FLOOR)
-        inits.append(v)
+        inits.append(rng.uniform(-np.pi, np.pi, K - 1))
 
     best = None
-    for v0 in inits:
-        res = minimize(objective, v0, method="L-BFGS-B")
-        if not np.isfinite(res.fun):
+    for theta0 in inits:
+        try:
+            res = least_squares(
+                residuals, theta0, method='lm',
+                xtol=1e-13, ftol=1e-13, gtol=1e-13, max_nfev=2500,
+            )
+        except Exception:
             continue
-        if best is None or res.fun < best.fun:
-            best = res
+        sse = float(np.sum(np.square(res.fun)))
+        if np.isfinite(sse) and (best is None or sse < best[0]):
+            best = (sse, np.asarray(res.x, dtype=float))
 
     if best is None:
-        raise RuntimeError("all no-frame pure-state fits failed")
-
-    v = np.asarray(best.x, dtype=float)
-    v /= max(np.linalg.norm(v), FIT_FLOOR)
-    return SlotFit(vector=v, weighted_sse=float(best.fun), n_obs=len(labels))
+        raise RuntimeError('all no-frame physical-state fits failed')
+    sse, theta_hat = best
+    a_hat = angles_to_vector(theta_hat)
+    return SlotFit(vector=a_hat, weighted_sse=sse, n_obs=len(labels))
 
 
 def split_labels(kept, labels, seed=60, val_fraction=VAL_FRACTION):
