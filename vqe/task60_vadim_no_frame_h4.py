@@ -560,3 +560,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Validation trigger: fine GPi2 sweep is pre-registered and measurement-selected only.
