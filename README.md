@@ -57,7 +57,8 @@ there:
   across all 21 measurement slots at once, instead of 21 independent fits.
 - **General-commuting measurement grouping** — exact minimum graph
   coloring cuts 273 circuits to 84 (69% fewer), verified to 6.66e-16
-  before trusting it.
+  before trusting it; confirmed on real data paired with the frame fit
+  at 0.0228/0.0204 kcal/mol (see §1 caveat section below).
 
 **Result — real submissions to IonQ's `ionq_simulator`, using the
 `aria-1` and `forte-1` noise models (simulator-only, not live hardware
@@ -130,11 +131,36 @@ reconstruction, at a real, honest, disclosed cost in tightness compared
 to the frame-fit number.
 
 A separate attempt to also reduce circuit count via general-commuting
-grouping (4 groups instead of 13) was tried and made things *worse*
-(ideal-backend error jumped to 0.88 kcal/mol) — a real, understood,
-disclosed finding: denser measurement groups dilute per-label shot
-statistics, trading circuit-count efficiency for statistical precision.
-See `vqe/task59_h4_gc_no_frame_fit.py`.
+(GC) grouping (4 groups instead of 13, 84 circuits instead of 273) was
+tried *without* the frame fit and made things *worse* (ideal-backend
+error jumped to 0.88 kcal/mol) — a real, understood, disclosed finding:
+denser measurement groups dilute per-label shot statistics, trading
+circuit-count efficiency for statistical precision. See
+`vqe/task59_h4_gc_no_frame_fit.py`.
+
+**But pairing that same low-circuit GC design *with* the frame fit works
+— and it's a real result, not a projection.** `vqe/task47_gc_noisy_champion_comparison.py`
+first showed this analytically (GC+frame-fit at ~2x QWC+frame-fit's
+error, both far under the 0.25 kcal/mol bar). `vqe/task66_h4_gc_frame_fit.py`
+then confirmed it with real finite-shot data — reusing the exact same
+already-collected real GC circuit counts from task59 above (zero new
+submissions, zero new cost), fed through the joint Schmidt-frame fit
+instead of the no-frame reconstruction:
+
+| Backend | GC (84 circuits) + frame-fit | Same data, no frame fit (task59) |
+|---|---|---|
+| ideal | 0.0039 kcal/mol | 0.8784 kcal/mol |
+| aria-1 | **0.0228 kcal/mol** | 9.5660 kcal/mol |
+| forte-1 | **0.0204 kcal/mol** | 8.2435 kcal/mol |
+
+Real chemical accuracy, in the same range as the original 273-circuit
+result (0.0105-0.0192 kcal/mol), using **3.25x fewer circuits** — the
+joint frame fit's cross-slot pooling is what absorbs the shot-noise
+dilution that broke the no-frame-fit reconstruction on the same data.
+This still carries the same oracle-dependency caveat as every frame-fit
+result above (the reconstruction basis is built from the exact FCI
+Schmidt vectors) — it is a real circuit-efficiency result, not a fix for
+the no-frame-fit question.
 
 ---
 
@@ -247,6 +273,7 @@ python vqe/task40_certification_ablation_adversarial.py       # H4 WITHOUT the f
 python vqe/task60_h4_no_frame_fit_multidraw.py                # H4 without the frame fit, simple pooling -> 0.36/0.86 kcal/mol
 python vqe/task61_h4_no_frame_gls.py --backend aria-1 --p-gpi2 0.0006 --checkpoint vqe/task39c_ancilla_real_submission_draw1.partial.json,vqe/task39c_ancilla_real_submission_draw2.partial.json,vqe/task39c_ancilla_real_submission_draw3.partial.json
                                                                 # H4 without the frame fit, covariance-aware GLS (better) -> 0.20/0.46 kcal/mol
+python vqe/task66_h4_gc_frame_fit.py                            # H4, low-circuit GC design (84) + frame fit, real data -> 0.02 kcal/mol
 python vqe/task52_covalent_tailoring_result.py                # the real tailored H6 result, no network calls
 python vqe/task54_lih_new_molecule.py --analyze                # LiH, already-collected real data
 python vqe/task55_formaldehyde_carcinogen.py --analyze         # formaldehyde, already-collected real data
