@@ -151,23 +151,26 @@ def _spectral_initializer(P_S, measured, weights):
 
 
 def vector_to_angles(v):
-    """Convert a real unit vector to five bounded Givens-sphere angles.
+    """Convert a real unit vector to bounded Givens-sphere angles.
 
-    With theta_i in [-pi/2, pi/2], every cosine is nonnegative and the
-    construction covers the unit sphere up to the physically irrelevant
-    global sign.
+    The forward parameterization rotates the surviving coordinate 0 into
+    coordinate i at each step, so inversion proceeds from i=1 upward.
+    theta_i in [-pi/2, pi/2] keeps every cosine nonnegative; global sign
+    is physically irrelevant for a pure state.
     """
     v = np.asarray(v, dtype=float)
     v = v / max(np.linalg.norm(v), FIT_FLOOR)
     if v[0] < 0:
         v = -v
-    theta = np.zeros(K - 1, dtype=float)
     work = v.copy()
-    for i in range(K - 1, 0, -1):
-        r = float(np.linalg.norm(work[:i]))
+    theta = np.zeros(K - 1, dtype=float)
+    for i in range(1, K):
+        r = float(np.sqrt(work[0] ** 2 + np.sum(work[i + 1:] ** 2)))
         theta[i - 1] = np.arctan2(float(work[i]), max(r, FIT_FLOOR))
         if r > FIT_FLOOR:
-            work[:i] /= r
+            work[0] /= r
+            work[i + 1:] /= r
+        work[i] = 0.0
     return theta
 
 
