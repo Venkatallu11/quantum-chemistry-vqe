@@ -151,30 +151,23 @@ def _spectral_initializer(P_S, measured, weights):
 
 
 def vector_to_angles(v):
-    """Convert a real unit vector to the five Givens-sphere angles.
+    """Convert a real unit vector to five bounded Givens-sphere angles.
 
-    Starting from e0, successive rotations in planes (0,i) generate every
-    point on S^(K-1). A global sign is irrelevant for a pure state, so the
-    input is oriented with v[0] >= 0 when possible.
+    With theta_i in [-pi/2, pi/2], every cosine is nonnegative and the
+    construction covers the unit sphere up to the physically irrelevant
+    global sign.
     """
     v = np.asarray(v, dtype=float)
     v = v / max(np.linalg.norm(v), FIT_FLOOR)
     if v[0] < 0:
         v = -v
-
     theta = np.zeros(K - 1, dtype=float)
-    # For the construction a_i = sin(theta_i) * product_{j>i} cos(theta_j).
-    # Recover angles from the last coordinate backwards using prefix norms.
     work = v.copy()
     for i in range(K - 1, 0, -1):
         r = float(np.linalg.norm(work[:i]))
         theta[i - 1] = np.arctan2(float(work[i]), max(r, FIT_FLOOR))
-        if abs(np.cos(theta[i - 1])) > FIT_FLOOR:
-            work[:i] /= np.cos(theta[i - 1])
-        work[i] = 0.0
-        nrm = float(np.linalg.norm(work[:i]))
-        if nrm > FIT_FLOOR:
-            work[:i] *= r / nrm
+        if r > FIT_FLOOR:
+            work[:i] /= r
     return theta
 
 
@@ -223,8 +216,9 @@ def fit_slot_data_only(P_S, measured, weights, seed, n_restarts=N_RESTARTS):
     for theta0 in inits:
         try:
             res = least_squares(
-                residuals, theta0, method='lm',
-                xtol=1e-13, ftol=1e-13, gtol=1e-13, max_nfev=2500,
+                residuals, theta0, method='trf',
+                bounds=(-0.5 * np.pi, 0.5 * np.pi),
+                xtol=1e-12, ftol=1e-12, gtol=1e-12, max_nfev=1800,
             )
         except Exception:
             continue
