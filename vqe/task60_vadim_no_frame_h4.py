@@ -297,38 +297,39 @@ def fit_and_score_candidate(corrected, weights, P_S, kept, train_labels, val_lab
 
 
 def load_pooled_postselected(checkpoint_paths, kept, backend_name):
-    """Pool raw bitstring histograms BEFORE postselection."""
-    merged = {name: {} for name in kept}
+    """Pool raw histograms before postselection and return expectations + retained shots.
 
+    For each commuting group, every Pauli label shares the same accepted
+    count after ancilla-parity filtering. The retained count, not the
+    pre-selection 60k shot count, is the Bernoulli sample size for its
+    conditional expectation variance.
+    """
     states = []
     for path in checkpoint_paths:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, 'r', encoding='utf-8') as f:
             states.append(json.load(f))
 
-    for name in kept:
-        # Each submission has the same groups and same circuit ordering.
-        for state in states:
-            entry = state["done"][f"{backend_name}|{name}"]
-            if "pooled_counts" not in merged[name]:
-                merged[name]["pooled_counts"] = []
-            merged[name]["pooled_counts"].append(entry["counts"])
-
     out = {name: {} for name in kept}
+    kept_shots = {name: {} for name in kept}
     for name in kept:
-        group_count = len(merged[name]["pooled_counts"][0])
-        for gi in range(group_count):
+        entry0 = states[0]['done'][f'{backend_name}|{name}']
+        n_groups = len(entry0['counts'])
+        for gi in range(n_groups):
             pooled_counts = {}
-            for draw_groups in merged[name]["pooled_counts"]:
-                for bs, count in draw_groups[gi].items():
+            for state in states:
+                entry = state['done'][f'{backend_name}|{name}']
+                for bs, count in entry['counts'][gi].items():
                     pooled_counts[bs] = pooled_counts.get(bs, 0) + int(count)
 
-            kept_counts = {bs[1:]: c for bs, c in pooled_counts.items() if bs[0] == "0"}
-            # Need the group's labels from any source entry.
-            group = states[0]["done"][f"{backend_name}|{name}"]["groups"][gi]
+            kept_counts = {
+                bs[1:]: c for bs, c in pooled_counts.items() if bs[0] == '0'
+            }
+            n_kept = int(sum(kept_counts.values()))
+            group = entry0['groups'][gi]
             for label in group:
                 out[name][label] = expectation_from_counts(kept_counts, label)
-
-    return out
+                kept_shots[name][label] = n_kept
+    return out, kept_shots
 
 
 def corrected_observables(
@@ -364,12 +365,13 @@ def corrected_observables(
     return corrected
 
 
-def variance_weights(corrected, total_shots):
+def variance_weights(corrected, kept_shots):
     weights = {}
     for name, vals in corrected.items():
         weights[name] = {}
         for label, m in vals.items():
-            var = max(1.0 - float(m) ** 2, 1e-4) / max(total_shots, 1)
+            n_eff = max(int(kept_shots[name].get(label, 1)), 1)
+            var = max(1.0 - float(m) ** 2, 1e-4) / n_eff
             weights[name][label] = 1.0 / var
     return weights
 
@@ -463,7 +465,7 @@ def run_backend(backend_name, checkpoint_paths, verbose=True):
     U_exact = np.asarray(p["u_vecs"]).T
     P_S = build_P_S(p["alpha_labels"], U_exact)
 
-    postselected = load_pooled_postselected(
+    postselected, kept_shots = load_pooled_postselected(
         checkpoint_paths,
         kept,
         backend_name,
@@ -480,7 +482,7 @@ def run_backend(backend_name, checkpoint_paths, verbose=True):
     )
     total_shots = observed_shots_per_circuit * len(checkpoint_paths)
 
-    weights = variance_weights(postselected, total_shots)
+    weights = variance_weights(postselected, kept_shots)
 
     candidates = []
     for p_gpi2 in GPI2_GRID:
@@ -558,6 +560,8 @@ def run_backend(backend_name, checkpoint_paths, verbose=True):
         "pooled_draws": len(checkpoint_paths),
         "shots_per_circuit_per_draw": observed_shots_per_circuit,
         "total_shots_per_circuit": total_shots,
+        "retained_shots_min": int(min(v for by_label in kept_shots.values() for v in by_label.values())),
+        "retained_shots_max": int(max(v for by_label in kept_shots.values() for v in by_label.values())),
         "train_labels_by_slot": train_labels,
         "validation_labels_by_slot": val_labels,
         "candidates": candidates,
