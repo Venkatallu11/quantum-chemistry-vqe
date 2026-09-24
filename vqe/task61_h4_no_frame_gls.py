@@ -222,6 +222,8 @@ def build_full_from_states(states, diag, K, non_id):
             plus = f"(u{n}+u{m})"
             minus = f"(u{n}-u{m})"
             ap = states[plus]
+            full[plus] = {}
+            full[minus] = {}
             for label in non_id:
                 P = np.real_if_close(np.asarray(P_S_GLOBAL[label])).astype(float)
                 full[plus][label] = float(ap @ P @ ap)
