@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-task60_vadim_no_frame_h4.py -- H4 no-frame estimator requested by Vadim.
+task60_ionq_no_frame_h4.py -- H4 no-frame estimator requested by IonQ.
 
 GOAL
 ----
@@ -19,7 +19,7 @@ WHAT IS ALLOWED / DISCLOSED
 ---------------------------
 The underlying H4 entanglement-forging experiment is still oracle-assisted:
 the Schmidt basis and target preparation angles come from the exact classical
-FCI solution. That is the dependency Vadim asked to disclose in the README and
+FCI solution. That is the dependency IonQ asked to disclose in the README and
 preprint. The exact FCI ENERGY is NOT used to choose any correction parameter
 or any reconstructed state.
 
@@ -33,7 +33,7 @@ WHY THIS IS A DISTINCT NO-FRAME TEST
 The old no-frame ablation (task40) inserted corrected Pauli expectations directly
 into matrix elements. That exposes all finite-shot inconsistency independently.
 The joint-frame estimator removed this noise by fitting ONE shared frame, but that
-is exactly the step Vadim objected to.
+is exactly the step IonQ objected to.
 
 Here we keep the per-slot physical constraints only:
 
@@ -57,7 +57,7 @@ does not average final energies and does not introduce FCI information.
 
 PRODUCTION INVOCATION
 ---------------------
-    PYTHONHASHSEED=0 python vqe/task60_vadim_no_frame_h4.py \
+    PYTHONHASHSEED=0 python vqe/task60_ionq_no_frame_h4.py \
         --backend aria-1 \
         --checkpoint vqe/task39c_ancilla_real_submission.partial.json
 
@@ -442,7 +442,7 @@ def energy_report(p, raw, K):
 
 def run_backend(backend_name, checkpoint_paths, verbose=True):
     print("\n" + "=" * 96)
-    print(f"  TASK 60 -- VADIM NO-FRAME H4 | backend={backend_name}")
+    print(f"  TASK 60 -- IonQ NO-FRAME H4 | backend={backend_name}")
     print("=" * 96)
 
     p = setup_fragment([0, 1, 2, 3], nelec=4, d=1.0, K=K, strict=True)
@@ -578,7 +578,7 @@ def run_backend(backend_name, checkpoint_paths, verbose=True):
 
     out_path = os.path.join(
         os.path.dirname(__file__),
-        f"task60_vadim_no_frame_{backend_name}_result.json",
+        f"task60_ionq_no_frame_{backend_name}_result.json",
     )
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(result, f, indent=2)

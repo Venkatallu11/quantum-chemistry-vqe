@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 task44_1q_gate_cost_split.py -- iteration 44. FOURTH REAL HARDWARE
-SUBMISSION, explicit user go-ahead given (2026-09-09). Tests Vadim
-Karpusenko's (IonQ Research) Sep 8 hypothesis: our real per-shot billing
+SUBMISSION, explicit user go-ahead given (2026-09-09). Tests an IonQ
+Research reviewer's Sep 8 hypothesis: our real per-shot billing
 is dominated by 1-qubit gate count (120 gpi/gpi2), not 2-qubit gate count
 (11 zz), because IonQ's real gate-shot cost model counts every native gate,
 not just the entangling ones.
@@ -27,7 +27,7 @@ cost -- not the flat per-job minimum charge -- actually drives price).
   optimized_native_circuit) -- run ONCE across the FULL composed circuit
   (register + ancilla + basis-change together), instead of stitching
   three separately-optimized-in-isolation pieces. This is the genuine,
-  previously-unexploited lever Vadim pointed at: nothing in this
+  previously-unexploited lever IonQ pointed at: nothing in this
   construction ever let IonQ's own strongest optimizer fuse/cancel 1-qubit
   gates ACROSS the seams between register, ancilla, and basis-change.
 

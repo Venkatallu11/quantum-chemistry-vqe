@@ -16,7 +16,7 @@ PRE-FLIGHT, already done and passed (task48_gc_native_hw_prep.py):
     the diagonalizer depending on the slot's own state-prep angles):
     u_0: 171x1q/16x2q, u_1: 180x1q/13x2q, u_2: 195x1q/20x2q
   - estimated real cost (validated cost model, cross-checked against
-    Vadim's own real breakeven numbers): ~$288.85 for this 3-circuit
+    IonQ's own real breakeven numbers): ~$288.85 for this 3-circuit
     batch at 2000 shots
 
 SHOTS: 2000, matching Task 43's own precedent exactly for direct

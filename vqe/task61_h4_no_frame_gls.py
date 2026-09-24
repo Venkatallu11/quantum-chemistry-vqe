@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 task61_h4_no_frame_gls.py -- covariance-aware no-frame H4 reconstruction.
 
@@ -37,7 +37,7 @@ from task39e_conditioned_correction import analytic_A_and_B_conditioned
 from task37b_h4_noise_model import GPI_REAL_MEAN
 from phys_constrained_reconstruction import build_P_S
 from ionq_simulator_binding_curve import expectation_from_counts
-from task60_vadim_no_frame_h4 import (
+from task60_ionq_no_frame_h4 import (
     K,
     GATE_NAME,
     ZZ_ASSUMED,

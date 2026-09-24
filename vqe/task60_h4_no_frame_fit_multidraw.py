@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 task60_h4_no_frame_fit_multidraw.py -- iteration 60. Direct response to
-Vadim Karpusenko's (IonQ) Sep 22 2026 methodology review: "please report
+IonQ's (IonQ) Sep 22 2026 methodology review: "please report
 the H4 energy without the exact-basis frame fit and make that the
 headline, and say in the README and preprint that the targets are the
 exact FCI Schmidt vectors."
@@ -20,7 +20,7 @@ task40_certification_ablation_adversarial.py already computes the
 "QED+PEC+GPi2 (FULL CANDIDATE)" number -- the SAME ancilla-parity +
 conditioned-PEC + GPi2 correction stack, with NO frame fit, raw corrected
 values placed directly into the K x K matrices (no P_S, no reference to
-U_exact anywhere in reconstruction) -- exactly what Vadim asked to see
+U_exact anywhere in reconstruction) -- exactly what IonQ asked to see
 reported. On a SINGLE real draw (20,000 shots), this number is
 INCONSISTENT: aria-1 ranges 1.50-2.24 kcal/mol (fails the 1 kcal/mol bar
 in all 3 independently-collected real draws checked), forte-1 ranges
@@ -64,14 +64,14 @@ this way, not assumed.
 REAL RESULT (combining draw1+draw2+draw3's real counts, no frame fit,
 no oracle information anywhere in circuit construction's reconstruction
 step -- circuits themselves still built from exact-Schmidt-vector-fit
-angles, disclosed plainly as Vadim requested, not hidden):
+angles, disclosed plainly as IonQ requested, not hidden):
     aria-1:  0.3630 kcal/mol  (PASS, chemical accuracy)
     forte-1: 0.8645 kcal/mol  (PASS, chemical accuracy, real but thin margin)
 
 COST NOTE, disclosed: this required no new real spending (draws already
 existed, free `ionq_simulator` throughout). If ported to real QPU
 hardware, this does NOT cost 3x a single-draw run -- IonQ's own real,
-already-confirmed pricing (Vadim's Sep 8 email: a 100-shot and 500-shot
+already-confirmed pricing (IonQ's Sep 8 email: a 100-shot and 500-shot
 job on the identical circuit billed almost exactly the same, $25.79 both
 times) is dominated by per-circuit fixed cost, not shot count. Running
 the SAME circuit set once at 60,000 shots, instead of three times at

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 task45_shot_count_variance_scaling.py -- iteration 45 (v2, corrected).
-Answers Vadim Karpusenko's (IonQ Research) Sep 9 question: does the
+Answers an IonQ Research reviewer's Sep 9 question: does the
 finite-shot postselection/conditioned-correction estimator need 2,000
 shots to keep its statistical error inside this project's Q95 envelope,
 or does 1,100 shots (the "free" shot count his own per-circuit minimum-
@@ -55,7 +55,7 @@ through the REAL frame-fit pipeline. It does NOT capture the separate,
 already-quantified real submission-to-submission noise-realization drift
 (aria-1 std=4.01, forte-1 std=2.31 kcal/mol on the raw energy scale,
 iteration 24-25's own drift task) -- a distinct phenomenon, not what
-Vadim asked about here.
+was asked about here.
 
 Run:
     PYTHONHASHSEED=0 python vqe/task45_shot_count_variance_scaling.py

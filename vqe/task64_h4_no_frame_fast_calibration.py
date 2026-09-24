@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Task 64 -- fast held-out calibration for H4 no-frame.
 
@@ -24,7 +24,7 @@ from task27c_full_h4_folds import kept_slots_for_K
 from task39e_conditioned_correction import analytic_A_and_B_conditioned
 from task37b_h4_noise_model import GPI_REAL_MEAN
 from phys_constrained_reconstruction import build_P_S
-from task60_vadim_no_frame_h4 import (
+from task60_ionq_no_frame_h4 import (
     K, GATE_NAME, split_labels, load_pooled_postselected,
     variance_weights, _spectral_initializer, fit_slot_data_only
 )

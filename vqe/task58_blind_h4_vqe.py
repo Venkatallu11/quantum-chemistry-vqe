@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 task58_blind_h4_vqe.py -- iteration 58. A genuinely BLIND H4 forged-energy
-estimator, built in direct response to Vadim Karpusenko's (IonQ) Sep 22
+estimator, built in direct response to an IonQ reviewer's Sep 22
 2026 methodology review: the project's existing 0.0105-0.0192 kcal/mol
 headline result relies on state-preparation circuits whose angles are
 fit directly to the classically pre-computed EXACT FCI Schmidt vectors --

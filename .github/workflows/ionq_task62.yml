@@ -1,7 +1,7 @@
-name: Vadim no-frame H4 Task 62
+﻿name: IonQ no-frame H4 Task 62
 
 concurrency:
-  group: vadim-no-frame-task62
+  group: ionq-no-frame-task62
   cancel-in-progress: true
 
 on:
@@ -36,5 +36,5 @@ jobs:
       - name: Upload Task 62 results
         uses: actions/upload-artifact@v4
         with:
-          name: vadim-task62-results
+          name: ionq-task62-results
           path: vqe/task62_h4_no_frame_noise_calibration_*_result.json

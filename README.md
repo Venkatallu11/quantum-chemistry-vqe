@@ -5,8 +5,19 @@
 **A from-scratch quantum chemistry engine.** No PySCF, no Psi4, no
 lookup tables for the core math — integrals, Hartree-Fock, and the qubit
 Hamiltonian are all built from atomic geometry alone, then verified
-against PySCF and run for real on IonQ trapped-ion hardware. Every number
-below is a real, reproducible computation. Nothing is hardcoded.
+against PySCF and run on IonQ's Cloud service. Every number below is a
+real, reproducible computation. Nothing is hardcoded.
+
+**Terminology, stated precisely up front:** almost every result in this
+README runs on IonQ's free `ionq_simulator`, using noise models *named*
+`aria-1` and `forte-1` — historical device noise profiles available for
+simulation. **These are not live hardware submissions.** Aria-1 hardware
+itself has been retired; it is not possible to submit to it, real or
+otherwise. The only genuine real-hardware runs in this entire project
+targeted `qpu.forte-enterprise-1` (the live Forte system) directly, are
+explicitly labeled as such with real job IDs, and are called out
+individually below — everywhere else, "aria-1"/"forte-1" means the
+simulator's noise model of that name, not a physical machine.
 
 ---
 
@@ -48,8 +59,10 @@ there:
   coloring cuts 273 circuits to 84 (69% fewer), verified to 6.66e-16
   before trusting it.
 
-**Result — real IonQ `ionq_simulator`, both `aria-1` and `forte-1`,
-replicated across 4 independent submissions each (8 numbers total):**
+**Result — real submissions to IonQ's `ionq_simulator`, using the
+`aria-1` and `forte-1` noise models (simulator-only, not live hardware
+— see terminology note above), replicated across 4 independent
+submissions each (8 numbers total):**
 
 **0.0105 – 0.0192 kcal/mol**, every single run.
 
@@ -65,8 +78,8 @@ full real-hardware run has not been done yet.**
 
 ### An important caveat, found by external review — read this before trusting the number above
 
-An IonQ reviewer (Vadim Karpusenko) read this repository's own code and
-raised a real, correct point: the 0.0105-0.0192 kcal/mol number above
+An IonQ reviewer read this repository's own code and raised a real,
+correct point: the 0.0105-0.0192 kcal/mol number above
 comes from a **joint Schmidt-frame fit** whose reconstruction basis is
 built directly from the exact, classically pre-computed FCI Schmidt
 vectors — and the circuits' own state-prep angles are separately fit to
@@ -200,9 +213,11 @@ specific Hamiltonian is more noise-sensitive. Not yet understood.
 3. **Entanglement forging** — split the register in half, Schmidt-decompose
    the exact ground state, measure each half's Pauli expectations
    separately, reconstruct the energy classically.
-4. **Real IonQ Cloud** — free simulators (`ideal`/`aria-1`/`forte-1`) for
-   every result above, real trapped-ion hardware for spot-checks, every
-   real dollar spent disclosed with cost estimates given in advance.
+4. **Real IonQ Cloud** — free `ionq_simulator` (with `ideal`/`aria-1`/
+   `forte-1` noise models — simulator-only) for every result above;
+   real `qpu.forte-enterprise-1` trapped-ion hardware for the few
+   explicitly-labeled spot-checks; every real dollar spent disclosed
+   with cost estimates given in advance.
 
 ---
 

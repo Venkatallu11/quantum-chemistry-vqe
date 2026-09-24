@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Unit test for Task 60's five-angle S^5 parameterization."""
 import numpy as np
 
-from task60_vadim_no_frame_h4 import angles_to_vector, vector_to_angles, K
+from task60_ionq_no_frame_h4 import angles_to_vector, vector_to_angles, K
 
 rng = np.random.default_rng(60060)
 worst = 0.0

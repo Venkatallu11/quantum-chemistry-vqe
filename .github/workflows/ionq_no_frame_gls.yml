@@ -1,7 +1,7 @@
-name: Vadim no-frame H4 GLS
+﻿name: IonQ no-frame H4 GLS
 
 concurrency:
-  group: vadim-no-frame-h4-gls
+  group: ionq-no-frame-h4-gls
   cancel-in-progress: true
 
 on:

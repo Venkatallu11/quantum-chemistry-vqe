@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 task59_h4_gc_no_frame_fit.py -- iteration 59. Real H4 no-frame-fit
 measurement using the LOWEST-CIRCUIT-COUNT design available (general-
@@ -10,7 +10,7 @@ sweep -- the earlier GC real-hardware check (task49) only ever covered 3
 slots as a physical-correctness spot-check, never a full energy
 measurement. Every circuit is still built by fitting angles to the
 EXACT classical Schmidt vectors -- this is the same oracle-informed
-circuit construction task40's ablation and Vadim's Sep 22 email both
+circuit construction task40's ablation and IonQ's Sep 22 email both
 already account for; only the MEASUREMENT GROUPING changes here, purely
 a real, already-validated efficiency improvement, unrelated to the
 oracle-basis question.

@@ -1,7 +1,7 @@
-name: Vadim no-frame H4 Task 64
+﻿name: IonQ no-frame H4 Task 64
 
 concurrency:
-  group: vadim-no-frame-task64
+  group: ionq-no-frame-task64
   cancel-in-progress: true
 
 on:
@@ -36,5 +36,5 @@ jobs:
       - name: Upload Task 64 results
         uses: actions/upload-artifact@v4
         with:
-          name: vadim-task64-results
+          name: ionq-task64-results
           path: vqe/task64_h4_no_frame_fast_calibration_*_result.json

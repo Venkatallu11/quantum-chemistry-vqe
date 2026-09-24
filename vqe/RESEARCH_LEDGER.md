@@ -26,8 +26,8 @@ molecules land inside chemical accuracy, each independently cross-
 checked against a separate exact reference before any quantum
 measurement (zero deviation in all 4 cases).
 
-**Iterations 58-60, response to external review (Vadim Karpusenko,
-IonQ, Sep 22 2026 email)**: a real, correct methodology critique --
+**Iterations 58-60, response to external review (IonQ, Sep 22 2026
+email)**: a real, correct methodology critique --
 after reading this repo's own code -- that the 0.0105-0.0192 kcal/mol
 H4 headline depends on a joint Schmidt-frame fit whose reconstruction
 basis (P_S) is built from the exact classical FCI Schmidt vectors, and
@@ -81,7 +81,7 @@ equivalent, zero new spending, zero oracle information anywhere in
 reconstruction) resolved it: aria-1=0.3630, forte-1=0.8645 kcal/mol --
 both pass chemical accuracy. Confirms the inconsistency was mostly
 ordinary shot noise. Real cost note: IonQ's own confirmed pricing
-(Vadim's Sep 8 email: a 100-shot and 500-shot job on the identical
+(IonQ's Sep 8 email: a 100-shot and 500-shot job on the identical
 circuit billed almost identically, $25.79 both times) means running the
 same circuits once at 60,000 shots would NOT cost 3x a single real
 20,000-shot run on real hardware -- cost is circuit-count-driven, not
@@ -657,7 +657,7 @@ observed. **Given the strength and consistency of three-for-three real,
 independent confirmations, this now crosses from "promising exploratory
 finding" to "a real result meriting serious further scrutiny and very
 likely genuine" -- but per this project's own standing discipline, it
-is still not to be reported to Vadim or treated as final without either
+is still not to be reported to IonQ or treated as final without either
 completing the fuller 8-draw protocol or otherwise independently
 corroborating it (e.g. at the original 100k-shot budget).**
 
@@ -738,7 +738,7 @@ draw check this same session found a "significant" single-draw reading
 noise across 8 real repeated draws. Iteration 31's own single-run 0.115
 kcal/mol headline did not replicate under iteration 32's direct
 re-analysis. **This number is NOT confirmed and must not be reported,
-acted on, or shown to Vadim as a real result until it survives an
+acted on, or shown to IonQ as a real result until it survives an
 actual repeated-real-submission replication check** (matching the
 established ~8-draw protocol) -- the leakage-free training/validation
 split checked for OVERFITTING TO THIS DATASET'S OWN LABELS, which it
@@ -2095,7 +2095,7 @@ still 11-18x over target**. Drift, not shot noise or method choice, is
 now the dominant blocker -- a different problem than the one this
 iteration solved, and one no single-submission correction method can fix
 by construction. A batching design for future drift estimation is
-specified but not yet deployed. Scope-change note drafted for Vadim. See
+specified but not yet deployed. Scope-change note drafted for IonQ. See
 "Iteration 30" below for the full write-up.
 
 **STATUS UPDATE (iteration 29, LOCAL BRANCH `local/attack-base-problem`,
@@ -10319,7 +10319,7 @@ estimator's single-fold reconstruction) has worked. ZNE is FROZEN for this
 iteration; the pipeline is rebuilt from direct corrections only. The
 funded deliverable's 2q-only native-gate ZNE result (14.61 kcal/mol,
 consistent with iteration 27/28's 14.28) is kept intact, not deleted or
-deprecated -- see the Vadim scope-change note at the end of this section.
+deprecated -- see the IonQ scope-change note at the end of this section.
 
 ### Task A — is the manifold estimator real, or is it injecting the answer? BLOCKING, done first
 
@@ -10844,9 +10844,9 @@ deploy, disclosed as such rather than implied already validated.
    and the quadrature combination above states the honest current
    picture instead of a hopeful one.
 
-### Scope note for Vadim -- drafted as part of this iteration, not deleting or deprecating the funded deliverable
+### Scope note for IonQ -- drafted as part of this iteration, not deleting or deprecating the funded deliverable
 
-*Vadim -- flagging a real scope decision from this iteration, not a quiet
+*Flagging a real scope decision from this iteration, not a quiet
 pivot. IonQ funded H4 entanglement forging validated through native-gate
 ZNE; that result (2q-only, per-Pauli-curve ZNE, 14.61 kcal/mol,
 consistent with iteration 27/28's 14.28) stays exactly where it is --
