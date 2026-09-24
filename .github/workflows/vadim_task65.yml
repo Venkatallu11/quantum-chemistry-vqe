@@ -1,0 +1,40 @@
+name: Vadim no-frame H4 Task 65
+
+concurrency:
+  group: vadim-no-frame-task65
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [vadim-no-frame-h4]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install -r requirements.txt qiskit-aer
+      - name: Aria Task 65
+        env:
+          PYTHONHASHSEED: "0"
+        run: |
+          python vqe/task65_h4_no_frame_readout_calibration.py             --backend aria-1             --checkpoint vqe/task39c_ancilla_real_submission_draw1.partial.json,vqe/task39c_ancilla_real_submission_draw2.partial.json,vqe/task39c_ancilla_real_submission_draw3.partial.json
+      - name: Forte Task 65
+        env:
+          PYTHONHASHSEED: "0"
+        run: |
+          python vqe/task65_h4_no_frame_readout_calibration.py             --backend forte-1             --checkpoint vqe/task39c_ancilla_real_submission_draw1.partial.json,vqe/task39c_ancilla_real_submission_draw2.partial.json,vqe/task39c_ancilla_real_submission_draw3.partial.json
+      - name: Upload Task 65 results
+        uses: actions/upload-artifact@v4
+        with:
+          name: vadim-task65-results
+          path: vqe/task65_h4_no_frame_readout_calibration_*_result.json
