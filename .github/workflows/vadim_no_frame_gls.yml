@@ -1,0 +1,35 @@
+name: Vadim no-frame H4 GLS
+
+concurrency:
+  group: vadim-no-frame-h4-gls
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [vadim-no-frame-h4]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install -r requirements.txt qiskit-aer
+      - name: Aria GLS no-frame
+        env:
+          PYTHONHASHSEED: "0"
+        run: |
+          python vqe/task61_h4_no_frame_gls.py             --backend aria-1             --p-gpi2 0.0006             --checkpoint vqe/task39c_ancilla_real_submission_draw1.partial.json,vqe/task39c_ancilla_real_submission_draw2.partial.json,vqe/task39c_ancilla_real_submission_draw3.partial.json
+      - name: Forte GLS no-frame
+        env:
+          PYTHONHASHSEED: "0"
+        run: |
+          python vqe/task61_h4_no_frame_gls.py             --backend forte-1             --p-gpi2 0.0004             --checkpoint vqe/task39c_ancilla_real_submission_draw1.partial.json,vqe/task39c_ancilla_real_submission_draw2.partial.json,vqe/task39c_ancilla_real_submission_draw3.partial.json
