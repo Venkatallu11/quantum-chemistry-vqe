@@ -1,5 +1,9 @@
 name: Vadim no-frame H4 validation
 
+concurrency:
+  group: vadim-no-frame-h4
+  cancel-in-progress: true
+
 on:
   push:
     branches: [vadim-no-frame-h4]
