@@ -107,9 +107,10 @@ ZZ_ASSUMED = 0.014593
 
 # Historical leakage-free selections are retained as central grid points,
 # but production selection is data-driven in this script.
-GPI2_GRID = np.array([
-    0.0000, 0.0002, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0010
-])
+# Fine, pre-registered local scan around the physically relevant region found
+# by the earlier held-out measurement test. This is still selected only by
+# held-out measurement residuals; exact energy is diagnostic only.
+GPI2_GRID = np.arange(0.00030, 0.000651, 0.000025)
 
 VAL_FRACTION = 0.30
 N_RESTARTS = 8
@@ -138,7 +139,7 @@ def _spectral_initializer(P_S, measured, weights):
     """
     M = np.zeros((K, K), dtype=float)
     for l, m in measured.items():
-        P = np.asarray(P_S[l], dtype=float)
+        P = np.real_if_close(np.asarray(P_S[l])).astype(float)
         M += float(weights.get(l, 1.0)) * float(m) * P
     M = 0.5 * (M + M.T)
     vals, vecs = np.linalg.eigh(M)
@@ -152,7 +153,7 @@ def _spectral_initializer(P_S, measured, weights):
 def fit_slot_data_only(P_S, measured, weights, seed, n_restarts=N_RESTARTS):
     """Independent 5-parameter pure-state fit with NO target initialization."""
     labels = list(measured)
-    Ps = [np.asarray(P_S[l], dtype=float) for l in labels]
+    Ps = [np.real_if_close(np.asarray(P_S[l])).astype(float) for l in labels]
     ms = np.asarray([measured[l] for l in labels], dtype=float)
     ws = np.asarray([weights.get(l, 1.0) for l in labels], dtype=float)
     ws = np.maximum(ws, 1.0)
