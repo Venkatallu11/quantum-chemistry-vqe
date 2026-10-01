@@ -1,0 +1,23 @@
+{
+  "ideal": {
+    "mean_accept": 1.0,
+    "raw_err_kcal": 1.2245571953090904,
+    "no_frame_err_kcal": 1.2245571953090904,
+    "shared_frame_err_kcal": 0.6054507257052428,
+    "chi2_dof": 0.0006064095963286694
+  },
+  "aria-1": {
+    "mean_accept": 0.8897077922077924,
+    "raw_err_kcal": 27.189198874842692,
+    "no_frame_err_kcal": 2.054703640077754,
+    "shared_frame_err_kcal": 0.449070269413205,
+    "chi2_dof": 0.0020022993683882486
+  },
+  "forte-1": {
+    "mean_accept": 0.8956277056277057,
+    "raw_err_kcal": 24.780001763212713,
+    "no_frame_err_kcal": 1.137505254729329,
+    "shared_frame_err_kcal": 0.6396291200248613,
+    "chi2_dof": 0.002162722422462817
+  }
+}
