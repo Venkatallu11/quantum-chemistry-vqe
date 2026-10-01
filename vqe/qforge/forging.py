@@ -50,6 +50,42 @@ decompose_pauli_terms = _effrag.decompose_pauli_terms
 group_labels_qubit_wise = _effrag.group_labels_qubit_wise
 combined_basis_label = _effrag.combined_basis_label
 
+# -- Schmidt-vector sign pinning --
+# np.linalg.svd returns each Schmidt pair (u_n, v_n) only up to a joint sign
+# flip, and which sign comes out depends on the numpy/LAPACK build. Energies
+# and single-slot fits don't care, but the target states (u_n +/- u_m)/sqrt(2)
+# and the joint Schmidt-frame fit do: data collected under one sign convention
+# silently stops matching the model under another (found in task72: vectors
+# 2, 3, 5 came out flipped on numpy 2.4.6, and the shared-frame rehearsal error
+# went from 0.23 to ~32 kcal/mol with no exception raised).
+#
+# Pinning to a fixed rule is not enough: the convention the existing H4 data
+# was collected under matches no simple rule (e.g. "largest component
+# positive" gets vector 4 wrong). So each fragment with collected data gets an
+# explicit fingerprint -- (component index, required sign) per Schmidt vector,
+# read off the convention the stored task59 free-simulator data fits exactly
+# (ideal-backend residual at the exact frame 3e-5, vs 0.20 unpinned). The
+# pinned component is each vector's largest by a clear margin, so the pin is
+# insensitive to rounding. Flipping u_n and v_n together leaves the state and
+# every energy unchanged.
+SCHMIDT_SIGN_REFERENCE = {
+    # (atoms, nelec, d): [(component index, sign) for u_0, u_1, ...]
+    ((0, 1, 2, 3), 4, 1.0): [(3, -1), (5, -1), (6, -1), (10, -1), (9, 1), (12, -1)],
+}
+
+
+def pin_schmidt_signs(u_vecs, v_vecs, reference):
+    """Flip each (u_n, v_n) pair jointly so u_n[idx] has the reference sign.
+    Returns new arrays; asserts the pinned component is far from zero."""
+    u_vecs = np.array(u_vecs, dtype=float)
+    v_vecs = np.array(v_vecs, dtype=float)
+    for n, (idx, sign) in enumerate(reference):
+        assert abs(u_vecs[n][idx]) > 0.1, f"pin component u_{n}[{idx}] too small to fix a sign"
+        if np.sign(u_vecs[n][idx]) != sign:
+            u_vecs[n] *= -1
+            v_vecs[n] *= -1
+    return u_vecs, v_vecs
+
 
 def beta_signs(u_vecs, v_vecs, K, tol=1e-8):
     """The beta-register sign-reuse shortcut: for a real-gauged state,
@@ -216,6 +252,9 @@ def setup_fragment(atoms, nelec, d, K, strict=True):
     exact_energy = e_elec + enuc
     psi_real, real_gauge_residual = real_gauge(psi)
     lambdas, u_vecs, v_vecs = schmidt_decompose_real(psi_real, n_qubits)
+    sign_ref = SCHMIDT_SIGN_REFERENCE.get((tuple(atoms), nelec, round(float(d), 6)))
+    if sign_ref is not None:
+        u_vecs, v_vecs = pin_schmidt_signs(u_vecs, v_vecs, sign_ref)
 
     max_tail = float(np.max(np.abs(lambdas[K:])))
     if strict:

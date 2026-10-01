@@ -99,10 +99,25 @@ def test_raw_vs_cdr_local_direction():
     print("  [PASS] CDRStrategy recovers the known injected scale on a synthetic example")
 
 
+def test_schmidt_signs_pinned(p):
+    """setup_fragment must return the Schmidt sign convention the stored H4
+    data was collected under, whatever sign the local SVD happens to give."""
+    from qforge.forging import SCHMIDT_SIGN_REFERENCE, pin_schmidt_signs
+    ref = SCHMIDT_SIGN_REFERENCE[((0, 1, 2, 3), 4, 1.0)]
+    u = np.asarray(p["u_vecs"])
+    for n, (idx, sign) in enumerate(ref):
+        assert np.sign(u[n][idx]) == sign, f"u_{n}[{idx}] sign not pinned"
+    flipped_u, flipped_v = -u, -u
+    re_u, _ = pin_schmidt_signs(flipped_u, flipped_v, ref)
+    assert np.allclose(re_u, u), "pinning must undo an arbitrary joint sign flip"
+    print("  [PASS] Schmidt vector signs pinned to the stored-data convention")
+
+
 if __name__ == "__main__":
     print("qforge test suite")
     test_floor_test_catches_iteration2()
     p, solutions = test_setup_and_gate_count()
+    test_schmidt_signs_pinned(p)
     test_identity_never_rescaled(p, solutions)
     test_low_signal_cutoff_enforced()
     test_opt_level_hardcoded()
