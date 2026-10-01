@@ -49,8 +49,21 @@ from ionq_simulator_binding_curve import submit_job, get_counts_list
 K = 6
 ZZ_ASSUMED = 0.014593
 PROPOSED_SHOTS = 1100
-CKPT_PATH = os.path.join(os.path.dirname(__file__), "task72_h4_full_experiment.partial.json")
-RESULTS_PATH = os.path.join(os.path.dirname(__file__), "task72_h4_full_experiment_results.json")
+
+
+def ckpt_path(trial):
+    suffix = "" if trial == 1 else f"_trial{trial}"
+    return os.path.join(os.path.dirname(__file__), f"task72_h4_full_experiment{suffix}.partial.json")
+
+
+def results_path(trial):
+    suffix = "" if trial == 1 else f"_trial{trial}"
+    return os.path.join(os.path.dirname(__file__), f"task72_h4_full_experiment{suffix}_results.json")
+
+
+# kept for backward compatibility with anything importing these directly (trial 1 paths)
+CKPT_PATH = ckpt_path(1)
+RESULTS_PATH = results_path(1)
 
 
 def setup():
@@ -71,15 +84,16 @@ def setup():
                 n_groups=n_groups, measured_groups_map=measured_groups_map)
 
 
-def load_partial():
-    if os.path.exists(CKPT_PATH):
-        with open(CKPT_PATH) as f:
+def load_partial(trial):
+    path = ckpt_path(trial)
+    if os.path.exists(path):
+        with open(path) as f:
             return json.load(f)
     return {"done": {}}
 
 
-def save_partial(state):
-    with open(CKPT_PATH, "w") as f:
+def save_partial(state, trial):
+    with open(ckpt_path(trial), "w") as f:
         json.dump(state, f, indent=2)
 
 
@@ -93,7 +107,7 @@ def build_circuits_for_slot(register_native, ancilla_native, diagonalizers, diag
     return circuits
 
 
-def submit(ctx, args):
+def submit(ctx, args, trial):
     ancilla_native = ancilla_cnots_native(GATE_NAME)
     diff = verify_native_ancilla(ancilla_native)
     print(f"  ancilla circuit regression check: diff={diff:.3e}  {'PASS' if diff < 1e-8 else 'FAIL -- STOP'}")
@@ -101,12 +115,12 @@ def submit(ctx, args):
 
     provider = connect_provider()
     backend = get_native_simulator(provider)
-    print(f"  connected, backend={backend.name}, shots={PROPOSED_SHOTS}/circuit")
+    print(f"  connected, backend={backend.name}, shots={PROPOSED_SHOTS}/circuit, trial={trial}")
 
     backends_to_run = ["ideal"] if args.canary else BACKENDS
     slots_to_run = [ctx["kept"][0]] if args.canary else ctx["kept"]
 
-    state = load_partial()
+    state = load_partial(trial)
     for backend_name in backends_to_run:
         for name in slots_to_run:
             key = f"{backend_name}|{name}"
@@ -120,10 +134,10 @@ def submit(ctx, args):
             job = submit_job(circuits, backend, backend_name, shots=PROPOSED_SHOTS)
             counts = get_counts_list(job)
             state["done"][key] = {"counts": counts, "group_idxs": group_idxs}
-            save_partial(state)
+            save_partial(state, trial)
             print(f"    done: {key} ({len(circuits)} circuits, groups={group_idxs}, {PROPOSED_SHOTS} shots each)")
 
-    print(f"\n  {'CANARY PASSED' if args.canary else 'FULL SWEEP COMPLETE'} -- saved -> {CKPT_PATH}")
+    print(f"\n  {'CANARY PASSED' if args.canary else 'FULL SWEEP COMPLETE'} -- saved -> {ckpt_path(trial)}")
 
 
 _AB_CACHE = {}
@@ -201,8 +215,24 @@ def analyze_backend(ctx, backend_name, state):
     }
 
 
-def analyze(ctx):
-    with open(CKPT_PATH) as f:
+def _run_analysis_once(ctx, state):
+    results = {}
+    for backend_name in BACKENDS:
+        results[backend_name] = analyze_backend(ctx, backend_name, state)
+    return results
+
+
+def analyze(ctx, trial, verify=True):
+    """Computes the three locked analyses from the trial's real checkpoint.
+
+    SAFEGUARD (added after task72's first run printed a number that never
+    reproduced again -- root cause never pinned down, see RESEARCH_LEDGER):
+    this reloads the checkpoint from disk and recomputes EVERYTHING a
+    SECOND time, from a completely independent in-memory state, and
+    refuses to report anything unless both passes agree exactly. A live
+    run's own immediate printout is never trusted on its own again."""
+    path = ckpt_path(trial)
+    with open(path) as f:
         state = json.load(f)
     missing = [bn for bn in BACKENDS if any(f"{bn}|{name}" not in state["done"] for name in ctx["kept"])]
     if missing:
@@ -210,18 +240,32 @@ def analyze(ctx):
         return None
 
     print(f"\n  H4 exact_energy={ctx['p']['exact_energy']:.6f} Ha")
-    print(f"  data: REAL fresh submission, 54-circuit design, 3 backends, {PROPOSED_SHOTS} shots/circuit")
-    results = {}
+    print(f"  data: REAL fresh submission, trial {trial}, 54-circuit design, 3 backends, "
+          f"{PROPOSED_SHOTS} shots/circuit")
+    results = _run_analysis_once(ctx, state)
+
+    if verify:
+        with open(path) as f:
+            state2 = json.load(f)
+        results2 = _run_analysis_once(ctx, state2)
+        for bn in BACKENDS:
+            for k in ("raw_err_kcal", "no_frame_err_kcal", "shared_frame_err_kcal"):
+                if abs(results[bn][k] - results2[bn][k]) > 1e-9:
+                    raise RuntimeError(
+                        f"REPRODUCIBILITY CHECK FAILED for trial {trial}, {bn}.{k}: "
+                        f"{results[bn][k]!r} vs {results2[bn][k]!r} on two independent passes over the SAME "
+                        f"checkpoint -- refusing to report an unverified number. Do not trust this trial.")
+        print("  reproducibility check: two independent passes agree exactly -- PASS")
+
     for backend_name in BACKENDS:
-        entry = analyze_backend(ctx, backend_name, state)
-        results[backend_name] = entry
+        entry = results[backend_name]
         print(f"    {backend_name}: accept={entry['mean_accept']:.4f}  "
               f"raw={entry['raw_err_kcal']:+.4f}  no_frame={entry['no_frame_err_kcal']:+.4f}  "
               f"shared_frame={entry['shared_frame_err_kcal']:+.4f} kcal/mol  chi2/dof={entry['chi2_dof']:.4f}")
 
-    with open(RESULTS_PATH, "w") as f:
+    with open(results_path(trial), "w") as f:
         json.dump(results, f, indent=2)
-    print(f"\n  Saved -> {RESULTS_PATH}\n")
+    print(f"\n  Saved -> {results_path(trial)}\n")
     return results
 
 
@@ -230,19 +274,20 @@ def main():
     ap.add_argument("--submit", action="store_true")
     ap.add_argument("--analyze", action="store_true")
     ap.add_argument("--canary", action="store_true")
+    ap.add_argument("--trial", type=int, default=1, help="independent trial number (separate checkpoint/results)")
     args = ap.parse_args()
     if os.environ.get("PYTHONHASHSEED") != "0":
         print("  WARNING: PYTHONHASHSEED != 0 -- rerun with PYTHONHASHSEED=0")
 
     ctx = setup()
     if args.submit or args.canary:
-        submit(ctx, args)
+        submit(ctx, args, args.trial)
         if not args.canary:
-            analyze(ctx)
+            analyze(ctx, args.trial)
     elif args.analyze:
-        analyze(ctx)
+        analyze(ctx, args.trial)
     else:
-        print("  pass --submit (full run), --canary (1 slot, ideal only), or --analyze")
+        print("  pass --submit (full run), --canary (1 slot, ideal only), or --analyze (add --trial N for trial N)")
 
 
 if __name__ == "__main__":
