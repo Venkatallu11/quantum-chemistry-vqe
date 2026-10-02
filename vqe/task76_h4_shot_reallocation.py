@@ -4,16 +4,16 @@ task76_h4_shot_reallocation.py -- iteration 76. task74 showed the
 approved $2,352.16 budget has no headroom for more shots: the current
 plan already spends it uniformly (1,100 shots on all 54 circuits). This
 tests whether REALLOCATING the SAME total dollar cost non-uniformly --
-more shots on circuits whose real measured values are closer to 0 (high
+more shots on circuits whose measured (simulator) values are closer to 0 (high
 shot-noise variance, 1-m^2 near 1), fewer on circuits already pinned
 near +/-1 (low variance) -- buys reliability without spending a cent
 more. Classic Neyman (stratified-sampling) allocation: N_i proportional
-to sqrt(V_i / cost_i), V_i estimated from the REAL already-collected
-pooled data (task73, 4,400 real shots/circuit -- plenty to resample any
+to sqrt(V_i / cost_i), V_i estimated from the already-collected
+pooled data (task73, 4,400 simulator shots/circuit -- plenty to resample any
 N_i <= 4,400 from honestly).
 
 Tests the reallocated plan the same way task75 tested the uniform one:
-bootstrap-resample the real pooled counts down to the new per-circuit
+bootstrap-resample the pooled simulator counts down to the new per-circuit
 shot counts, multiple independent draws, report the pass rate.
 
 Run:
@@ -34,7 +34,7 @@ from ionq_simulator_binding_curve import bootstrap_counts, stable_seed
 
 UNIFORM_SHOTS = 1100
 MIN_SHOTS = 300          # floor so no circuit becomes too noisy to constrain the fit
-MAX_SHOTS = 4400         # ceiling: this is all the real data we have to resample from
+MAX_SHOTS = 4400         # ceiling: this is all the simulator data we have to resample from
 N_DRAWS = int(os.environ.get("TASK76_N_DRAWS", "8"))
 CHEM_ACC_KCAL = 1.0
 STRICT_KCAL = 0.25
@@ -43,13 +43,13 @@ RESULTS_PATH = os.path.join(os.path.dirname(__file__), "task76_h4_shot_reallocat
 
 def estimate_variance_per_circuit(ctx, pooled_state):
     """V_i = mean over this circuit's labels of (1 - m^2), m from the
-    REAL pooled (4,400-shot) data -- the lowest-noise real estimate we
+    pooled (4,400-shot) simulator data -- the lowest-noise estimate we
     have of each label's true value."""
     variances = {}
     for key, entry in pooled_state["done"].items():
         backend_name, name = key.split("|", 1)
         if backend_name != "aria-1":
-            continue  # allocate shots based on the noisier real backend, not ideal
+            continue  # allocate shots based on the noisier noise-model backend, not ideal
         for local_i, gi in enumerate(entry["group_idxs"]):
             dg = ctx["diagonalizers"][gi]
             filtered = {bs[1:]: c for bs, c in entry["counts"][local_i].items() if bs[0] == "0"}

@@ -4,20 +4,29 @@
     "raw_err_kcal": 0.1668678350484629,
     "no_frame_err_kcal": 0.1668678350484629,
     "shared_frame_err_kcal": 0.18013815554585275,
-    "chi2_dof": 0.00066428522569565
+    "chi2_dof": 1.0867941222494588,
+    "unit_weight_msr": 0.0006642852256956496,
+    "n_chi2_labels": 756,
+    "n_forced_zero_excluded": 0
   },
   "aria-1": {
     "mean_accept": 0.890292207792208,
     "raw_err_kcal": 20.964046378005882,
     "no_frame_err_kcal": 0.8986416115677991,
     "shared_frame_err_kcal": 0.4884765936022158,
-    "chi2_dof": 0.0018218542135086079
+    "chi2_dof": 1.9460608283483418,
+    "unit_weight_msr": 0.0018218542135085614,
+    "n_chi2_labels": 733,
+    "n_forced_zero_excluded": 23
   },
   "forte-1": {
     "mean_accept": 0.896969696969697,
     "raw_err_kcal": 32.02524199263823,
     "no_frame_err_kcal": 1.2580488971852315,
     "shared_frame_err_kcal": 0.22473766579459584,
-    "chi2_dof": 0.0021357861716086246
+    "chi2_dof": 2.2123496440550214,
+    "unit_weight_msr": 0.0021357861716086736,
+    "n_chi2_labels": 732,
+    "n_forced_zero_excluded": 24
   }
 }

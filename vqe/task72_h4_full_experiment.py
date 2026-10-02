@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
 task72_h4_full_experiment.py -- iteration 72. The actual dress-run of the
-task71-approved 54-circuit real-hardware plan, executed for real against
+task71-approved 54-circuit real-hardware plan, executed as fresh jobs on
 IonQ's FREE ionq_simulator (ideal/aria-1/forte-1 noise models) -- zero
 real-hardware dollars spent -- before committing the approved hardware
 budget. Unlike task71 (which reused task59's OLD checkpoint, bootstrap-
-resampled down to the target shot count), this submits FRESH real jobs,
+resampled down to the target shot count), this submits FRESH simulator jobs,
 built with exactly the same 54-circuit design (6-slot full-coverage
 panel measured through all 4 GC groups, the other 15 slots measured
-through GC0+GC1 only), at the real proposed shot count (1,100
-shots/circuit), and analyzes the REAL returned counts directly -- no
+through GC0+GC1 only), at the proposed hardware shot count (1,100
+shots/circuit), and analyzes the returned simulator counts directly -- no
 bootstrap step anywhere in this script.
 
 Reuses, unchanged: task59's native ancilla-parity + ancilla regression
@@ -36,7 +36,8 @@ from phys_constrained_reconstruction import build_P_S
 from task28d_all_gate_zne import optimized_native_circuit
 from task39b_native_ancilla_parity import ancilla_cnots_native, with_ancilla_parity_native, verify_native_ancilla
 from general_commuting_measurements import build_general_commuting_measurement_plan, expectations_from_counts
-from task36_joint_schmidt_frame import fit_joint_frame, build_full_from_frame
+from task36_joint_schmidt_frame import fit_joint_frame, build_full_from_frame, slot_vector, N_THETA
+from task72_rehearsal_sign_and_chi2_check import FORCED_ZERO_RATIO
 from task59_h4_gc_no_frame_fit import GATE_NAME, GPI2_SELECTED, BACKENDS
 from task60_ionq_no_frame_h4 import fit_all_slots, build_full_from_independent_states, energy_report, variance_weights
 from task70_gc_aware_correction import analytic_A_and_B_conditioned_gc
@@ -205,14 +206,42 @@ def analyze_backend(ctx, backend_name, state):
                                              weight_unit, rng_frame, n_restarts=4)
     full_sf = build_full_from_frame(U_hat, ctx["P_S"], K, ctx["non_id_labels"], kept)
     _, errs_sf = energy_report(ctx["p"], full_sf, K)
+    chi2, n_chi2, n_forced = shot_noise_chi2_dof(U_hat, corrected, postselected, kept_shots, ctx["P_S"], kept)
 
     return {
         "mean_accept": float(np.mean(accept_fracs)),
         "raw_err_kcal": errs_raw["err_vs_exact_kcal"],
         "no_frame_err_kcal": errs_nf["err_vs_exact_kcal"],
         "shared_frame_err_kcal": errs_sf["err_vs_exact_kcal"],
-        "chi2_dof": float(chi2dof),
+        # fit_joint_frame's third return value with unit weights is a mean squared residual,
+        # NOT a chi2 -- kept under its accurate name; chi2_dof below is the shot-noise-weighted one.
+        "unit_weight_msr": float(chi2dof),
+        "chi2_dof": chi2,
+        "n_chi2_labels": n_chi2,
+        "n_forced_zero_excluded": n_forced,
     }
+
+
+def shot_noise_chi2_dof(U_hat, corrected, postselected, kept_shots, P_S, kept):
+    """Shared-frame residuals scored against each corrected label's shot-noise sigma
+    (binomial sigma of the raw postselected value times the correction ratio B/A).
+    Labels with |B/A| < FORCED_ZERO_RATIO are forced to ~0 by the correction whatever
+    was measured, carry no measurement, and are excluded (counted). Same definition as
+    task72_rehearsal_sign_and_chi2_check / task73_hw_analysis: ~1 means shot noise
+    explains the residuals."""
+    resid, n_forced = [], 0
+    for name in kept:
+        v = slot_vector(U_hat, name, K)
+        for l, y in corrected[name].items():
+            m = postselected[name][l]
+            ratio = y / m if abs(m) > 1e-9 else 1.0
+            if abs(ratio) < FORCED_ZERO_RATIO:
+                n_forced += 1
+                continue
+            sigma = np.sqrt(max(1.0 - m * m, 1e-4) / max(kept_shots[name][l], 1)) * abs(ratio)
+            resid.append((float(np.real(v @ P_S[l] @ v)) - y) / max(sigma, 1e-6))
+    resid = np.asarray(resid)
+    return float(resid @ resid / (len(resid) - N_THETA)), int(len(resid)), int(n_forced)
 
 
 def _run_analysis_once(ctx, state):
@@ -223,7 +252,7 @@ def _run_analysis_once(ctx, state):
 
 
 def analyze(ctx, trial, verify=True):
-    """Computes the three locked analyses from the trial's real checkpoint.
+    """Computes the three locked analyses from the trial's simulator checkpoint.
 
     SAFEGUARD (added after task72's first run printed a number that never
     reproduced again -- root cause never pinned down, see RESEARCH_LEDGER):
@@ -236,11 +265,11 @@ def analyze(ctx, trial, verify=True):
         state = json.load(f)
     missing = [bn for bn in BACKENDS if any(f"{bn}|{name}" not in state["done"] for name in ctx["kept"])]
     if missing:
-        print(f"  ERROR: real checkpoint incomplete for backends {missing} -- run --submit first.")
+        print(f"  ERROR: simulator checkpoint incomplete for backends {missing} -- run --submit first.")
         return None
 
     print(f"\n  H4 exact_energy={ctx['p']['exact_energy']:.6f} Ha")
-    print(f"  data: REAL fresh submission, trial {trial}, 54-circuit design, 3 backends, "
+    print(f"  data: fresh SIMULATOR submission (not hardware), trial {trial}, 54-circuit design, 3 backends, "
           f"{PROPOSED_SHOTS} shots/circuit")
     results = _run_analysis_once(ctx, state)
 
@@ -261,7 +290,8 @@ def analyze(ctx, trial, verify=True):
         entry = results[backend_name]
         print(f"    {backend_name}: accept={entry['mean_accept']:.4f}  "
               f"raw={entry['raw_err_kcal']:+.4f}  no_frame={entry['no_frame_err_kcal']:+.4f}  "
-              f"shared_frame={entry['shared_frame_err_kcal']:+.4f} kcal/mol  chi2/dof={entry['chi2_dof']:.4f}")
+              f"shared_frame={entry['shared_frame_err_kcal']:+.4f} kcal/mol  chi2/dof={entry['chi2_dof']:.2f}  "
+              f"(unit-weight msr={entry['unit_weight_msr']:.4f})")
 
     with open(results_path(trial), "w") as f:
         json.dump(results, f, indent=2)

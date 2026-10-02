@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
 task75_h4_reliability_sweep.py -- iteration 75. task73 showed pooling
-all 4 real trials (4,400 effective shots/circuit) reliably clears
+all 4 simulator trials (4,400 effective shots/circuit) reliably clears
 chemical accuracy, but that may cost more than the approved $2,352.16
 budget supports (task74 checks the real price). This sweep answers the
-PRACTICAL question: what's the SMALLEST real shot count, within what
+PRACTICAL question: what's the SMALLEST shot count, within what
 we've already honestly collected, that reliably clears chemical
 accuracy on ALL THREE backends -- so we know the true minimum ask
 before deciding whether to request more budget.
 
-METHOD: bootstrap-resample the POOLED real counts (4 independent real
-trials x 1,100 shots = 4,400 real shots/circuit, task72) down to each
+METHOD: bootstrap-resample the POOLED simulator counts (4 independent simulator
+trials x 1,100 shots = 4,400 simulator shots/circuit, task72) down to each
 candidate shot level, N_BOOT independent draws per level, run the full
 locked analysis (raw/no-frame/shared-frame) each time. This is honest
-use of already-collected real data -- no new submissions, no new cost
+use of already-collected simulator data -- no new submissions, no new cost
 -- and directly estimates the PASS RATE (fraction of draws clearing
 chemical accuracy on all three backends at once) as a function of shot
 count, which a single point estimate can't show.

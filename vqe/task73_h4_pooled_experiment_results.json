@@ -67,21 +67,30 @@
       "raw_err_kcal": 0.7286756899115121,
       "no_frame_err_kcal": 0.7286756899115121,
       "shared_frame_err_kcal": 0.07701557714668943,
-      "chi2_dof": 0.00014928597286309128
+      "chi2_dof": 0.8489149136023069,
+      "unit_weight_msr": 0.00014928597286309136,
+      "n_chi2_labels": 516,
+      "n_forced_zero_excluded": 0
     },
     "aria-1": {
       "mean_accept": 0.8915277777777777,
       "raw_err_kcal": 24.492237673156158,
       "no_frame_err_kcal": 0.3600776157865254,
       "shared_frame_err_kcal": 0.02422275777888157,
-      "chi2_dof": 0.0005013675743791547
+      "chi2_dof": 2.3646384075184383,
+      "unit_weight_msr": 0.0005013675743791344,
+      "n_chi2_labels": 493,
+      "n_forced_zero_excluded": 23
     },
     "forte-1": {
       "mean_accept": 0.9019781144781146,
       "raw_err_kcal": 27.028389438289647,
       "no_frame_err_kcal": 2.447371379906015,
       "shared_frame_err_kcal": 0.16044178847355697,
-      "chi2_dof": 0.00041441588118679227
+      "chi2_dof": 2.5317847633123516,
+      "unit_weight_msr": 0.0004144158811867652,
+      "n_chi2_labels": 492,
+      "n_forced_zero_excluded": 24
     }
   },
   "chem_acc_kcal_bar": 1.0,

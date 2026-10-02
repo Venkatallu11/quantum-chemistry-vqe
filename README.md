@@ -42,7 +42,7 @@ and needs more time and resources.
 
 ---
 
-## 1. Chemical accuracy, on real IonQ simulators
+## 1. Chemical accuracy, on IonQ cloud simulators (noise-modeled, not hardware)
 
 H4 (4 electrons, 8 qubits) split via **entanglement forging** into two
 independently-measured 4-qubit registers. Four techniques stacked to get
@@ -161,6 +161,52 @@ This still carries the same oracle-dependency caveat as every frame-fit
 result above (the reconstruction basis is built from the exact FCI
 Schmidt vectors) — it is a real circuit-efficiency result, not a fix for
 the no-frame-fit question.
+
+### Pre-run checks for the H4 hardware benchmark (tasks 67–78)
+
+**Status: no hardware job submitted yet.** Everything in this subsection
+ran on IonQ's free `ionq_simulator` (noise models named `aria-1`/`forte-1`).
+Commit messages and file names for tasks 72–77 sometimes say "real
+trials"/"real data": there, "real" means *fresh simulator submissions*
+(not reused or bootstrapped data), never hardware.
+
+**Plan:** the full 84-circuit design (4 GC groups × 21 slots) at 1,100
+shots on `qpu.forte-enterprise-1`; 81 new circuits plus 3 reused from the
+10 Sep hardware job. Cost $3,875 (IonQ's own estimate endpoint, read
+around an SDK field-name bug) to $3,882 (rate-card formula), within the
+$5,352.16 approved. IonQ's predicted queue time was ~14.5 days.
+
+**Fresh simulator submissions at 1,100 shots, shared-frame error vs exact
+(kcal/mol):**
+
+| Design | ideal | aria-1 | forte-1 | Under 1.0 |
+|---|---|---|---|---|
+| 54 circuits, 4 trials | 0.21–0.61 | 0.18–0.67 | 0.17–1.75 | 11/12 |
+| 84 circuits, 2 trials | 0.18, 0.61 | 0.49, 0.45 | 0.22, 0.64 | 6/6 |
+
+Without the shared frame (corrected per slot only), the 84-circuit trials
+give 0.90–2.05 kcal/mol on aria-1/forte-1 (1 of 4 under 1.0): improved,
+but not chemical accuracy.
+
+**Fit quality (chi²/dof, shot-noise weighted):** ideal 0.9–1.2; aria-1 and
+forte-1 1.6–2.3 per trial, 2.4–2.5 pooled. On the noisy models, the
+residual scatter is about twice what shot noise alone predicts, so the
+corrected data carries systematic error the noise model does not
+describe, and the shared frame is absorbing it. The bootstrap rehearsals
+on older data (1.1–1.5) understated this. Before task78, these result
+files stored a unit-weight mean squared residual (~0.0002–0.002) under
+the name `chi2_dof`; that value is now `unit_weight_msr`.
+
+**Two sets of task numbers 72–74 exist.** Both are in the repo and both
+are current:
+
+| Hardware-run pipeline | Fresh simulator validation |
+|---|---|
+| `task72_rehearsal_sign_and_chi2_check.py`: Schmidt-sign pin and real chi² | `task72_h4_full_experiment.py`: 54-circuit plan, 4 fresh simulator trials |
+| `task73_hw_analysis.py`: locked analysis for the hardware counts | `task73_h4_pooled_experiment.py`: the 4 trials pooled (4,400 shots) |
+| `task74_hw_submission.py`: builds, checks and submits the hardware job (dry run by default) | `task74_real_hardware_cost_check.py`: IonQ cost estimates |
+| | `task75`–`task77`: shot sweep, shot reallocation, 84-circuit fresh trials |
+| `task78_chi2_relabel_backfill.py`: chi² relabel for the right-hand column | |
 
 ---
 

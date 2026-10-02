@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
-task73_h4_pooled_experiment.py -- iteration 73. Task72's single real
+task73_h4_pooled_experiment.py -- iteration 73. Task72's single fresh-simulator
 1,100-shot/circuit draw of the approved 54-circuit design was NOT
-reliably inside chemical accuracy: of 4 independent real trials run on
+reliably inside chemical accuracy: of 4 independent simulator trials run on
 IonQ's free ionq_simulator (task72 --trial 1..4, all reproducibility-
 verified), forte-1's shared-frame error was 0.42/1.75/0.17/0.53 kcal/mol
 -- ONE of four draws (25%) exceeds the 1 kcal/mol chemical-accuracy bar.
-This is real shot noise, not a bug (same pattern this project already
+This is genuine shot noise, not a bug (same pattern this project already
 documented for other designs: see RESEARCH_LEDGER's drift sections).
 
-FIX TESTED HERE: pool the real counts from all 4 independent trials
-(summing each circuit's bitstring counts across trials -- a real,
+FIX TESTED HERE: pool the simulator counts from all 4 independent trials
+(summing each circuit's bitstring counts across trials -- a
 honest aggregation of genuinely-collected data, not a re-weighting or
 cherry-pick) to get ~4,400 effective shots/circuit, then run the exact
 same locked analysis once on the pooled data. This answers: does simply
-collecting more real shots (rather than changing the circuit design)
+collecting more shots (rather than changing the circuit design)
 make the approved plan reliably clear chemical accuracy?
 
 Also reports the 4 individual-trial numbers side by side (mean/std/Q50/
@@ -62,7 +62,7 @@ def pool_states(states):
 
 def main():
     print("\n" + "=" * 96)
-    print(f"  task73_h4_pooled_experiment.py -- pooling {N_TRIALS} real trials ({N_TRIALS * t72.PROPOSED_SHOTS} "
+    print(f"  task73_h4_pooled_experiment.py -- pooling {N_TRIALS} simulator trials ({N_TRIALS * t72.PROPOSED_SHOTS} "
           f"effective shots/circuit)")
     print("=" * 96)
     if os.environ.get("PYTHONHASHSEED") != "0":
@@ -84,16 +84,16 @@ def main():
             per_trial[bn]["no_frame"].append(entry["no_frame_err_kcal"])
             per_trial[bn]["shared_frame"].append(entry["shared_frame_err_kcal"])
 
-    print(f"\n  -- {N_TRIALS} individual real trials, shared-frame error (kcal/mol) --")
+    print(f"\n  -- {N_TRIALS} individual simulator trials, shared-frame error (kcal/mol) --")
     for bn in BACKENDS:
         vals = per_trial[bn]["shared_frame"]
         n_fail = sum(1 for v in vals if abs(v) > CHEM_ACC_KCAL)
         print(f"    {bn:<8}: {['%.4f' % v for v in vals]}  mean={np.mean(vals):.4f}  std={np.std(vals, ddof=1):.4f}  "
               f"max={max(vals, key=abs):.4f}  fails_1kcal={n_fail}/{N_TRIALS}")
 
-    # ---- pooled real data, one combined analysis ----
+    # ---- pooled simulator data, one combined analysis ----
     pooled_state = pool_states(states)
-    print(f"\n  -- pooled analysis, {N_TRIALS * t72.PROPOSED_SHOTS} effective real shots/circuit --")
+    print(f"\n  -- pooled analysis, {N_TRIALS * t72.PROPOSED_SHOTS} effective simulator shots/circuit --")
     pooled_results = {}
     for bn in BACKENDS:
         entry = t72.analyze_backend(ctx, bn, pooled_state)
@@ -101,7 +101,7 @@ def main():
         verdict = "PASS" if abs(entry["shared_frame_err_kcal"]) < CHEM_ACC_KCAL else "FAIL"
         print(f"    {bn:<8}: accept={entry['mean_accept']:.4f}  raw={entry['raw_err_kcal']:+.4f}  "
               f"no_frame={entry['no_frame_err_kcal']:+.4f}  shared_frame={entry['shared_frame_err_kcal']:+.4f} "
-              f"kcal/mol  chi2/dof={entry['chi2_dof']:.4f}  [{verdict}, <{CHEM_ACC_KCAL} kcal/mol]")
+              f"kcal/mol  chi2/dof={entry['chi2_dof']:.2f}  [{verdict}, <{CHEM_ACC_KCAL} kcal/mol]")
 
     # reproducibility re-check on the pooled analysis too -- same discipline as task72
     pooled_results2 = {bn: t72.analyze_backend(ctx, bn, pooled_state) for bn in BACKENDS}

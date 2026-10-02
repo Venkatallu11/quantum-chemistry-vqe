@@ -9,12 +9,13 @@ budget (confirmed: $2,352.16 + $3,000 the other session found approved),
 vs. a real, independently-verified cost of $3,875-3,882 (81 new circuits
 + 3 reused from task49), margin ~$1,470.
 
-This submits FRESH real trials of the full 84-circuit design to IonQ's
+This submits FRESH SIMULATOR trials (not hardware; the file name's
+"real" means fresh submissions, not reused data) of the full 84-circuit design to IonQ's
 free ionq_simulator (same honest-data discipline as task72: no reuse of
 old data, no bootstrap) to cross-check that bootstrap prediction against
-genuinely independent real draws -- motivated by task75's own finding
-that bootstrap resampling runs optimistic relative to real submissions
-(real cross-submission drift exceeds pure shot noise).
+genuinely independent simulator draws -- motivated by task75's own finding
+that bootstrap resampling runs optimistic relative to fresh submissions
+(cross-submission drift exceeds pure shot noise).
 
 Reuses task72's exact infrastructure (ancilla regression check,
 GC-aware correction, reproducibility safeguard) with ALL 4 GC groups
@@ -104,7 +105,7 @@ def analyze(ctx, trial):
         state = json.load(f)
     missing = [bn for bn in BACKENDS if any(f"{bn}|{name}" not in state["done"] for name in ctx["kept"])]
     if missing:
-        print(f"  ERROR: real checkpoint incomplete for backends {missing} -- run --submit first.")
+        print(f"  ERROR: simulator checkpoint incomplete for backends {missing} -- run --submit first.")
         return None
 
     print(f"\n  H4 exact_energy={ctx['p']['exact_energy']:.6f} Ha")
@@ -120,7 +121,7 @@ def analyze(ctx, trial):
         e = results[bn]
         print(f"    {bn}: accept={e['mean_accept']:.4f}  raw={e['raw_err_kcal']:+.4f}  "
               f"no_frame={e['no_frame_err_kcal']:+.4f}  shared_frame={e['shared_frame_err_kcal']:+.4f} "
-              f"kcal/mol  chi2/dof={e['chi2_dof']:.4f}")
+              f"kcal/mol  chi2/dof={e['chi2_dof']:.2f}  (unit-weight msr={e['unit_weight_msr']:.4f})")
 
     with open(results_path(trial), "w") as f:
         json.dump(results, f, indent=2)

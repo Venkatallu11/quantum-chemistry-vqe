@@ -1,0 +1,142 @@
+{
+  "task72 trial 1": {
+    "ideal": {
+      "unit_weight_msr": 0.0006365286943865872,
+      "chi2_dof": 1.0323686778648318,
+      "n_chi2_labels": 516,
+      "n_forced_zero_excluded": 0
+    },
+    "aria-1": {
+      "unit_weight_msr": 0.0017230087894559375,
+      "chi2_dof": 2.0261734905334694,
+      "n_chi2_labels": 492,
+      "n_forced_zero_excluded": 24
+    },
+    "forte-1": {
+      "unit_weight_msr": 0.001535298072731709,
+      "chi2_dof": 2.0399420423515386,
+      "n_chi2_labels": 492,
+      "n_forced_zero_excluded": 24
+    }
+  },
+  "task72 trial 2": {
+    "ideal": {
+      "unit_weight_msr": 0.0006225817354577656,
+      "chi2_dof": 0.9092029137318586,
+      "n_chi2_labels": 516,
+      "n_forced_zero_excluded": 0
+    },
+    "aria-1": {
+      "unit_weight_msr": 0.0019327279242526087,
+      "chi2_dof": 2.0466695451043404,
+      "n_chi2_labels": 492,
+      "n_forced_zero_excluded": 24
+    },
+    "forte-1": {
+      "unit_weight_msr": 0.0015825861401097758,
+      "chi2_dof": 2.0477316894819437,
+      "n_chi2_labels": 492,
+      "n_forced_zero_excluded": 24
+    }
+  },
+  "task72 trial 3": {
+    "ideal": {
+      "unit_weight_msr": 0.0005612706127768747,
+      "chi2_dof": 0.9077371983554751,
+      "n_chi2_labels": 516,
+      "n_forced_zero_excluded": 0
+    },
+    "aria-1": {
+      "unit_weight_msr": 0.0020893060147259305,
+      "chi2_dof": 2.314764904918199,
+      "n_chi2_labels": 492,
+      "n_forced_zero_excluded": 24
+    },
+    "forte-1": {
+      "unit_weight_msr": 0.0013554500407279499,
+      "chi2_dof": 1.621070187245867,
+      "n_chi2_labels": 492,
+      "n_forced_zero_excluded": 24
+    }
+  },
+  "task72 trial 4": {
+    "ideal": {
+      "unit_weight_msr": 0.0006582034779011747,
+      "chi2_dof": 1.237927490341835,
+      "n_chi2_labels": 516,
+      "n_forced_zero_excluded": 0
+    },
+    "aria-1": {
+      "unit_weight_msr": 0.001872414991245093,
+      "chi2_dof": 1.947443966902395,
+      "n_chi2_labels": 492,
+      "n_forced_zero_excluded": 24
+    },
+    "forte-1": {
+      "unit_weight_msr": 0.0015358922654065737,
+      "chi2_dof": 1.9034664809095463,
+      "n_chi2_labels": 492,
+      "n_forced_zero_excluded": 24
+    }
+  },
+  "task77 trial 1": {
+    "ideal": {
+      "unit_weight_msr": 0.0006642852256956496,
+      "chi2_dof": 1.0867941222494588,
+      "n_chi2_labels": 756,
+      "n_forced_zero_excluded": 0
+    },
+    "aria-1": {
+      "unit_weight_msr": 0.0018218542135085614,
+      "chi2_dof": 1.9460608283483418,
+      "n_chi2_labels": 733,
+      "n_forced_zero_excluded": 23
+    },
+    "forte-1": {
+      "unit_weight_msr": 0.0021357861716086736,
+      "chi2_dof": 2.2123496440550214,
+      "n_chi2_labels": 732,
+      "n_forced_zero_excluded": 24
+    }
+  },
+  "task77 trial 2": {
+    "ideal": {
+      "unit_weight_msr": 0.0006064095963286681,
+      "chi2_dof": 0.9656952725447753,
+      "n_chi2_labels": 756,
+      "n_forced_zero_excluded": 0
+    },
+    "aria-1": {
+      "unit_weight_msr": 0.0020022993683883497,
+      "chi2_dof": 2.024475482881793,
+      "n_chi2_labels": 732,
+      "n_forced_zero_excluded": 24
+    },
+    "forte-1": {
+      "unit_weight_msr": 0.0021627224224627425,
+      "chi2_dof": 2.195410325241404,
+      "n_chi2_labels": 732,
+      "n_forced_zero_excluded": 24
+    }
+  },
+  "task73 pooled (4,400 shots)": {
+    "ideal": {
+      "unit_weight_msr": 0.00014928597286309136,
+      "chi2_dof": 0.8489149136023069,
+      "n_chi2_labels": 516,
+      "n_forced_zero_excluded": 0
+    },
+    "aria-1": {
+      "unit_weight_msr": 0.0005013675743791344,
+      "chi2_dof": 2.3646384075184383,
+      "n_chi2_labels": 493,
+      "n_forced_zero_excluded": 23
+    },
+    "forte-1": {
+      "unit_weight_msr": 0.0004144158811867652,
+      "chi2_dof": 2.5317847633123516,
+      "n_chi2_labels": 492,
+      "n_forced_zero_excluded": 24
+    }
+  }
+}
