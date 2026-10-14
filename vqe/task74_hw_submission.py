@@ -23,12 +23,20 @@ PRE-SUBMISSION CHECKS (all must pass; no network needed):
      diagonalizer; NOT a Schmidt sign flip, which moves circuits and targets
      together -- check 2 guards that)
   5. estimated cost <= --max-cost
+  6. debiasing OFF: the exact request payload the SDK would send for these
+     circuits is built offline and must carry
+     settings.error_mitigation.debiasing == false. IonQ's condition (11 Oct
+     2026): debiasing on would cost ~$13,600. In qiskit-ionq 1.1.1 a plain
+     `debiasing=False` run() kwarg is silently dropped (payload settings=None);
+     only `error_mitigation=ErrorMitigation.NO_DEBIASING` reaches the API.
 
 MODES
   (default)                      dry run: build + check + cost; nothing sent
   --submit --confirm-cost X      submit; X must equal the printed estimate
                                  (rounded to the dollar), a deliberate
-                                 second confirmation that real money is spent
+                                 second confirmation that real money is spent.
+                                 ONE submission only: refuses if the manifest
+                                 already records a submission attempt.
   --fetch JOB_ID                 retrieve a finished job and write
                                  task73_hw_counts.json for task73
 
@@ -54,6 +62,7 @@ from task59_h4_gc_no_frame_fit import build_gc_measurement_circuits, CKPT_PATH
 from task72_rehearsal_sign_and_chi2_check import exact_frame_gate, EXACT_FRAME_GATE
 from task73_hw_analysis import Context, key, REUSED_TASK49_PATH, K
 from general_commuting_measurements import expectations_from_counts
+from qiskit_ionq import ErrorMitigation
 
 HERE = os.path.dirname(__file__)
 GATE_NAME = "zz"
@@ -66,6 +75,8 @@ BUDGET_TOTAL = 5352.16   # $2,352.16 remaining + $3,000 approved for the full ru
 IDEAL_TOL = 1e-6
 MANIFEST_PATH = os.path.join(HERE, "task74_hw_submission_manifest.json")
 COUNTS_OUT = os.path.join(HERE, "task73_hw_counts.json")
+# The single source of the run options: used by check 6 AND by backend.run.
+RUN_OPTIONS = {"shots": SHOTS, "error_mitigation": ErrorMitigation.NO_DEBIASING}
 
 
 def build_all(ctx):
@@ -120,6 +131,17 @@ def reused_check(circuits):
     return out
 
 
+def debiasing_payload_check(circuit_list):
+    """Build, offline, the exact JSON the SDK would POST for these circuits with
+    RUN_OPTIONS and return its settings.error_mitigation.debiasing value."""
+    from qiskit_ionq import IonQProvider
+    from qiskit_ionq.helpers import qiskit_to_ionq
+    offline = IonQProvider(token="offline-payload-check").get_backend(BACKEND_NAME, gateset="native")
+    args = {**offline.options.__dict__, **RUN_OPTIONS}
+    payload = json.loads(qiskit_to_ionq(circuit_list, offline, passed_args=args))
+    return ((payload.get("settings") or {}).get("error_mitigation") or {}).get("debiasing")
+
+
 def prepare(design, max_cost):
     ctx = Context(design)
     circuits, ancilla_native = build_all(ctx)
@@ -148,20 +170,31 @@ def prepare(design, max_cost):
     print(f"  check 5 (cost): {len(submit_keys)} new circuits x {SHOTS} shots -> ${est:,.2f} "
           f"(max ${max_cost:,.2f}; total budget ${BUDGET_TOTAL:,.2f}, margin ${BUDGET_TOTAL - est:,.2f})")
     assert est <= max_cost, "estimated cost exceeds --max-cost -- STOP"
+
+    debiasing = debiasing_payload_check([circuits[k] for k in submit_keys])
+    print(f"  check 6 (debiasing off in the request payload): debiasing={debiasing}")
+    assert debiasing is False, "payload does not switch debiasing off (~$13,600 job) -- STOP"
     return ctx, circuits, submit_keys, counts, est
 
 
 def submit(circuits, submit_keys, counts, est, design):
     from ionq_backend import connect_provider
+    # one submission only (IonQ condition): any earlier attempt, even a failed one, blocks a resubmit
+    if os.path.exists(MANIFEST_PATH):
+        with open(MANIFEST_PATH) as f:
+            prev = json.load(f)
+        raise SystemExit(f"  manifest already records a submission (status={prev.get('status')}, "
+                         f"job_id={prev.get('job_id')}) -- STOP, contact IonQ before resubmitting")
     provider = connect_provider()
     backend = provider.get_backend(BACKEND_NAME, gateset="native")
     print(f"  connected to {backend.name}")
     manifest = {"backend": BACKEND_NAME, "shots": SHOTS, "design": design, "circuit_keys": submit_keys,
-                "gate_counts": counts, "estimated_cost_usd": round(est, 2), "status": "submitting"}
+                "gate_counts": counts, "estimated_cost_usd": round(est, 2),
+                "error_mitigation": {"debiasing": False}, "status": "submitting"}
     with open(MANIFEST_PATH, "w") as f:
         json.dump(manifest, f, indent=2)
     print(f"\n  SUBMITTING NOW -- real hardware, real cost (~${est:,.2f}), {len(submit_keys)} circuits, one job")
-    job = backend.run([circuits[k] for k in submit_keys], shots=SHOTS)
+    job = backend.run([circuits[k] for k in submit_keys], **RUN_OPTIONS)
     manifest["job_id"] = job.job_id()
     manifest["status"] = "submitted"
     with open(MANIFEST_PATH, "w") as f:
@@ -185,7 +218,11 @@ def fetch(job_id):
         counts_list = [counts_list]
     keys = manifest["circuit_keys"]
     assert len(counts_list) == len(keys), f"{len(counts_list)} results for {len(keys)} circuits -- STOP"
+    totals = {k: sum(c.values()) for k, c in zip(keys, counts_list)}
+    bad = {k: t for k, t in totals.items() if t != manifest["shots"]}
+    assert not bad, f"per-circuit shot totals != {manifest['shots']} (histogram scaling bug?): {bad} -- STOP"
     raw = backend.client.retrieve_job(job_id)
+    print(f"  job settings as recorded by IonQ: {raw.get('settings')}")
     out = {"job_id": job_id, "backend": manifest["backend"], "shots": manifest["shots"],
            "design": manifest["design"], "submitted_at": raw.get("submitted_at"),
            "completed_at": raw.get("completed_at"), "billed_cost_usd": raw.get("cost"),

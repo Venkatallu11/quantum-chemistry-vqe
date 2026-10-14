@@ -1,5 +1,42 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 79, 13 Oct 2026, pre-submission audit, no
+hardware spend):**
+
+**Debiasing bug fixed in `task74_hw_submission.py`.** IonQ approved the
+81-circuit Forte Enterprise 1 run on 11 Oct 2026 with four conditions:
+debiasing off, 1,100 shots per circuit, one submission, and the Job ID
+posted to the ticket. The script called `backend.run(circuits,
+shots=SHOTS)` with no error-mitigation setting. That leaves IonQ's
+default, debiasing on, which IonQ prices at ~$13,600 against a $5,352.16
+budget. An offline build of the request payload showed that in
+qiskit-ionq 1.1.1 a plain `debiasing=False` kwarg is also silently
+dropped (`settings=None`). Only
+`error_mitigation=ErrorMitigation.NO_DEBIASING` produces
+`{"error_mitigation": {"debiasing": false}}`.
+
+Fixes:
+- `RUN_OPTIONS` is now the single source of the run options.
+- New pre-submission check 6 builds the exact payload offline and stops
+  unless debiasing is false.
+- A resubmit guard refuses to submit if any earlier attempt is recorded.
+- `--fetch` asserts every circuit's counts total 1,100, which catches the
+  August histogram-scaling bug if it recurs.
+
+**Task 79, pooled full-84 simulator trials.** The 3 task77 trials were
+pooled to 3,300 shots/circuit (`ionq_simulator`, not hardware). Errors in
+kcal/mol, no_frame / shared_frame:
+- ideal: 0.452 / 0.023
+- aria-1: 0.860 / 0.026
+- forte-1: 0.813 / 0.072
+
+The 54-circuit subset's no-frame error stayed at 2.45 even at 4,400
+shots. On the full design, the no-frame error does drop under 1 with
+more shots, but it levels off near 0.8, so a residual bias remains. Expect
+no_frame of roughly 1-2.5 kcal/mol from the single 1,100-shot hardware
+run if Forte behaves like its noise model. Shared-frame is expected under
+1.
+
 **STATUS UPDATE (iterations 54-60, GENERALIZATION + EXTERNAL REVIEW
 RESPONSE, real free-simulator work throughout, no new real hardware
 spend this round):**
