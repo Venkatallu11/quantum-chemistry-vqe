@@ -27,8 +27,17 @@ favourable draw inside a wide spread, so do not expect it on hardware.
 
 The ideal model's high chi2 comes from the 3 reused real-hardware
 circuits (retention 0.85), which are much noisier than ideal-simulator
-data; the hardware run reuses the same 3. The ideal and aria-1 bootstrap
-results are committed separately once they finish.
+data; the hardware run reuses the same 3.
+
+Full bootstrap results (20 resamples each), kcal/mol, mean +/- sd:
+- shared_frame: ideal 0.32 +/- 0.17, aria-1 0.88 +/- 0.31, forte-1
+  0.50 +/- 0.14
+- no_frame: ideal 1.66 +/- 1.29, aria-1 1.86 +/- 1.56, forte-1
+  2.20 +/- 2.28
+
+Shared-frame stays under 1 on all three, but aria-1's margin is thin.
+Under resampling, no-frame lands around 1.7-2.2 with a wide spread,
+consistent with the expected 1-2.5 for a single 1,100-shot run.
 
 **STATUS UPDATE (iteration 79, 13 Oct 2026, pre-submission audit, no
 hardware spend):**
