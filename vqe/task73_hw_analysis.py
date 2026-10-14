@@ -77,6 +77,9 @@ FRAME_SEED = 7100
 MIN_RETENTION = 0.70              # a circuit keeping fewer postselected shots than this is flagged
 REUSED_TASK49_PATH = os.path.join(HERE, "task49_gc_hard_group_hw_submission_results.json")
 SIM_PREDICTION_PATH = os.path.join(HERE, "task71_hw_plan_rehearsal_v2_results.json")
+SIM_FULL84_TRIAL_PATHS = [
+    os.path.join(HERE, f"task77_h4_full84_trial{i}_results.json") for i in (1, 2, 3)
+]
 
 
 def key(name, gi):
@@ -216,6 +219,60 @@ def bootstrap(counts, ctx, n_boot, gpi2, seed_tag):
     return out, draws
 
 
+def fresh_full84_simulator_reference():
+    """Summarize the three fresh, independent 84-circuit simulator submissions.
+
+    These are noise-model rehearsals, never hardware results. Each simulator
+    submission used 1,100 shots/circuit. The hardware experiment reuses three
+    previously measured GC3 circuits at 2,000 shots, so that difference must
+    be disclosed when comparing the two.
+    """
+    trials = []
+    for trial_idx, path in enumerate(SIM_FULL84_TRIAL_PATHS, start=1):
+        with open(path) as f:
+            trials.append({"trial": trial_idx, "data": json.load(f)})
+
+    fields = {
+        "raw": "raw_err_kcal",
+        "no_frame": "no_frame_err_kcal",
+        "shared_frame": "shared_frame_err_kcal",
+    }
+    summary = {
+        "source": "task77_h4_full84_trial1-3_results.json",
+        "is_hardware": False,
+        "design": "full: 84 logical circuits per simulator submission",
+        "n_independent_submissions": len(trials),
+        "shots_per_circuit": 1100,
+        "hardware_shot_count_note": (
+            "The hardware run submits 81 new circuits at 1,100 shots; 3 GC3 "
+            "circuits are reused from the 10 Sep hardware job at 2,000 shots."
+        ),
+        "backends": {},
+    }
+    for backend_name in ("ideal", "aria-1", "forte-1"):
+        rows = {"trials": [t["data"][backend_name] for t in trials]}
+        for estimator, field in fields.items():
+            values = np.asarray([float(t["data"][backend_name][field]) for t in trials])
+            rows[estimator] = {
+                "trial_errors_kcal": values.tolist(),
+                "mean_error_kcal": float(values.mean()),
+                "sd_error_kcal": float(values.std(ddof=1)),
+                "mean_abs_error_kcal": float(np.abs(values).mean()),
+                "min_error_kcal": float(values.min()),
+                "max_error_kcal": float(values.max()),
+            }
+        chis = np.asarray([float(t["data"][backend_name]["chi2_dof"]) for t in trials])
+        rows["shared_frame_chi2_dof"] = {
+            "trial_values": chis.tolist(),
+            "mean": float(chis.mean()),
+            "sd": float(chis.std(ddof=1)),
+            "min": float(chis.min()),
+            "max": float(chis.max()),
+        }
+        summary["backends"][backend_name] = rows
+    return summary
+
+
 def main():
     ap = argparse.ArgumentParser()
     src = ap.add_mutually_exclusive_group(required=True)
@@ -271,8 +328,9 @@ def main():
                "reused_task49": reused, "gate_exact_frame_msr": gate, "data_quality": dq,
                "correction_params": {"zz": t71.ZZ_ASSUMED, "gpi": t71.GPI_REAL_MEAN, "gpi2": gpi2},
                "point_estimate": point, "bootstrap": boot, "bootstrap_draws": draws,
-               "simulator_prediction_task71_subset": {b: {a: sim[b][a]["mean_abs"] for a in
-                                                          ("raw", "no_frame", "shared_frame")} for b in sim}}
+               "simulator_prediction_task71_legacy_bootstrap": {b: {a: sim[b][a]["mean_abs"] for a in
+                                                                     ("raw", "no_frame", "shared_frame")} for b in sim},
+               "fresh_full84_noise_model_trials_task77": fresh_full84_simulator_reference()}
     out = args.out or os.path.join(HERE, "task73_hw_analysis_results.json" if args.counts else
                                    f"task73_rehearsal_{args.rehearsal}_{args.design}_results.json")
     with open(out, "w") as f:
