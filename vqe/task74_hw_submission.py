@@ -73,6 +73,7 @@ RATE_1Q = 0.0001645      # $ per 1q gate-shot (task71's precise rate; task68 car
 RATE_2Q = 0.001121       # $ per 2q gate-shot
 JOB_FLOOR = 25.7899      # applies once per bundled job
 BUDGET_TOTAL = 5352.16   # $2,352.16 remaining + $3,000 approved for the full run
+APPROVED_ROUNDED_COST_MAX = 3882  # Vadim's 11 Oct approval: quoted estimate range $3,875-$3,882
 IDEAL_TOL = 1e-6
 MANIFEST_PATH = os.path.join(HERE, "task74_hw_submission_manifest.json")
 COUNTS_OUT = os.path.join(HERE, "task73_hw_counts.json")
@@ -170,11 +171,18 @@ def prepare(design, max_cost):
     assert worst < IDEAL_TOL, "a circuit does not prepare/measure its target state -- STOP"
 
     submit_keys = [k for k in circuits if k not in reused]
+    if design == "full":
+        assert len(circuits) == 84, f"full design must contain 84 logical settings, got {len(circuits)} -- STOP"
+        assert len(submit_keys) == 81, f"approved job must submit exactly 81 new circuits, got {len(submit_keys)} -- STOP"
     counts = {k: gate_counts(circuits[k]) for k in submit_keys}
     est = cost(list(counts.values()), SHOTS)
     print(f"  check 5 (cost): {len(submit_keys)} new circuits x {SHOTS} shots -> ${est:,.2f} "
           f"(max ${max_cost:,.2f}; total budget ${BUDGET_TOTAL:,.2f}, margin ${BUDGET_TOTAL - est:,.2f})")
     assert est <= max_cost, "estimated cost exceeds --max-cost -- STOP"
+    assert round(est) <= APPROVED_ROUNDED_COST_MAX, (
+        f"estimate rounds to ${round(est):,}, above Vadim's approved "
+        f"${APPROVED_ROUNDED_COST_MAX:,} -- STOP and ask Vadim before spending"
+    )
 
     debiasing = debiasing_payload_check([circuits[k] for k in submit_keys])
     print(f"  check 6 (debiasing off in the request payload): debiasing={debiasing}")
@@ -184,6 +192,13 @@ def prepare(design, max_cost):
 
 def submit(circuits, submit_keys, counts, est, design):
     from ionq_backend import connect_provider
+    if design != "full" or len(submit_keys) != 81:
+        raise SystemExit("Vadim approved only the full design's 81-new-circuit submission -- STOP")
+    if round(est) > APPROVED_ROUNDED_COST_MAX:
+        raise SystemExit(
+            f"estimate rounds to ${round(est):,}, above Vadim's approved "
+            f"${APPROVED_ROUNDED_COST_MAX:,} -- STOP, do not submit"
+        )
     # one submission only (IonQ condition): any earlier attempt, even a failed one, blocks a resubmit
     if os.path.exists(MANIFEST_PATH):
         with open(MANIFEST_PATH) as f:
@@ -262,6 +277,8 @@ def main():
         print("\n  DRY RUN -- all checks passed, nothing submitted.")
         print(f"  to submit: --submit --confirm-cost {round(est)}")
         return
+    if args.design != "full":
+        raise SystemExit("Vadim authorized the full 81-new-circuit job only; do not submit the subset -- STOP")
     assert args.confirm_cost == round(est), f"--confirm-cost must be {round(est)} -- STOP"
     submit(circuits, submit_keys, counts, est, args.design)
 
