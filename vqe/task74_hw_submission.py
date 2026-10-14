@@ -23,12 +23,13 @@ PRE-SUBMISSION CHECKS (all must pass; no network needed):
      diagonalizer; NOT a Schmidt sign flip, which moves circuits and targets
      together -- check 2 guards that)
   5. estimated cost <= --max-cost
-  6. debiasing OFF: the exact request payload the SDK would send for these
-     circuits is built offline and must carry
-     settings.error_mitigation.debiasing == false. IonQ's condition (11 Oct
-     2026): debiasing on would cost ~$13,600. In qiskit-ionq 1.1.1 a plain
-     `debiasing=False` run() kwarg is silently dropped (payload settings=None);
-     only `error_mitigation=ErrorMitigation.NO_DEBIASING` reaches the API.
+  6. debiasing OFF: backend.run receives `debiasing=False` explicitly,
+     per Vadim's instruction. In qiskit-ionq 1.1.1 that kwarg alone is
+     silently dropped, so also pass `error_mitigation=NO_DEBIASING` to
+     ensure the serialized API payload actually sets
+     settings.error_mitigation.debiasing == false. The offline payload gate
+     must verify the serialized value before any paid submission. With
+     debiasing on, this job would cost about $13,600.
 
 MODES
   (default)                      dry run: build + check + cost; nothing sent
@@ -76,7 +77,7 @@ IDEAL_TOL = 1e-6
 MANIFEST_PATH = os.path.join(HERE, "task74_hw_submission_manifest.json")
 COUNTS_OUT = os.path.join(HERE, "task73_hw_counts.json")
 # The single source of the run options: used by check 6 AND by backend.run.
-RUN_OPTIONS = {"shots": SHOTS, "error_mitigation": ErrorMitigation.NO_DEBIASING}
+RUN_OPTIONS = {"shots": SHOTS, "debiasing": False, "error_mitigation": ErrorMitigation.NO_DEBIASING}
 
 
 def build_all(ctx):
@@ -132,8 +133,12 @@ def reused_check(circuits):
 
 
 def debiasing_payload_check(circuit_list):
-    """Build, offline, the exact JSON the SDK would POST for these circuits with
-    RUN_OPTIONS and return its settings.error_mitigation.debiasing value."""
+    """Build offline the JSON the SDK would POST using RUN_OPTIONS.
+
+    Check the serialized API setting, not only the Python kwargs: qiskit-ionq
+    1.1.1 silently drops the explicit debiasing kwarg, so the enum option must
+    also be present and serialize to settings.error_mitigation.debiasing=false.
+    """
     from qiskit_ionq import IonQProvider
     from qiskit_ionq.helpers import qiskit_to_ionq
     offline = IonQProvider(token="offline-payload-check").get_backend(BACKEND_NAME, gateset="native")
