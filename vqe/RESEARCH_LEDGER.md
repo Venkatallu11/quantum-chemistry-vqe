@@ -1,5 +1,35 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 80, 14 Oct 2026, end-to-end pipeline rehearsal
+on the free simulator, no hardware spend):**
+
+**task74 dry run passes all 6 checks.** It builds 81 new circuits at 1,100
+shots. Estimate $3,882.21 (rounds to 3882, within the approved cap),
+payload debiasing=False.
+
+**task80 ran the exact hardware pipeline on `ionq_simulator`:** the same
+81 circuits, one bundled job per noise model, the same `RUN_OPTIONS`, the
+same fetch-side shot-total assert, then `task73_hw_analysis --counts`
+(locked analysis, with task49's 3 reused hardware GC3 circuits filled in
+exactly as for the real run). IonQ's job records show
+`settings={'error_mitigation': {'debiasing': False}}` on all 3 jobs. That
+is the first server-side confirmation of the debiasing fix. Every circuit
+returned exactly 1,100 shots, and the cost was $0.
+
+Point estimates, kcal/mol (raw / no_frame / shared_frame, chi2/dof):
+- ideal: 1.96 / 0.05 / 0.12 (chi2/dof 7.28)
+- aria-1: 22.5 / 1.04 / 0.71 (chi2/dof 2.10)
+- forte-1: 24.1 / 0.83 / 0.39 (chi2/dof 2.68)
+
+forte-1 bootstrap (20): no_frame 2.20 +/- 2.28, shared_frame 0.50 +/- 0.14.
+Shared-frame is stable under 1 kcal/mol. The no-frame point of 0.83 is a
+favourable draw inside a wide spread, so do not expect it on hardware.
+
+The ideal model's high chi2 comes from the 3 reused real-hardware
+circuits (retention 0.85), which are much noisier than ideal-simulator
+data; the hardware run reuses the same 3. The ideal and aria-1 bootstrap
+results are committed separately once they finish.
+
 **STATUS UPDATE (iteration 79, 13 Oct 2026, pre-submission audit, no
 hardware spend):**
 
