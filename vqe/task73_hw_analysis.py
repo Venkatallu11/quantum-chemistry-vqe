@@ -328,8 +328,8 @@ def main():
                "reused_task49": reused, "gate_exact_frame_msr": gate, "data_quality": dq,
                "correction_params": {"zz": t71.ZZ_ASSUMED, "gpi": t71.GPI_REAL_MEAN, "gpi2": gpi2},
                "point_estimate": point, "bootstrap": boot, "bootstrap_draws": draws,
-               "simulator_prediction_task71_legacy_bootstrap": {b: {a: sim[b][a]["mean_abs"] for a in
-                                                                     ("raw", "no_frame", "shared_frame")} for b in sim},
+               "simulator_prediction_task71_subset": {b: {a: sim[b][a]["mean_abs"] for a in
+                                                          ("raw", "no_frame", "shared_frame")} for b in sim},
                "fresh_full84_noise_model_trials_task77": fresh_full84_simulator_reference()}
     out = args.out or os.path.join(HERE, "task73_hw_analysis_results.json" if args.counts else
                                    f"task73_rehearsal_{args.rehearsal}_{args.design}_results.json")
