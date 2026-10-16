@@ -982,6 +982,6 @@
   "error_mitigation": {
     "debiasing": false
   },
-  "status": "submitted",
+  "status": "fetched",
   "job_id": "01a138e7-c5fd-711e-bd12-41e418290d36"
 }
