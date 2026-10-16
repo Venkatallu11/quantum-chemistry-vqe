@@ -313,9 +313,91 @@ Two distinct failure modes, not one:
    averages to zero; this does not. Something in group 0's correction is
    biased in one direction.
 
+#### We tested that diagnosis, and it was half wrong
+
+A diagnosis that isn't tested is a guess.
+`task83_hw_correction_magnitude_refit.py` replaces the correction with
+`corrected = raw * (1 + alpha*(ratio - 1))`, where alpha=1 is the
+pre-registered pipeline and alpha=0 is no correction. **alpha is chosen by
+minimising chi2 alone — the exact energy is never an input.**
+
+We predicted the correction overshoots, so alpha<1 would help. The
+opposite is true. All values on the same 732 residual terms:
+
+| alpha | chi2/dof | shared-frame err |
+|---|---|---|
+| 0.0 — no correction | 14.84 | 1.017 |
+| **1.0 — pre-registered** | **5.93** | **0.864** |
+| 1.8 — blind optimum | **3.97** | 0.940 |
+| 3.0 | 7.64 | 1.166 |
+
+**The correction under-corrects by a factor of ~1.8.** Held-out validation
+(fit alpha on half the slots, score the other half) confirms it isn't
+overfitting: 4.97 to 3.89 in one fold, 7.04 to 4.41 in the other.
+
+Three things follow, and the third is unwelcome:
+
+1. The magnitude really is miscalibrated — but in the direction opposite
+   to what the residuals suggested to us.
+2. Fixing it removes only **about a third** of the excess (5.93 to 3.97,
+   against a target near 1). Something beyond a scalar factor is still wrong.
+3. **The better-fitting correction gives a worse energy** (0.940 vs
+   0.864). Fit quality and accuracy are decoupled here. chi2 is a good
+   detector of a misspecified model; it is not a proxy for accuracy, and
+   we had been treating it as closer to one than it is.
+
+Per-group alphas fit better in-sample (chi2 3.75 at (1.9,1.4,2.0,1.3), err
+0.637 — the lowest energy this data gives) and the two groups needing the
+most correction are exactly the two the residual table flagged. **We are
+not claiming that 0.637.** Under the earlier weighting the same model moved
+to (2.0,1.5,2.1,1.6) and 0.678, its held-out score was no better than the
+global model's in one fold and worse in the other, and its fitted vectors
+swung from (2.0,1.7,2.4,1.9) to (2.1,1.3,1.9,1.1). Four parameters are not
+determined by this dataset.
+
+#### Three controls, because the first comparison was invalid
+
+**The exclusion rule is alpha-dependent.** The pipeline drops labels whose
+`corrected/raw` ratio falls below 0.01. That ratio is `1 + alpha*(r-1)`,
+which for the 24 labels with `r ~ 0` is small *only* when alpha is near 1.
+Recomputed per alpha it excludes 24 labels at alpha=1 and **none**
+anywhere else — so chi2 across alpha was being computed on different
+residual sets, and the pre-registered value enjoyed an exclusion its
+comparators did not. Every number above uses the mask frozen at its
+alpha=1 membership. This was caught only because the raw chi2(alpha) curve
+was visibly non-monotone.
+
+**The chi2 objective has poles in alpha.** The pipeline propagates shot
+noise as `sigma ~ |1 + alpha*(r-1)|`, which is correct for one fixed
+correction but **vanishes** at `alpha = 1/(1-r)`. 26 labels here have such
+a pole in alpha within (0,3]: 24 at alpha=1.0 (the masked set) and 2 at
+alpha=1.2 — which is exactly where an otherwise unexplained chi2 spike
+sat. A raw measurement's shot noise does not change because we changed our
+correction hypothesis, so sigma is held at its alpha=1 value across the
+scan. With both controls the curve is smooth. This moved the optimum from
+alpha=1.9 to 1.8 and the improvement from 43% to 36%.
+
+**The fit is converged.** `task84_frame_fit_convergence.py` holds the data
+fixed and varies only the optimiser: 5 restart counts (4 to 64) x 5 seeds.
+All 25 configurations return 5.929 and 0.864, with a total spread of
+3.7e-6 in chi2 and 7e-6 kcal/mol in the energy. The pre-registered numbers
+are converged, not a lucky restart. The same invariance also
+shows the 4 random restarts are inert — the fit starts at the exact frame
+and converges there, which is one more exact-state dependence.
+
+#### How much is the correction actually doing?
+
+At alpha=0, with no correction at all, the shared-frame estimator gives
+**1.017 kcal/mol** against 0.864 with the full stack. The entire analytic
+correction is worth **0.15 kcal/mol** on that estimator; the joint frame
+fit supplies the rest. Since the frame fit is the part that uses the exact
+Schmidt vectors, the shared-frame result rests mostly on oracle
+information, not on the physics. The frame-free estimator — where the
+correction works unaided — is the one that missed by 4.16x.
+
 That is a concrete, falsifiable diagnosis of a specific error model on a
-specific machine — which is worth more than a number that happened to
-land under a threshold.
+specific machine, plus an honest account of which half of it survived
+testing.
 
 #### Conditions, as agreed with IonQ in advance
 
@@ -440,6 +522,9 @@ specific Hamiltonian is more noise-sensitive. Not yet understood.
   submissions per backend (8 numbers total) specifically because a
   single lucky run isn't evidence — every one of those 8 real numbers is
   reported above, not just the best one.
+- **The analytic correction is worth 0.15 kcal/mol on the shared-frame
+  estimator** (1.017 with it disabled, 0.864 with it). The joint frame fit
+  — the oracle-dependent component — does the rest.
 - **The correction stack does not reach chemical accuracy on live
   hardware.** Measured, not estimated: 3.46 kcal/mol frame-free on
   `qpu.forte-enterprise-1`, against 0.83 predicted by the forte-1 noise
@@ -470,6 +555,10 @@ python vqe/task73_hw_analysis.py --counts vqe/task73_hw_counts.json --design ful
                                                                 # job 01a138e7: raw 23.84, frame-free 3.46, shared-frame 0.86, chi2/dof 5.93
 python vqe/task82_hw_chi2_residual_breakdown.py --counts vqe/task73_hw_counts.json
                                                                 # localises the missing physics: group 2 weight-4, and a signed offset in group 0
+python vqe/task83_hw_correction_magnitude_refit.py --counts vqe/task73_hw_counts.json --alpha-max 3.0 --alpha-step 0.1
+                                                                # the correction UNDER-corrects ~1.8x; chi2 5.93 -> 3.97, energy slightly worse
+python vqe/task84_frame_fit_convergence.py --counts vqe/task73_hw_counts.json
+                                                                # 25 optimiser configurations, all identical: the locked numbers are converged
 
 # --- simulator results ---
 python vqe/task40_robustness_envelope_new_pipeline.py         # H4 headline: Q95 ~0.003-0.05 kcal/mol

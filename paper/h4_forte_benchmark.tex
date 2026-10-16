@@ -1,0 +1,643 @@
+\documentclass[aps,prx,twocolumn,superscriptaddress,nofootinbib]{revtex4-2}
+
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
+
+\begin{document}
+
+\title{A pre-registered entanglement-forged H$_4$ benchmark on trapped-ion
+hardware: accurate noise modelling, incomplete error correction}
+
+\author{Venkata Rao Allu}
+\email{alluvenkat11@gmail.com}
+\affiliation{Independent researcher}
+
+\date{\today}
+
+\begin{abstract}
+We report a pre-registered benchmark of an entanglement-forged H$_4$
+ground-state calculation on IonQ Forte Enterprise~1, a live trapped-ion
+processor. The analysis pipeline was frozen and committed to a public
+repository before any hardware data existed, and the run consisted of a
+single submission of $81$ circuits at $1100$ shots with device-level
+debiasing explicitly disabled. Two findings are in tension, and we report
+both. First, a sparse analytic noise model of the device predicted the
+\emph{uncorrected} energy error to within $1\%$: $23.84$~kcal/mol measured
+against $24.06$~kcal/mol predicted, with postselection retention $0.894$
+against $0.898$ predicted. Second, the same model's error correction
+failed: the oracle-free estimator returned $3.46$~kcal/mol against
+$0.83$~kcal/mol predicted, a factor of $4.16$, missing chemical accuracy
+($1$~kcal/mol) by $3.5\times$ despite removing $85\%$ of the raw error.
+The shared-frame fit's goodness-of-fit deteriorated from
+$\chi^2/\mathrm{dof}\approx2$ on every noise model to $5.93$ on hardware,
+consistently across all $20$ bootstrap resamples, establishing that the
+device carries error structure the correction model does not represent. We
+decompose all $732$ fit residuals by measurement group and Pauli weight to
+localise the discrepancy, then test the magnitude hypothesis by refitting a
+single scaling parameter blind to the reference energy. The correction is
+miscalibrated, but in the direction opposite to our hypothesis: it
+\emph{under}-corrects by a factor of $\approx1.8$, and repairing this
+removes about a third of the excess ($5.93\to3.97$) while making the
+energy slightly worse, so fit quality and accuracy are decoupled. We conclude that
+noise models calibrated on raw observables should not be assumed
+predictive of corrected ones, that bootstrap resampling understates
+submission-to-submission variance, and that at $1100$ shots per circuit
+the oracle-free estimator is shot-noise limited rather than
+noise limited, so that error mitigation alone cannot close the gap.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+
+Variational quantum eigensolvers~\cite{peruzzo2014,mcclean2016} are the
+most-studied near-term application of quantum processors, and the usual
+measure of success is whether a computed molecular energy falls within
+chemical accuracy, conventionally $1$~kcal/mol
+($1.6\times10^{-3}$~Hartree), of a classical reference. A large
+literature reports such agreement, most often on simulators with device
+noise models, sometimes on hardware with substantial error mitigation.
+
+This paper takes a deliberately narrow and unglamorous question. Given a
+noise model that has been calibrated until it reproduces a device's
+\emph{raw}, unmitigated behaviour, does the error correction built on that
+model transfer to the device? We answer it for one molecule, one device,
+one submission, with the analysis fixed in advance, and we report the
+answer whichever way it came out.
+
+It came out negative in a specific and, we argue, informative way. The
+noise model's prediction of the raw error was nearly exact. Its prediction
+of the corrected error was wrong by more than a factor of four. The
+goodness-of-fit statistic flagged the failure --- it tripled relative to
+every simulator rehearsal --- which means the failure was detectable from
+the hardware data alone, without reference to the known answer. We regard
+that last point as the most portable result here: a mitigation pipeline
+should report a calibrated fit statistic, because that statistic
+distinguishes ``the correction worked'' from ``the correction produced a
+number'' without consulting an oracle.
+
+Three practices made this possible and we recommend them. The analysis
+code was committed before the data existed, so no post hoc choice could
+be made. Every estimator was reported, including the one that failed.
+And the goodness-of-fit was computed and published alongside each energy.
+
+\section{The electronic-structure engine}
+
+All classical quantities were computed from a from-scratch implementation:
+contracted Gaussian basis evaluation, one- and two-electron integrals via
+the Obara--Saika recursions, restricted Hartree--Fock, integral
+transformation to the molecular-orbital basis, and the Jordan--Wigner
+mapping to a qubit Hamiltonian. Nothing is taken from a quantum-chemistry
+package at runtime. Correctness is established by comparison against
+PySCF~\cite{pyscf} on the same geometries and basis, and the engine
+reproduces its Hartree--Fock and full configuration interaction (FCI)
+energies to numerical precision. We emphasise this only because it
+determines what the error bars mean: the reference energy against which
+all errors below are quoted is an exact FCI diagonalisation in the same
+basis, computed by the same code, not an external literature value.
+
+The system is H$_4$ in a linear chain at $1.0$~\AA{} spacing, STO-3G,
+$4$ electrons in $4$ spatial orbitals, giving an $8$-qubit Hamiltonian.
+
+\section{Methods}
+
+\subsection{Entanglement forging}
+
+The $8$-qubit problem is decomposed by entanglement
+forging~\cite{eddins2022}, which writes the ground state as a Schmidt
+decomposition across a bipartition into two $4$-qubit registers,
+\begin{equation}
+|\psi\rangle = \sum_{n=1}^{K} \lambda_n\, |u_n\rangle_\alpha \otimes
+|v_n\rangle_\beta ,
+\end{equation}
+so that the energy becomes a weighted sum of expectation values measured
+on one $4$-qubit register at a time, over Schmidt basis states
+$|u_n\rangle$ and their pairwise superpositions
+$(|u_n\rangle+|u_m\rangle)/\sqrt2$. For H$_4$ at this geometry the Schmidt
+rank is effectively $K=6$, giving $21$ distinct preparation ``slots''
+($6$ singles and $15$ pairs).
+
+This is the first of several places where exact information enters the
+construction, and we flag each one explicitly. The state-preparation
+angles for each slot are obtained by classically fitting the circuit to
+reproduce the exact FCI Schmidt vectors, and the Schmidt coefficients
+$\lambda_n$ used to assemble the energy are the exact ones. The
+calculation therefore measures whether hardware can reproduce a state
+whose identity is already known; it is not a blind variational search.
+Section~\ref{sec:limits} states the consequences.
+
+\subsection{Native-gate compilation}
+
+Circuits are compiled directly to IonQ's native gate set --- $\mathrm{GPi}$,
+$\mathrm{GPi2}$, and the two-qubit $\mathrm{ZZ}$ interaction --- rather than
+to a CNOT-based abstraction that the provider then retranslates. Angles are
+expressed in turns, with the $\mathrm{ZZ}$ angle restricted to
+$[0,0.25]$. Where a negative interaction angle is required we use the
+identity $X\!\cdot\!\mathrm{ZZ}(\theta)\!\cdot\!X = \mathrm{ZZ}(-\theta)$
+with $X=\mathrm{GPi}(0)$, since the inverse method of the provider's gate
+objects does not negate the parameter.
+
+\subsection{General-commuting measurement grouping}
+
+The $\alpha$-register Hamiltonian requires $273$ Pauli expectation values.
+Grouping them into sets of mutually commuting --- not merely
+qubit-wise commuting --- operators and diagonalising each set with a
+Clifford circuit reduces this to $4$ measurement groups. Across $21$ slots
+this gives $84$ circuits rather than $273$, a $3.25\times$ reduction. The
+grouping is obtained by exact graph colouring and verified to
+$6.7\times10^{-16}$ against direct evaluation before use.
+
+\subsection{Ancilla-parity leakage detection}
+
+One ancilla qubit records the total parity of the $4$-qubit register. The
+physical state lives in a fixed particle-number sector, so shots whose
+ancilla reads $1$ have provably left that sector and are discarded. The
+retained fraction is reported for every run and is itself a prediction the
+noise model makes.
+
+\subsection{Analytic group-aware correction}
+
+The correction below is a forward analytic inverse of an assumed noise
+channel, in the spirit of zero-noise extrapolation and probabilistic error
+cancellation~\cite{temme2017} and of the sparse Pauli--Lindblad models used
+to learn such channels on hardware~\cite{vandenberg2023}, but with the
+channel parameters fixed from independent characterisation rather than
+learned on the target circuits.
+
+For each slot and measurement group we compute, from the intended circuit
+and a three-parameter noise model, two quantities $A_\ell$ and $B_\ell$
+per Pauli label $\ell$: the expectation the noisy circuit would produce
+and the expectation the ideal circuit would produce. The measured value is
+then corrected multiplicatively,
+\begin{equation}
+\langle P_\ell \rangle_{\mathrm{corr}}
+= \langle P_\ell \rangle_{\mathrm{raw}} \cdot \frac{B_\ell}{A_\ell}
+\equiv \langle P_\ell \rangle_{\mathrm{raw}} \cdot r_\ell .
+\label{eq:corr}
+\end{equation}
+The three noise parameters --- a $\mathrm{ZZ}$ depolarising rate
+$p_{ZZ}=0.014593$, a $\mathrm{GPi}$ rate $p_{\mathrm{GPi}}=0.000119$, and a
+$\mathrm{GPi2}$ rate $p_{\mathrm{GPi2}}=0.0004$ --- were fixed before the
+hardware run from independent characterisation and never retuned on
+hardware data. The correction ratios $r_\ell$ for this experiment lie
+between $1.00$ and about $1.20$.
+
+\subsection{Three estimators}
+
+From the same counts we compute three energies, and we report all three.
+
+\emph{Raw}: a per-slot physical-state fit to the postselected but
+uncorrected expectation values.
+
+\emph{Frame-free}: the same per-slot fit applied to the corrected values
+of Eq.~\eqref{eq:corr}. No exact Schmidt vector enters the
+reconstruction. This is the oracle-free estimator and we treat it as the
+headline number.
+
+\emph{Shared-frame}: a single $K\times K$ orthogonal frame is fit jointly
+across all $21$ slots, initialised at the exact frame, with the
+reconstruction basis spanned by the exact FCI Schmidt vectors. This
+estimator pools information across slots and is substantially tighter,
+but it depends on the exact state in two additional ways beyond the
+circuit construction. We report it because it was pre-registered, and we
+do not use it to claim chemical accuracy.
+
+\subsection{Goodness of fit}
+
+For the shared-frame fit we compute a shot-noise-weighted residual for
+every (slot, label) pair,
+\begin{equation}
+R_{s\ell} = \frac{\langle \hat v_s | P_\ell | \hat v_s\rangle
+- \langle P_\ell\rangle_{\mathrm{corr}}}{\sigma_{s\ell}},
+\qquad
+\sigma_{s\ell} = |r_\ell|\sqrt{\frac{1-\langle P_\ell\rangle^2_{\mathrm{raw}}}{N_{s\ell}}},
+\end{equation}
+with $N_{s\ell}$ the retained shot count, and report
+$\chi^2/\mathrm{dof} = \sum R^2 / (n - N_\theta)$. Labels whose correction
+drives the value to near zero ($|r_\ell| < 0.01$) are excluded and counted.
+A well-specified model with correct error bars gives
+$\chi^2/\mathrm{dof}\approx1$.
+
+\section{Pre-registration and run conditions}
+
+The analysis script was committed before the hardware job was submitted
+and run unmodified on the returned counts. The conditions below were
+agreed with IonQ in advance and are stated because two of them materially
+affect the result.
+
+\begin{itemize}
+\item \textbf{Device debiasing disabled}, passed explicitly per circuit.
+With debiasing enabled the same job is priced at approximately $\$13{,}600$
+rather than $\$3{,}882$. Debiasing also averages over qubit permutations,
+which would confound a correction model calibrated to specific gates.
+\item \textbf{$1100$ shots per circuit}, fixed in advance.
+\item \textbf{A single submission}, with no resubmission permitted. No
+circuit was re-run and no outlier was discarded.
+\item $81$ new circuits, plus $3$ reused from an earlier job on the same
+device at $2000$ shots, verified to rebuild with identical gate counts.
+\end{itemize}
+
+The job was submitted 2026-10-14 05:34~UTC and completed 2026-10-16
+03:36~UTC. Cost was $\$3{,}882.21$ by the provider's estimate endpoint and
+$\$3{,}875.18$ by an independent rate-card calculation, a $\$7.03$
+discrepancy. Single-qubit gates accounted for $58.9\%$ of the total
+($12{,}582$ one-qubit and $1{,}302$ two-qubit gates), which is worth
+noting because circuit-optimisation effort in this architecture is often
+directed at two-qubit count alone.
+
+Two pre-registered gates were checked before analysis: the Schmidt sign
+convention reproduced stored ideal data to $3.2\times10^{-5}$ (limit
+$10^{-3}$), and all $84$ required circuits were present.
+
+\section{Results}
+
+\subsection{Hardware against noise models}
+
+Table~\ref{tab:main} gives the three estimators on hardware and on three
+noise models run through the identical pipeline. We stress that
+\emph{aria-1} and \emph{forte-1} denote device noise \emph{models} offered
+for simulation, not hardware; the Aria-1 device has been retired and no
+submission to it is possible. Only the final row is hardware.
+
+\begin{table}[t]
+\caption{Energy error against exact FCI, in kcal/mol, and shared-frame
+goodness of fit. Chemical accuracy is $1.0$. Only the last row is a
+physical device.}
+\label{tab:main}
+\begin{ruledtabular}
+\begin{tabular}{lcccc}
+ & Raw & Frame-free & Shared-frame & $\chi^2/\mathrm{dof}$ \\
+\colrule
+ideal model        & $1.96$  & $0.048$ & $0.117$ & $\approx1$ \\
+aria-1 model       & $22.53$ & $1.041$ & $0.707$ & $\approx2$ \\
+forte-1 model      & $24.06$ & $0.832$ & $0.394$ & $2.68$ \\
+\textbf{Forte Enterprise 1} & $\mathbf{23.84}$ & $\mathbf{3.46}$ &
+$\mathbf{0.86}$ & $\mathbf{5.93}$ \\
+\end{tabular}
+\end{ruledtabular}
+\end{table}
+
+The raw agreement is the strongest quantitative result in this work. The
+hardware returned $23.84$~kcal/mol where the forte-1 model predicted
+$24.06$, a ratio of $0.99$. Postselection retention was $0.894$ against
+$0.898$ predicted. A three-parameter model, fixed in advance, reproduced
+both the uncorrected error of an $8$-qubit forged calculation and its
+leakage rate on a live device.
+
+The corrected agreement fails. The frame-free estimator returned
+$3.46$~kcal/mol where the same model predicted $0.832$, a factor of
+$4.16$. The correction is not useless --- it removes $85\%$ of the raw
+error, $23.84\to3.46$ --- but it does not reach chemical accuracy, missing
+by $3.5\times$.
+
+\subsection{Uncertainty}
+
+Uncertainties come from a nonparametric bootstrap in which every circuit's
+counts are resampled at its own retained shot total and the entire
+pipeline, including the frame fit, is re-run ($N=20$):
+\begin{align}
+\text{raw} &: 19.49 \pm 5.65, \quad [14.48,\,28.90]_{5-95} \nonumber\\
+\text{frame-free} &: 2.92 \pm 1.90, \quad [0.39,\,6.47]_{5-95} \nonumber\\
+\text{shared-frame} &: 1.055 \pm 0.419, \quad [0.42,\,1.87]_{5-95}
+\nonumber
+\end{align}
+The shared-frame point estimate of $0.864$ lies below $1$~kcal/mol, but
+its bootstrap distribution is centred \emph{above} the threshold and $13$
+of $20$ resamples exceed it. We therefore state that chemical accuracy is
+\emph{consistent with} this dataset on the shared-frame estimator, and is
+not established by it. The frame-free estimator exceeds $1$~kcal/mol in
+$16$ of $20$ resamples.
+
+\subsection{The fit statistic detected the failure}
+\label{sec:chi2}
+
+$\chi^2/\mathrm{dof}$ was $0.9$--$1.2$ on the ideal model, $1.6$--$2.7$ on
+the two noisy models, and $5.93$ on hardware, with every one of the $20$
+bootstrap resamples in $[6.41,7.22]$. The excess is therefore a property
+of the data, not of one fit. Because this statistic requires no reference
+energy, the inadequacy of the correction model was visible from the
+hardware counts alone. Any pipeline reporting a mitigated energy can
+report this number, and we suggest that one which does not should be
+treated as unaudited.
+
+\section{Localising the discrepancy}
+
+\subsection{Residual decomposition}
+
+We re-derived the identical $732$-term residual vector and tagged each
+term with its slot, measurement group, Pauli label and Pauli weight.
+Table~\ref{tab:resid} gives mean $R^2$ by group and weight. (The design
+measures each Pauli label in exactly one group, so cells are
+structurally empty rather than missing.)
+
+\begin{table}[t]
+\caption{Mean squared residual $\langle R^2\rangle$ by measurement group
+and Pauli weight. Uniform values near $1$ would indicate a well-specified
+model.}
+\label{tab:resid}
+\begin{ruledtabular}
+\begin{tabular}{lcccc}
+ & $w{=}1$ & $w{=}2$ & $w{=}3$ & $w{=}4$ \\
+\colrule
+group 0 & $3.59$ & $\mathbf{10.14}$ & --- & --- \\
+group 1 & --- & $2.80$ & --- & $4.70$ \\
+group 2 & --- & --- & $3.98$ & $\mathbf{13.58}$ \\
+group 3 & --- & $3.35$ & --- & $4.77$ \\
+\end{tabular}
+\end{ruledtabular}
+\end{table}
+
+Two structures stand out.
+
+\emph{The residual grows with the magnitude of the correction applied.}
+Binning by correction ratio $r_\ell$: labels with
+$r_\ell\in[1.00,1.05)$ give $\langle R^2\rangle = 3.69$, while labels with
+$r_\ell\in[1.15,1.25)$ give $8.51$ and carry $48\%$ of the total $\chi^2$
+from $33\%$ of the terms. The twelve largest individual residuals are all
+weight-$4$ $XY$-type strings ($YYXX$, $YXXY$, $XYYX$, $XXYY$, $YYYY$,
+$XXXX$), each with $r_\ell\approx1.19$.
+
+\emph{Group $0$ carries a signed offset rather than scatter.} Its mean
+\emph{signed} residual is $-1.32$ at weight $1$ and $-1.73$ at weight $2$.
+Stochastic misestimation averages to zero; a systematic one does not.
+
+\subsection{Testing the magnitude hypothesis}
+
+The first structure suggests a simple repair: that
+Eq.~\eqref{eq:corr} overshoots, so that
+\begin{equation}
+\langle P_\ell\rangle_{\mathrm{corr}}(\alpha)
+= \langle P_\ell\rangle_{\mathrm{raw}}\,\bigl[1 + \alpha\,(r_\ell-1)\bigr]
+\label{eq:alpha}
+\end{equation}
+with $\alpha<1$ would reduce $\chi^2$. Here $\alpha=1$ recovers the
+pre-registered pipeline and $\alpha=0$ applies no correction. Crucially,
+$\alpha$ is selected by minimising $\chi^2/\mathrm{dof}$ alone; the
+reference energy is never an input, preserving the blindness of every
+correction-parameter choice in this work. Because fitting $\alpha$ on the
+same residuals whose $\chi^2$ is then quoted would reduce it by
+construction, we also fit $\alpha$ on half the slots and evaluate
+$\chi^2$ on the held-out half.
+
+Two technical points must be settled before the scan is meaningful.
+
+\emph{The exclusion rule is $\alpha$-dependent.} The pre-registered
+pipeline discards a label when $|\langle P\rangle_{\mathrm{corr}} /
+\langle P\rangle_{\mathrm{raw}}| < 0.01$. Under Eq.~\eqref{eq:alpha} that
+quantity is $1+\alpha(r_\ell-1)$, which for the $24$ labels with
+$r_\ell\approx0$ is small \emph{only} when $\alpha\approx1$. Recomputing
+the rule per $\alpha$ therefore excludes $24$ labels at $\alpha=1$ and
+none elsewhere, so $\chi^2$ at different $\alpha$ would be evaluated over
+different residual sets, and the pre-registered value would enjoy an
+exclusion unavailable to its comparators. We freeze the mask at its
+$\alpha=1$ membership, so all values below are computed on the same $732$
+terms.
+
+\emph{The $\chi^2$ objective has poles in $\alpha$.} The pre-registered
+pipeline propagates shot noise through the correction as
+$\sigma_{s\ell}\propto|1+\alpha(r_\ell-1)|$, which is correct for one given
+correction but vanishes at $\alpha = 1/(1-r_\ell)$. In this dataset $26$
+labels have such a pole within $\alpha\in(0,3]$: $24$ at $\alpha=1.0$ --- the
+masked set above --- and $2$ at $\alpha=1.2$, which accounts for an
+otherwise unexplained $\chi^2$ spike at that point. The shot noise of a raw
+measurement does not change because the correction hypothesis changed, so we
+hold $\sigma$ fixed at its $\alpha=1$ value throughout the scan. With both
+controls the curve is smooth and monotone about its minimum.
+
+\emph{The fit is converged.} Holding the data fixed at $\alpha=1$ and
+varying only the optimiser over $5$ restart counts ($4$ to $64$) and $5$
+random seeds, all $25$ configurations returned
+$\chi^2/\mathrm{dof}=5.929$ and $0.864$~kcal/mol, with total spreads of
+$3.7\times10^{-6}$ and $7\times10^{-6}$~kcal/mol respectively. The pre-registered numbers are not an
+artifact of a particular restart draw. The same invariance shows the
+random restarts are inert: the fit is initialised at the exact frame and
+converges there, which is a further exact-state dependence.
+
+With those controls in place, $\chi^2$ falls as $\alpha$ \emph{increases}:
+
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+ & $\alpha$ & $\chi^2/\mathrm{dof}$ & err (kcal/mol) \\
+\midrule
+no correction      & $0.0$ & $14.84$ & $1.017$ \\
+pre-registered     & $1.0$ & $5.93$  & $0.864$ \\
+blind optimum      & $1.8$ & $3.97$  & $0.940$ \\
+over-corrected     & $3.0$ & $7.64$  & $1.166$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The hypothesis we set out to test --- that the correction overshoots ---
+is therefore refuted in its direction. The correction \emph{under}-corrects
+by roughly a factor of $1.8$. Held-out validation confirms this is not
+overfitting: fitting $\alpha$ on half the slots and scoring the other half
+improves $\chi^2/\mathrm{dof}$ from $4.97$ to $3.89$ in one fold
+($\alpha=1.9$) and from $7.04$ to $4.41$ in the other ($\alpha=1.7$).
+
+Allowing a separate $\alpha_g$ per measurement group improves the
+in-sample fit further, to $\chi^2/\mathrm{dof}=3.75$ at
+$\alpha_g=(1.9,1.4,2.0,1.3)$, and yields the lowest energy we obtain from
+this data, $0.637$~kcal/mol. We do not advance that number. Under the
+earlier, $\alpha$-dependent weighting the same model moved to
+$(2.0,1.5,2.1,1.6)$ and $0.678$~kcal/mol, and its held-out performance was
+no better than the global model's in one fold and worse in the other, with
+fitted vectors swinging between $(2.0,1.7,2.4,1.9)$ and
+$(2.1,1.3,1.9,1.1)$. Four parameters are not determined by this dataset,
+and the group structure is not stable enough to report as a result. The supported statement is the single global
+rescaling; the group structure is suggestive only. We note that the two
+groups demanding the largest correction, groups $0$ and $2$, are the two
+the residual decomposition independently flagged as worst.
+
+Three conclusions follow, and the third is unwelcome. The correction
+model's magnitude is genuinely miscalibrated, in the opposite direction to
+our hypothesis. Repairing it removes only about a third of the $\chi^2$
+excess, $5.93\to3.97$ against a target near unity, so the misspecification
+extends beyond a scalar factor. And the better-fitting correction returns a
+\emph{worse} energy, $0.940$ against $0.864$. Fit
+quality and accuracy are decoupled here, which bounds the claim of
+Sec.~\ref{sec:chi2}: $\chi^2$ is a reliable detector of model
+misspecification, and not a proxy for accuracy.
+
+A final observation constrains how much of this matters. At $\alpha=0$,
+with no correction applied at all, the shared-frame estimator returns
+$1.017$~kcal/mol against $0.864$ with the full correction. The entire
+analytic correction stack is worth $0.15$~kcal/mol on that estimator; the
+joint frame fit supplies the rest. Since the frame fit is the component
+carrying the exact-state dependence, the shared-frame result rests
+primarily on oracle information rather than on the physics-based
+correction. The frame-free estimator, where the correction does the work
+unaided, is the one that missed by $4.16\times$.
+
+\section{Discussion}
+
+\subsection{Raw accuracy does not imply corrected accuracy}
+
+The central methodological claim of this paper is narrow and, we believe,
+well supported by the single comparison above: a noise model validated
+against raw device behaviour was wrong by $4.16\times$ once its own
+correction was applied. The raw expectation value is a smooth, heavily
+averaged functional of the noise channel; the correction is a ratio of two
+such functionals, and ratios amplify misspecification. A noise model's
+agreement on uncorrected observables should therefore be treated as a
+necessary and distinctly insufficient condition for trusting its
+mitigation. Where a projection is needed, the corrected-observable
+prediction should be read as an optimistic bound.
+
+\subsection{Bootstrap understates submission variance}
+
+Before the hardware run, bootstrap resampling of earlier data predicted a
+frame-free maximum of $0.90$~kcal/mol and a $100\%$ pass rate at
+$1$~kcal/mol for this design. Fresh, independent simulator submissions of
+the identical design at the same shot count returned up to
+$2.46$~kcal/mol. Bootstrap resamples a single submission and therefore
+captures shot noise but not drift between submissions; the latter was the
+larger term. Reported bootstrap intervals in this setting should be
+regarded as lower bounds on the true spread.
+
+\subsection{A shot-noise floor, not a noise floor}
+
+The most consequential constraint we encountered is not device error. On
+one fresh $1100$-shot submission the \emph{zero-noise} ideal simulator
+itself returned $1.225$~kcal/mol on the frame-free estimator. With no
+device error of any kind, the estimator missed chemical accuracy from
+counting statistics alone. Improved mitigation cannot repair this.
+Scaling as $N^{-1/2}$ from the worst observed value, pushing the
+frame-free estimator below $1$~kcal/mol would require roughly
+$6.6\times10^3$ shots per circuit, which on the measured rate card costs
+about $\$23{,}400$ for this design; below $0.5$~kcal/mol, about
+$2.7\times10^4$ shots and $\$94{,}000$. The productive direction is
+therefore a lower-variance estimator, not a larger shot budget.
+
+\subsection{Practical notes}
+
+Three observations may help others budgeting work on this architecture.
+Single-qubit gates were $58.9\%$ of this job's cost, so optimising
+two-qubit count alone leaves most of the bill untouched. Device debiasing
+multiplies cost by roughly $3.5\times$ and is on by default. Finally, we
+encountered three defects in the provider's Qiskit integration: two in
+multi-circuit result parsing and histogram scaling, since fixed upstream
+but not at the time in a tagged release, and one in which a cost-estimate
+field was read under the wrong key so that every estimate returned
+\texttt{None}. Pipelines that budget from that field will silently see no
+cost at all.
+
+\section{Limitations}
+\label{sec:limits}
+
+We state these in the strongest form we can, because several of them bound
+the claims above severely.
+
+\textbf{This is not a blind variational calculation.} The
+state-preparation angles are fit to the exact FCI Schmidt vectors, the
+Schmidt coefficients used to assemble the energy are exact, and the
+shared-frame reconstruction basis is spanned by the exact Schmidt
+vectors and initialised at the exact frame. What is measured is whether a
+noisy device plus mitigation can reproduce a \emph{known} state. This is a
+meaningful test of a mitigation stack and a weaker claim than locating an
+unknown ground state. This limitation was identified by an external
+reviewer reading the source repository, and the frame-free estimator ---
+which removes the reconstruction-side dependence though not the
+circuit-construction one --- is reported as the headline for that reason.
+
+\textbf{One molecule, one device, one submission.} The single-submission
+condition that makes the pre-registration meaningful also prevents any
+statement about run-to-run hardware reproducibility. The bootstrap
+quantifies resampling uncertainty within one submission only.
+
+\textbf{Chemical accuracy is not demonstrated.} The frame-free estimator
+missed by $3.5\times$. The shared-frame estimator's point estimate falls
+below the threshold but its bootstrap distribution is centred above it.
+
+\textbf{The analytic correction contributes little to the shared-frame
+estimator.} Disabling it entirely changes that estimator from $0.864$ to
+$1.017$~kcal/mol. The joint frame fit, which is the component that depends
+on the exact Schmidt vectors and which is initialised at the exact frame,
+accounts for the remainder. The shared-frame number should therefore be
+read as a measurement of what oracle-assisted reconstruction can recover,
+not as a validation of the physics-based correction.
+
+\textbf{The three reused circuits} were taken at $2000$ shots from an
+earlier job on the same device, so the dataset is not uniform in shot
+count.
+
+\textbf{$K=6$ truncation.} The Schmidt rank is truncated; the resulting
+classical floor is far below the errors discussed here but is not zero.
+
+\section{Conclusion}
+
+We pre-registered an analysis, ran one $81$-circuit submission on a
+trapped-ion processor, and reported every estimator. A three-parameter
+noise model fixed in advance predicted the raw energy error to $1\%$ and
+the postselection retention to $0.4\%$. The correction built on that same
+model then missed the oracle-free target by a factor of $4.16$, and the
+goodness-of-fit statistic rose from $\approx2$ to $5.93$, flagging the
+failure without reference to the known answer. Residual decomposition
+localises the discrepancy to high-weight $XY$ strings in the largest
+corrections and to a signed offset in one measurement group.
+
+We did not reach chemical accuracy. We think the more useful output is the
+pair of negative results: that raw-observable calibration does not certify
+a correction model, and that at practical shot counts the oracle-free
+estimator is limited by counting statistics rather than by device noise.
+Both point away from more mitigation and towards lower-variance
+estimators and honest fit reporting.
+
+\begin{acknowledgments}
+This work was supported by the IonQ Research Credits Program. We thank
+Vadim Karpusenko (IonQ) for technical guidance throughout, for identifying
+the native-gate compilation issue, for proposing the measurement-grouping
+reduction, and in particular for the review of this repository's source
+that identified the exact-state dependence described in
+Sec.~\ref{sec:limits}. The pre-registration conditions for the hardware
+run were set by IonQ and are reported verbatim.
+\end{acknowledgments}
+
+\section*{Data and code availability}
+
+All source code, the raw hardware counts for all $81$ circuits, the frozen
+analysis script, and a complete iteration-by-iteration research log
+including every negative result are available at
+\url{https://github.com/Venkatallu11/quantum-chemistry-vqe}. The hardware
+result is reproduced by
+\texttt{task73\_hw\_analysis.py --counts task73\_hw\_counts.json
+--design full}, and the residual decomposition by
+\texttt{task82\_hw\_chi2\_residual\_breakdown.py}. Job identifier
+\texttt{01a138e7-c5fd-711e-bd12-41e418290d36}.
+
+\begin{thebibliography}{9}
+
+\bibitem{peruzzo2014} A. Peruzzo, J. McClean, P. Shadbolt, M.-H. Yung,
+X.-Q. Zhou, P. J. Love, A. Aspuru-Guzik, and J. L. O'Brien,
+\emph{A variational eigenvalue solver on a photonic quantum processor},
+Nat. Commun. \textbf{5}, 4213 (2014).
+
+\bibitem{mcclean2016} J. R. McClean, J. Romero, R. Babbush, and
+A. Aspuru-Guzik, \emph{The theory of variational hybrid
+quantum-classical algorithms}, New J. Phys. \textbf{18}, 023023 (2016).
+
+\bibitem{eddins2022} A. Eddins, M. Motta, T. P. Gujarati, S. Bravyi,
+A. Mezzacapo, C. Hadfield, and S. Sheldon, \emph{Doubling the size of
+quantum simulators by entanglement forging}, PRX Quantum \textbf{3},
+010309 (2022).
+
+\bibitem{pyscf} Q. Sun \emph{et al.}, \emph{PySCF: the Python-based
+simulations of chemistry framework}, WIREs Comput. Mol. Sci. \textbf{8},
+e1340 (2018).
+
+\bibitem{temme2017} K. Temme, S. Bravyi, and J. M. Gambetta,
+\emph{Error mitigation for short-depth quantum circuits},
+Phys. Rev. Lett. \textbf{119}, 180509 (2017).
+
+\bibitem{vandenberg2023} E. van den Berg, Z. K. Minev, A. Kandala, and
+K. Temme, \emph{Probabilistic error cancellation with sparse
+Pauli--Lindblad models on noisy quantum processors},
+Nat. Phys. \textbf{19}, 1116 (2023).
+
+\end{thebibliography}
+
+\end{document}
