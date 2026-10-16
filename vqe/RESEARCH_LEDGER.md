@@ -1,5 +1,56 @@
 # Research Ledger — H4 forged energy noise mitigation
 
+**STATUS UPDATE (iteration 81, 16 Oct 2026): FIRST FULL REAL-HARDWARE H4
+ENERGY MEASUREMENT, Forte Enterprise 1.**
+
+**The run.** Job `01a138e7-c5fd-711e-bd12-41e418290d36`.
+- 81 new circuits plus the 3 reused task49 GC3 circuits (the full
+  84-circuit design), 1,100 shots each.
+- IonQ's job record shows debiasing false.
+- Submitted 14 Oct 05:34 UTC, completed 16 Oct 03:36 UTC. The device
+  went offline mid-run and resumed on its own.
+- Execution time 3,984 s. Estimate $3,882.21; the billed cost is not yet
+  in the job record.
+- One submission, as agreed with IonQ.
+
+**Locked task73 analysis**, fixed before the data existed and not re-tuned.
+Hardware vs the forte-1 noise-model rehearsal from task80 (same 81
+circuits, same analysis), kcal/mol, point (bootstrap mean +/- sd, 20
+resamples):
+
+| | hardware | forte-1 simulator |
+|---|---|---|
+| raw | 23.84 (19.49 +/- 5.65) | 24.06 (24.07 +/- 5.09) |
+| no_frame | 3.46 (2.92 +/- 1.90) | 0.83 (2.20 +/- 2.28) |
+| shared_frame | 0.86 (1.06 +/- 0.42) | 0.39 (0.50 +/- 0.14) |
+| shared-frame chi2/dof | 5.93 | 2.68 |
+| ancilla retention | 0.894 | 0.898 |
+
+Bootstrap draws under 1 kcal/mol: shared_frame 7/20 (median 1.06, range
+0.41-1.96), no_frame 4/20, raw 0/20.
+
+**Reading, stated plainly:**
+1. *Hardware vs noise model, the headline IonQ asked for.* Raw error
+   (23.8 vs 24.1) and ancilla retention (0.894 vs 0.898) match the
+   forte-1 model closely. The model predicts the uncorrected hardware
+   error well.
+2. *Mitigation works on hardware.* The shared-frame correction cuts the
+   error about 28x (23.8 -> 0.86). Its point estimate is under 1 kcal/mol,
+   but the bootstrap (1.06 +/- 0.42) straddles the bar. Chemical
+   accuracy is consistent with this data, not established by it.
+3. *No-frame does not reach chemical accuracy:* 3.46 (2.92 +/- 1.90).
+   This is inside the simulator's spread (2.20 +/- 2.28) and in line with
+   the pre-run expectation of roughly 1-2.5 for a single 1,100-shot run,
+   at its high end.
+4. *Hardware carries error the model lacks.* The shared-frame chi2/dof is
+   5.9 on hardware vs 2.7 in the model, and the shared-frame error is about
+   2x the rehearsal's. That is the unmodelled-error component this run was
+   designed to measure.
+
+"Passing" is used for the shared-frame estimator only, and its exact-
+state dependence (FCI Schmidt targets, fit started at the exact frame)
+is as disclosed before the run.
+
 **STATUS UPDATE (iteration 80, 14 Oct 2026, end-to-end pipeline rehearsal
 on the free simulator, no hardware spend):**
 
