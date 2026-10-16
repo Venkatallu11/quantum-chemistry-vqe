@@ -2,11 +2,40 @@
 
 [![Qiskit Ecosystem](https://qisk.it/e-e52f2069)](https://qisk.it/e)
 
-**A from-scratch quantum chemistry engine.** No PySCF, no Psi4, no
-lookup tables for the core math — integrals, Hartree-Fock, and the qubit
-Hamiltonian are all built from atomic geometry alone, then verified
-against PySCF and run on IonQ's Cloud service. Every number below is a
-real, reproducible computation. Nothing is hardcoded.
+**A from-scratch quantum chemistry engine, and an honest account of
+where it breaks.** No PySCF, no Psi4, no lookup tables for the core math
+— Gaussian integrals, Hartree-Fock, and the qubit Hamiltonian are all
+built from atomic geometry alone, then verified against PySCF and run on
+IonQ's Cloud service. Every number below is a real, reproducible
+computation. Nothing is hardcoded, and nothing that failed has been
+removed.
+
+### The short version
+
+In October 2026 we put an 8-qubit forged H4 calculation on a live
+trapped-ion machine — a ~$3,882 job on IonQ Research Credits, with the
+analysis frozen and committed before the data existed. One submission,
+no retries.
+
+**Our noise model predicted the raw hardware error to within 1%** —
+23.84 kcal/mol measured against 24.06 predicted. **And then our error
+correction missed by 4.16×**, returning 3.46 kcal/mol where it had
+promised 0.83. Chemical accuracy is 1.0.
+
+The fit quality tells you why: χ²/dof was ~2 on every simulator and
+**5.93 on hardware**, in all 20 bootstrap draws. So we tagged all 732
+residuals by measurement group and Pauli weight and found the two things
+the model gets wrong — a correction whose error grows with its own
+magnitude, and a systematic sign offset in one measurement group.
+
+A number that passes a threshold is worth less than knowing exactly which
+term in your error model is lying to you. [Jump to the hardware
+result](#the-h4-real-hardware-result-job-01a138e7-16-oct-2026).
+
+> If you are here to check whether the headline claims survive scrutiny:
+> §1 opens with a caveat an IonQ reviewer raised about this repository's
+> own code, which we adopted and which demoted our best number. The
+> project's record of every negative result is in `vqe/RESEARCH_LEDGER.md`.
 
 **Terminology, stated precisely up front:** almost every result in this
 README runs on IonQ's free `ionq_simulator`, using noise models *named*
@@ -31,14 +60,16 @@ H4 (chemical accuracy)  →  H6 covalent chain (167.79 → 0.0094 kcal/mol)
 
 Each link re-uses the *exact same* validated measurement method on a
 harder or more different molecule than the last — real IonQ free
-simulators, real hardware spot-checks, every limitation disclosed below.
+simulators for the chain, one funded live-hardware run at the H4 link,
+every limitation disclosed below.
 
-**Project status: not finished, stated plainly.** Every number below
-comes from real circuits actually run — but on free, noise-modeled
-simulators, at a limited scale. Only one narrow real-hardware
-circuit-correctness check has been run so far (see below); the full
-real-hardware campaign, for H4 and everything past it, is the next step
-and needs more time and resources.
+**Project status: the H4 real-hardware run is done, and it did not
+reach chemical accuracy on the headline estimator.** On 16 Oct 2026 the
+full 84-circuit H4 design ran on live `qpu.forte-enterprise-1` (job
+`01a138e7`, estimated $3,882.21). The frame-free number — the honest one — came in
+at **3.46 kcal/mol**, against 0.83 predicted by the forte-1 noise model.
+The full result, including what went wrong and where, is in §1.
+Everything past H4 is still simulator-only.
 
 ---
 
@@ -69,13 +100,14 @@ submissions each (8 numbers total):**
 
 *(chemical accuracy = 1 kcal/mol — this is 50-95x under the bar.)*
 
-One real-hardware spot-check has been run on actual
-`qpu.forte-enterprise-1` trapped-ion hardware (job
-`01a08910-7a2b-762b-b0ad-6207191241b6`) confirming the measurement
-circuits behave physically as expected, with real billed cost matching a
-from-scratch cost model to within $0.05. **This is a circuit-correctness
-check, not the full chemical-accuracy campaign on real hardware — that
-full real-hardware run has not been done yet.**
+**The full real-hardware run has since been done, and the simulator
+numbers above did not transfer.** See
+"[The H4 real-hardware result](#the-h4-real-hardware-result-job-01a138e7-16-oct-2026)"
+below for the measured hardware numbers. Two earlier real-hardware jobs
+on `qpu.forte-enterprise-1` preceded it: a circuit-correctness spot-check
+(job `01a08910-7a2b-762b-b0ad-6207191241b6`, real billed cost matching a
+from-scratch cost model to within $0.05) and the 10 Sep GC3 job whose
+three circuits are reused in the full design.
 
 ### An important caveat, found by external review — read this before trusting the number above
 
@@ -164,17 +196,19 @@ the no-frame-fit question.
 
 ### Pre-run checks for the H4 hardware benchmark (tasks 67–78)
 
-**Status: no hardware job submitted yet.** Everything in this subsection
-ran on IonQ's free `ionq_simulator` (noise models named `aria-1`/`forte-1`).
-Commit messages and file names for tasks 72–77 sometimes say "real
-trials"/"real data": there, "real" means *fresh simulator submissions*
-(not reused or bootstrapped data), never hardware.
+**Status: these were the pre-run checks; the hardware job has since run —
+see the next subsection for what actually happened.** Everything in *this*
+subsection ran on IonQ's free `ionq_simulator` (noise models named
+`aria-1`/`forte-1`). Commit messages and file names for tasks 72–77
+sometimes say "real trials"/"real data": there, "real" means *fresh
+simulator submissions* (not reused or bootstrapped data), never hardware.
 
-**Plan:** the full 84-circuit design (4 GC groups × 21 slots) at 1,100
-shots on `qpu.forte-enterprise-1`; 81 new circuits plus 3 reused from the
-10 Sep hardware job. Cost $3,875 (IonQ's own estimate endpoint, read
-around an SDK field-name bug) to $3,882 (rate-card formula), within the
-$5,352.16 approved. IonQ's predicted queue time was ~14.5 days.
+**Plan, as submitted:** the full 84-circuit design (4 GC groups × 21
+slots) at 1,100 shots on `qpu.forte-enterprise-1`; 81 new circuits plus 3
+reused from the 10 Sep hardware job. Cost $3,875 (IonQ's own estimate
+endpoint, read around an SDK field-name bug) to $3,882 (rate-card
+formula), within the $5,352.16 approved. IonQ's predicted queue time was
+~14.5 days; the job actually sat ~46 hours.
 
 **Fresh simulator submissions at 1,100 shots, shared-frame error vs exact
 (kcal/mol):**
@@ -207,6 +241,104 @@ are current:
 | `task74_hw_submission.py`: builds, checks and submits the hardware job (dry run by default) | `task74_real_hardware_cost_check.py`: IonQ cost estimates |
 | | `task75`–`task77`: shot sweep, shot reallocation, 84-circuit fresh trials |
 | `task78_chi2_relabel_backfill.py`: chi² relabel for the right-hand column | |
+
+### The H4 real-hardware result (job `01a138e7`, 16 Oct 2026)
+
+The 84-circuit design ran on live `qpu.forte-enterprise-1`. One
+submission, no retries, analysis frozen and committed before the data
+existed. Here is what came back.
+
+| | raw | **frame-free** | shared frame | χ²/dof |
+|---|---|---|---|---|
+| ideal noise model | 1.96 | 0.048 | 0.117 | ~1 |
+| aria-1 noise model | 22.53 | 1.041 | 0.707 | ~2 |
+| forte-1 noise model | 24.06 | 0.832 | 0.394 | ~2 |
+| **live hardware** | **23.84** | **3.46** | **0.86** | **5.93** |
+
+*(kcal/mol error against exact FCI. Chemical accuracy = 1.0.)*
+
+**The noise model predicted the uncorrected hardware error to within 1%.**
+23.84 measured against 24.06 predicted — a 0.99× ratio. Shot retention
+after ancilla-parity postselection came in at 0.894 against 0.898
+predicted. For an 8-qubit forged calculation on a live trapped-ion
+machine, two months of noise-model work landed almost exactly on the
+nose.
+
+**And that is precisely what makes the next line credible: the correction
+stack failed.** The frame-free estimator — the honest one, with no exact
+Schmidt vectors anywhere in reconstruction — returned **3.46 kcal/mol**
+against 0.83 predicted. A 4.16× miss. It still removed 85% of the raw
+error (23.84 → 3.46), so the physics is not wrong; it is incomplete.
+
+**The shared-frame number is 0.86, and we are not calling that a pass.**
+Its bootstrap distribution (N=20, every circuit resampled at its own shot
+total, whole pipeline re-run) centres at **1.055 ± 0.419**, with 13 of 20
+draws above 1.0 and q95 at 1.866. The point estimate landing under the
+bar is the luck of one draw, not a result that would replicate. Reported
+because it was pre-registered, not because it passed.
+
+**χ²/dof tripled, and that is the actual finding.** ~2 on every noise
+model, **5.93** on hardware, and every one of the 20 bootstrap draws
+agrees (6.41–7.22). A tripled χ² alongside a 1%-accurate raw prediction
+says something specific: the hardware carries error structure the
+ZZ/GPi/GPi2 correction does not describe at all. Not more noise —
+*different* noise.
+
+#### Where the missing physics is
+
+Rather than leave that as a shrug, `task82_hw_chi2_residual_breakdown.py`
+re-derives the identical 732-term residual vector (it asserts χ²/dof
+matches the locked 5.9286 exactly) and tags every term with its slot, GC
+group and Pauli weight. Mean r² per cell:
+
+| | weight 1 | weight 2 | weight 3 | weight 4 |
+|---|---|---|---|---|
+| GC group 0 | 3.59 | **10.14** | — | — |
+| GC group 1 | — | 2.80 | — | 4.70 |
+| GC group 2 | — | — | 3.98 | **13.58** |
+| GC group 3 | — | 3.35 | — | 4.77 |
+
+Two distinct failure modes, not one:
+
+1. **The error grows with the size of the correction applied.** Binned by
+   correction ratio, labels the model barely touches (ratio 1.00–1.05)
+   give mean r² = 3.69; labels it scales hardest (1.15–1.25) give **8.51,
+   and carry 48% of the total χ²** on 33% of the terms. The correction's
+   *magnitude* is miscalibrated, and the miscalibration compounds exactly
+   where the model works hardest. The twelve worst residuals in the run
+   are all weight-4 XY-type strings — `YYXX`, `YXXY`, `XYYX`, `XXYY`,
+   `YYYY`, `XXXX` — every one with a correction ratio near 1.19.
+2. **GC group 0 carries a systematic offset, not scatter.** Its mean
+   *signed* residual is −1.32 (weight 1) and −1.73 (weight 2). Noise
+   averages to zero; this does not. Something in group 0's correction is
+   biased in one direction.
+
+That is a concrete, falsifiable diagnosis of a specific error model on a
+specific machine — which is worth more than a number that happened to
+land under a threshold.
+
+#### Conditions, as agreed with IonQ in advance
+
+`debiasing=False` passed explicitly on every circuit (with debiasing on,
+the identical job costs ~$13,600); 1,100 shots per circuit; a single
+submission with no resubmission permitted; Job ID posted to the IonQ
+ticket on submission. Submitted 2026-10-14 05:34 UTC, completed
+2026-10-16 03:36 UTC. Cost $3,882.21 by IonQ's own estimate endpoint and
+our independent rate-card model, against the $5,352.16 approved under the
+IonQ Research Credits Program; the final billed figure is not yet
+reported back through the API (`billed_cost_usd` is still null) and will
+be updated here when it is.
+
+**What this run is, stated plainly:** a hardware-versus-noise-model
+comparison in which the model won on the raw observable and lost on the
+corrected one. It is not a demonstration of chemical accuracy on real
+hardware. The frame-free estimator missed the bar by 3.5×, the number is
+reported anyway, and the honest conclusion is that the correction model
+needs the two repairs the residual breakdown just localised.
+
+Reproduce it: `python vqe/task73_hw_analysis.py --counts vqe/task73_hw_counts.json --design full`
+(raw counts for all 81 circuits are committed), then
+`python vqe/task82_hw_chi2_residual_breakdown.py --counts vqe/task73_hw_counts.json`.
 
 ---
 
@@ -308,12 +440,38 @@ specific Hamiltonian is more noise-sensitive. Not yet understood.
   submissions per backend (8 numbers total) specifically because a
   single lucky run isn't evidence — every one of those 8 real numbers is
   reported above, not just the best one.
+- **The correction stack does not reach chemical accuracy on live
+  hardware.** Measured, not estimated: 3.46 kcal/mol frame-free on
+  `qpu.forte-enterprise-1`, against 0.83 predicted by the forte-1 noise
+  model. The two localised causes are in §1; neither is fixed yet.
+- **Simulator noise models are optimistic about corrected observables,
+  even when they are accurate about raw ones.** The same model that
+  predicted the raw hardware error to 1% was wrong by 4.16× after
+  correction. Treat any corrected-observable projection from a noise
+  model as an upper bound on performance, not an estimate.
+- **Bootstrap resampling runs optimistic relative to fresh submissions.**
+  Bootstrap predicted a frame-free maximum of 0.90 kcal/mol and a 100%
+  pass rate; fresh simulator submissions of the same design returned up
+  to 2.46. Cross-submission drift exceeds pure shot noise, so bootstrap
+  error bars understate reality.
+- **At 1,100 shots per circuit the frame-free estimator is shot-noise
+  limited, not noise limited.** The zero-noise ideal simulator itself
+  returned 1.225 kcal/mol on one fresh 1,100-shot draw. No amount of
+  error mitigation fixes that; only more shots or a lower-variance
+  estimator does, and 6× the shots costs ~$23,400.
 
 ---
 
 ## Run it yourself
 
 ```bash
+# --- the real hardware run (raw counts for all 81 circuits are committed) ---
+python vqe/task73_hw_analysis.py --counts vqe/task73_hw_counts.json --design full
+                                                                # job 01a138e7: raw 23.84, frame-free 3.46, shared-frame 0.86, chi2/dof 5.93
+python vqe/task82_hw_chi2_residual_breakdown.py --counts vqe/task73_hw_counts.json
+                                                                # localises the missing physics: group 2 weight-4, and a signed offset in group 0
+
+# --- simulator results ---
 python vqe/task40_robustness_envelope_new_pipeline.py         # H4 headline: Q95 ~0.003-0.05 kcal/mol
 python vqe/task40_certification_ablation_adversarial.py       # H4 WITHOUT the frame fit, single draw
 python vqe/task60_h4_no_frame_fit_multidraw.py                # H4 without the frame fit, simple pooling -> 0.36/0.86 kcal/mol
