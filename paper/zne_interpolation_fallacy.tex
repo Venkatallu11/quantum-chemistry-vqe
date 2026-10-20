@@ -1,4 +1,4 @@
-\documentclass[aps,prx,twocolumn,superscriptaddress,nofootinbib]{revtex4-2}
+\documentclass[aps,prx,twocolumn,superscriptaddress,nofootinbib,floatfix]{revtex4-2}
 
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
@@ -132,32 +132,32 @@ probabilities, over $8$ seeds --- statistically identical to a real
 submission to a noiseless simulator, and containing no device noise of any
 kind. The identical production code was run verbatim.
 
-\begin{table}[t]
-\caption{Pure shot noise through the production extrapolator, $756$
+\begin{table*}[t]
+\caption{Pure shot noise through the production extrapolator: $756$
 curves, $100{,}000$ shots, noiseless model. The input contains no device
-noise, so the correct $\lambda=0$ answer equals the $\lambda=1$ value.}
+noise, so the correct $\lambda=0$ answer equals the $\lambda=1$ value and
+the entire extrapolated error is manufactured by the estimator. Held-out
+interpolation error is excellent on quantities bounded to $[-1,1]$;
+the extrapolation evaluated from the same fits is not.}
 \label{tab:blowup}
 \begin{ruledtabular}
-\begin{tabular}{lc}
-Quantity & Value \\
+\begin{tabular}{lc@{\hspace{3em}}lc@{\hspace{3em}}lc}
+\multicolumn{2}{c}{Held-out interpolation} &
+\multicolumn{2}{c}{Energy error} &
+\multicolumn{2}{c}{Off-support behaviour} \\
 \colrule
-Stage-1 mean held-out error & $8.19\times10^{-4}$ \\
-Stage-2 mean held-out error & $7.50\times10^{-4}$ \\
-\colrule
-Energy error at $\lambda=1$ (raw) & $0.0652$~kcal/mol \\
-Energy error at $\lambda=0$ (extrapolated) & $\mathbf{33.48}$~kcal/mol \\
-Amplification & $\mathbf{513\times}$ \\
-\colrule
-Curves rejected for $|\langle P\rangle|>1$ & $115/756$ $(15.2\%)$ \\
-Worst rejected extrapolations & $17{,}295$ and $-8{,}214$ \\
-\colrule
-Class chosen: rational & $207/756$ \\
-Class chosen: exponential & $262/756$ \\
-Class chosen: linear & $143/756$ \\
-Class chosen: quadratic & $144/756$ \\
+Stage-1 mean & $8.19\times10^{-4}$ &
+  at $\lambda=1$ (raw)          & $0.0652$~kcal/mol &
+  rejected, $|\langle P\rangle|>1$ & $115/756$ $(15.2\%)$ \\
+Stage-2 mean & $7.50\times10^{-4}$ &
+  at $\lambda=0$ (extrapolated) & $\mathbf{33.48}$~kcal/mol &
+  worst two extrapolations      & $17{,}295$, $-8{,}214$ \\
+             &                    &
+  amplification                 & $\mathbf{513\times}$ &
+  nonlinear class chosen        & $469/756$ $(62\%)$ \\
 \end{tabular}
 \end{ruledtabular}
-\end{table}
+\end{table*}
 
 Table~\ref{tab:blowup} is the whole paper in one place. The held-out error
 is $7.5\times10^{-4}$ on quantities bounded to $[-1,1]$: by the standard
@@ -234,8 +234,9 @@ rather than a factor of a few. Model selection is driven by held-out
 \emph{interpolation} error. The flexible three-parameter nonlinear classes
 interpolate best --- they have more freedom to accommodate the particular
 realisation of shot noise in the fitted points --- so selection prefers
-them: rational and exponential were chosen for $469$ of $756$ curves,
-$62\%$ of the total. Those are exactly the two classes whose
+them: rational was chosen for $207$ curves and exponential for $262$,
+$469$ of $756$ in total ($62\%$), against $143$ linear and $144$
+quadratic. Those are exactly the two classes whose
 $\mathrm{VIF}(\lambda{=}0)$ is astronomical.
 
 Finite sampling therefore does not simply add variance to the

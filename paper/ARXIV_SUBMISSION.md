@@ -98,10 +98,27 @@ toolchain is updated periodically.
   `amsmath`, `amssymb`, `booktabs`, `hyperref`, `graphicx` — all standard.
   **[CHECKED]**.
 
-### Compile before submitting
+### Compiled: both papers build clean **[CHECKED]**
 
-**I could not compile these — no `pdflatex` in the preparation
-environment.** This is a real gap. Before uploading:
+Both were compiled with TeX Live 2023 (`pdflatex`, `revtex4-2`):
+
+| Paper | Pages | Errors | Undefined refs/cites |
+|---|---|---|---|
+| I `h4_forte_benchmark` | **7** | 0 | 0 |
+| II `zne_interpolation_fallacy` | **4** | 0 | 0 |
+
+Two defects were found and fixed by compiling:
+- `xcolor` loaded after `hyperref` in Paper I (option-clash risk).
+- Paper II's Table II was unplaceable as a single-column float and
+  rendered *before* Table I, out of order. It is now a full-width
+  `table*`, restructured into three labelled groups to use the width.
+  All three tables now appear in order.
+
+A residual `A float is stuck` warning remains in Paper II. It is benign:
+every table is placed, in order, Table II one page after its discussion.
+This is ordinary for a four-page two-column paper with three tables.
+
+To rebuild:
 
 ```bash
 pdflatex h4_forte_benchmark.tex
@@ -139,9 +156,9 @@ It maximises reach, which is the point of posting.
 - **Title / Authors**: plain text. Author as `Venkata Rao Allu`. No
   affiliation markup in the metadata field.
 - **Comments**: use this. Suggested —
-  - Paper I: `14 pages, 2 tables. Raw hardware counts, frozen analysis script and full research log at https://github.com/Venkatallu11/quantum-chemistry-vqe`
-  - Paper II: `9 pages, 3 tables. Code and result files at https://github.com/Venkatallu11/quantum-chemistry-vqe`
-  - **[VERIFY]** page counts after you compile.
+  - Paper I: `7 pages, 2 tables. Raw hardware counts, frozen analysis script and full research log at https://github.com/Venkatallu11/quantum-chemistry-vqe`
+  - Paper II: `4 pages, 3 tables. Code and result files at https://github.com/Venkatallu11/quantum-chemistry-vqe`
+  - Page counts **[CHECKED]**: Paper I is 7 pages, Paper II is 4 pages.
 - **ACM-class / MSC-class**: leave blank; not conventional in `quant-ph`.
 - **Report-no**: leave blank.
 - **Journal-ref / DOI**: leave blank now. Fill them in later if either
@@ -153,7 +170,7 @@ It maximises reach, which is the point of posting.
 
 ## Before you click submit
 
-1. **Compile both papers.** Not optional — see above.
+1. ~~Compile both papers.~~ **Done** — both build clean, 7 and 4 pages.
 2. **Send Paper I to Vadim Karpusenko, one week ahead.** This is a
    condition of the funding, not a courtesy. His words: *"yes, no approval
    needed. Send me the draft a week before posting so the IonQ-specific
